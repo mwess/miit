@@ -1,10 +1,7 @@
 
-import os
-from os.path import join, exists
-import shlex
-import subprocess
-from typing import Optional, List, Tuple
-import shutil
+from typing import Optional, List, Tuple, Dict
+from miit.registerers.base_registerer import Registerer
+from miit.registerers.nifity_reg import NiftyRegWrapper
 
 import cv2
 import numpy
@@ -23,7 +20,13 @@ path_to_nifty_reg_f3d = '/home/maximilw/workbench/applications/niftyreg/build/re
 path_to_nifty_resample = '/home/maximilw/workbench/applications/niftyreg/build/reg-apps/reg_resample'
 
 
-def do_msi_registration(histology_image, ref_mat, spec_to_ref_map, msi, reg_img:numpy.array=None, additional_images:Optional[List[numpy.array]]=None):
+def do_msi_registration(histology_image: numpy.array, 
+                        ref_mat: numpy.array, 
+                        spec_to_ref_map: Dict, 
+                        msi, 
+                        reg_img:numpy.array=None, 
+                        additional_images:Optional[List[numpy.array]]=None,
+                        registerer: Optional[Registerer] = None):
     if additional_images is None:
         additional_images = []
     if reg_img is None:
@@ -34,19 +37,16 @@ def do_msi_registration(histology_image, ref_mat, spec_to_ref_map, msi, reg_img:
      proc_add_imgs,
      padding_dict
     ) = preprocess_for_registration(histology_image, reg_img, ref_mat, additional_image_datas=additional_images)
-    # print(fixed_image.shape, moving_image.shape)
-    sitk_fixed_image = sitk.GetImageFromArray(fixed_image)
-    sitk_moving_image = sitk.GetImageFromArray(moving_image)
-    sitk_proc_ref_mat = sitk.GetImageFromArray(proc_ref_mat)
-    sitk_proc_add_imgs = [sitk.GetImageFromArray(img) for img in proc_add_imgs]
 
-    (warped_image, rigid_transform_path, ref_path, _) = register_images(sitk_fixed_image, sitk_moving_image)
-    warped_ref_mat, _ = warp_image(sitk_proc_ref_mat, rigid_transform_path, ref_path)
-    # Add unpadding!!!
+    if registerer is None:
+        registerer = NiftyRegWrapper.load_from_config({})
+    registration_result = registerer.register_images(moving_image, fixed_image)
+    warped_image = registerer.transform_image(moving_image, registration_result, 'LINEAR')
+    warped_ref_mat = registerer.transform_image(proc_ref_mat, registration_result, 'NN')
     warped_add_imgs = []
-    for sitk_imgs in sitk_proc_add_imgs:
-        (warped_sitk_img, _) = warp_image(sitk_imgs, rigid_transform_path, ref_path)
-        warped_add_imgs.append(warped_sitk_img)
+    for img in proc_add_imgs:
+        warped_add_img = registerer.transform_image(img, registration_result, 'NN')
+        warped_add_imgs.append(warped_add_img)
     unpadded_images = post_registration_transforms([warped_image, warped_ref_mat] + warped_add_imgs, padding_dict)
     unpadded_warped_img = unpadded_images[0]
     unpadded_ref_mat = unpadded_images[1]
@@ -54,11 +54,11 @@ def do_msi_registration(histology_image, ref_mat, spec_to_ref_map, msi, reg_img:
     return unpadded_warped_img, unpadded_ref_mat, unpadded_add_imgs
     
 
-def post_registration_transforms(warped_images, processing_dict):
+def post_registration_transforms(warped_images: List[numpy.array], processing_dict: Dict) -> List[numpy.array]:
     global_padding = processing_dict['global_padding']
     unpadded_images = []
-    for warped_image in warped_images:
-        warped_image_np = sitk.GetArrayFromImage(warped_image)
+    for warped_image_np in warped_images:
+        # warped_image_np = sitk.GetArrayFromImage(warped_image)
         warped_image_np = warped_image_np[global_padding:-global_padding,global_padding:-global_padding]
         warped_image_np = remove_padding(warped_image_np, processing_dict['fix_sym_pad'])
         unpadded_images.append(warped_image_np)
@@ -113,6 +113,7 @@ def pad_asym(image, padding: Tuple[int, int, int, int], constant_values: int = 0
             image = np.pad(image, ((top, bottom), (left, right), (0, 0)), constant_values=constant_values)
         return image
 
+
 def preprocess_for_registration(fixed_image, 
                                 moving_image, 
                                 ref_mat,
@@ -121,9 +122,6 @@ def preprocess_for_registration(fixed_image,
     fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image, background_value=0)
     # Add global padding
     # First do aym padding
-    # print('preprocess for registration')
-    # print(fixed_image_np.shape, moving_image.shape)
-    # print(process_dict)
     fixed_image_padding = pad_asym(fixed_image_np, process_dict['fix_sym_pad'])
     fixed_image_padding = np.pad(fixed_image_padding, ((padding, padding),(padding, padding)))
     moving_image_padding = pad_asym(moving_image, process_dict['mov_sym_pad'])
@@ -141,6 +139,7 @@ def preprocess_for_registration(fixed_image,
         padded_additional_image_datas = None
     process_dict['global_padding'] = padding
     return fixed_image_padding, moving_image_padding, ref_mat_padding, padded_additional_image_datas, process_dict
+
 
 def preprocess_histology(hist_img, moving_img, background_value=0, background_cutoff=215):
     """
@@ -201,82 +200,3 @@ def pad_to_image(source, target, background_value=0):
         'pad_x_right': pad_x_right
     }
     return cv2.copyMakeBorder(source, pad_x_right, pad_x_left, pad_y_left, pad_y_right, cv2.BORDER_CONSTANT, background_value), padding
-
-    
-def register_images(fixed_image, moving_image, use_half_res=True, output_dir='tmp'):
-    # Export images
-    try:
-        if use_half_res:
-            fixed_half_size = [x//2 for x in sitk.GetArrayFromImage(fixed_image).shape]
-            fixed_image_half_res = resize_image_simple_sitk(fixed_image, fixed_half_size) 
-            moving_half_size = [x//2 for x in sitk.GetArrayFromImage(moving_image).shape]
-            moving_image_half_res = resize_image_simple_sitk(moving_image, moving_half_size)
-        else:
-            fixed_image_half_res = fixed_image
-            moving_image_half_res = moving_image
-        # Write to file
-        cmd_returns = []
-        if not exists(output_dir):
-            os.mkdir(output_dir)
-        fixed_full_path = join(output_dir, 'fixed_full.nii.gz')
-        moving_full_path = join(output_dir, 'moving_full.nii.gz')
-        fixed_path = join(output_dir, 'fixed.nii.gz')
-        moving_path = join(output_dir, 'moving.nii.gz')
-        warped_rig_image_path = join(output_dir, 'warped_rig_image.nii.gz')
-        rigid_transform_path = join(output_dir, 'Rigid.txt')
-        sitk.WriteImage(fixed_image_half_res, fixed_path)
-        sitk.WriteImage(moving_image_half_res, moving_path)
-        sitk.WriteImage(fixed_image, fixed_full_path)
-        sitk.WriteImage(moving_image, moving_full_path)
-    
-        # Perform registrations
-        cmd_aladin_rig = f"""'{path_to_nifty_reg_aladin}' -ref '{fixed_path}' -flo '{moving_path}' -res '{warped_rig_image_path}' -aff '{rigid_transform_path}' -rigOnly"""
-        ret_aladin_rig = subprocess.run(shlex.split(cmd_aladin_rig), capture_output=True)
-        if len(ret_aladin_rig.stderr) != 0:
-            print('Error during rigid registration:')
-            print(ret_aladin_rig.stderr.decode('utf-8'))
-        cmd_returns.append(ret_aladin_rig)    
-        # Load resampled 
-        warped_rig_image = sitk.ReadImage(warped_rig_image_path)
-        if use_half_res:
-            target_img_size = sitk.GetArrayFromImage(moving_image).shape
-            warped_rig_image = resize_image_simple_sitk(warped_rig_image, target_img_size)
-        # TODO: Fix that!
-        # if exists(output_dir):
-        #     shutil.rmtree(output_dir)
-        return (warped_rig_image, 
-                rigid_transform_path,
-                fixed_path,
-                cmd_returns)
-    except Exception as e:
-        print(cmd_returns)
-        raise e
-
-
-def warp_image(image, rigid_transform_path, ref_image_path, use_half_res=True, output_dir=''):
-    # Export images
-    if use_half_res:
-        image_half_size = [x//2 for x in sitk.GetArrayFromImage(image).shape]
-        image_half_res = resize_image_simple_sitk(image, image_half_size) 
-    else:
-        image_half_res = image
-    # Write to file
-    cmd_returns = []
-    full_path = join(output_dir, 'image_full.nii.gz')
-    image_path = join(output_dir, 'image.nii.gz')
-    warped_image_path = join(output_dir, 'warped_image.nii.gz')
-    sitk.WriteImage(image_half_res, image_path)
-    sitk.WriteImage(image, full_path)
-    # Warp idx_mat
-    cmd_rig_resample = f"""'{path_to_nifty_resample}' -ref '{ref_image_path}' -flo '{image_path}' -trans  '{rigid_transform_path}' -res '{warped_image_path}' -inter 0"""
-    ret_rig_resample = subprocess.run(shlex.split(cmd_rig_resample), capture_output=True)
-    if len(ret_rig_resample.stderr) != 0:
-        print('Error during rigid resampling:')
-        print(ret_rig_resample.stderr.decode('utf-8'))
-    cmd_returns.append(ret_rig_resample)
-    # # Load resampled 
-    warped_image = sitk.ReadImage(warped_image_path)
-    if use_half_res:
-        target_img_size = sitk.GetArrayFromImage(image).shape
-        warped_image = resize_image_simple_sitk(warped_image, target_img_size)
-    return (warped_image, cmd_returns)

@@ -1,16 +1,10 @@
 from dataclasses import dataclass
-from os.path import join, exists
-from pathlib import Path
-import shutil
-from typing import Any, Dict, Tuple, Optional, Union
-import uuid
+from typing import Any, Dict, Tuple, Optional
 
 import numpy
 import numpy as np
 import skimage
 import skimage as ski
-from skimage.filters.rank import majority
-from skimage.morphology import disk
 import itk
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult

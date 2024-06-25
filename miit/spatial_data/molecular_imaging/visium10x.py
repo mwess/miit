@@ -85,7 +85,7 @@ class Visium10X(BaseMolecularImaging):
     def ref_mat(self, ref_mat: Annotation):
         self.__ref_mat = ref_mat
 
-    def store(self, root_directory):
+    def store(self, root_directory: str):
         if not exists(root_directory):
             os.mkdir(root_directory)
         directory = join(root_directory, str(self.id_))
@@ -120,7 +120,7 @@ class Visium10X(BaseMolecularImaging):
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory):
+    def load(cls, directory: str):
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
@@ -229,7 +229,7 @@ class Visium10X(BaseMolecularImaging):
             self.__ref_mat.apply_bounding_parameters(x1, x2, y1, y2)
             self.update_scaling_journal(operation_desc=f'apply_bounding_parameters({x1}, {x2}, {y1}, {y2})')
 
-    def flip(self, axis=0):
+    def flip(self, axis: int =0):
         self.image.flip(axis=axis)
         self.table.flip(self.image.data.shape, axis=axis)
         if self.__ref_mat is not None:
@@ -285,21 +285,6 @@ class Visium10X(BaseMolecularImaging):
             map_ = self.spec_to_ref_map.copy()
         return map_
 
-
-    # @classmethod
-    # def from_basedir(cls, path: str, key: str):
-    #     # Path points to the basedir
-    #     image_path = os.path.join(path, 'original_images', key + '.tif')
-    #     image = Image(data=cv2.imread(image_path))
-        
-    #     table_path = os.path.join(path, 'st_data', key + '.csv')
-    #     table = Pointset(data=pd.read_csv(table_path, index_col=0))
-        
-    #     scale_factors_path = os.path.join(path, 'st_scalefactors', key + '.json')
-    #     with open(scale_factors_path) as f:
-    #         scale_factors = json.load(f)
-    #     return cls(image, table, scale_factors)
-
     @classmethod
     def from_config(cls, config: Dict[str, str]) -> 'Visium10X':
         load_type = config['load_type']
@@ -315,69 +300,12 @@ class Visium10X(BaseMolecularImaging):
                                          image_path,
                                          config)
 
-    # @classmethod
-    # def from_config(cls, config: Dict[str, str]) -> 'Visium10X':
-    #     image_path = config['image']
-    #     table_path = config['st_data']
-    #     scale_factors_path = config['st_scalefactors']
-        
-    #     image = Image(cv2.imread(image_path))
-    #     table = pd.read_csv(table_path, index_col=0)
-    #     table = table[['imagerow', 'imagecol']].rename(columns={'imagerow': 'x', 'imagecol': 'y'})
-    #     table = Pointset(table)
-    #     with open(scale_factors_path) as f:
-    #         scale_factors = json.load(f)
-    #     return cls(image, table, scale_factors, config=config)
-
-    # @classmethod
-    # def from_directory(cls, directory: str) -> 'Visium10X':
-    #     if not exists(directory):
-    #         # TODO: Throw error
-    #         pass
-    #     image = Image(data=sitk.GetArrayFromImage(sitk.ReadImage(join(directory, 'image.nii.gz'))))
-    #     table = Pointset(data=pd.read_csv(join(directory, 'table.csv'), index_col=0))
-    #     with open(join(directory, 'scale_factors.json')) as f:
-    #         scale_factors = json.load(f)
-    #     config_path = join(directory, 'config.json')
-    #     if exists(config_path): 
-    #         with open(config_path) as f:
-    #             config = json.load(f)
-    #     else:
-    #         config = None
-    #     ref_mat_path = join(directory, 'ref_mat.nii.gz')
-    #     if exists(ref_mat_path):
-    #         ref_mat = Annotation(data=sitk.GetArrayFromImage(sitk.ReadImage(ref_mat_path)))
-    #         skip_ref_mat_creation = True
-    #     else:
-    #         ref_mat = None
-    #         skip_ref_mat_creation = False
-    #     spot_scaling_journal_path = join(directory, 'spot_scaling_journal.csv')
-    #     if exists(spot_scaling_journal_path):
-    #         spot_scaling_journal = pd.read_csv(spot_scaling_journal_path, index_col=0)
-    #     else:
-    #         spot_scaling_journal = None
-    #     with open(join(directory, 'spec_to_ref_map.json')) as f:
-    #         spec_to_ref_map = json.load(f)
-    #     obj = cls(
-    #         image=image,
-    #         table=table,
-    #         scale_factors=scale_factors,
-    #         skip_ref_mat_creation=skip_ref_mat_creation,
-    #         config=config,
-    #         spot_scaling_journal=spot_scaling_journal
-    #     )
-    #     id_ = os.path.split(directory.rstrip('/'))[-1]
-    #     obj.id_ = uuid.UUID(id_)
-    #     obj.ref_mat = ref_mat
-    #     obj.spec_to_ref_map = spec_to_ref_map
-    #     return obj
-    
     @classmethod
     def from_spcrng(cls, 
-                    directory,
-                    image_scale='hires',
-                    fullres_image_path=None,
-                    config=None):
+                    directory: str,
+                    image_scale: str ='hires',
+                    fullres_image_path: str =None,
+                    config: Dict =None):
         """
         Initiates Visium10X from spaceranger output directory.
         
@@ -403,11 +331,11 @@ class Visium10X(BaseMolecularImaging):
     
     @classmethod
     def from_spcrng_files(cls,
-                          path_to_scalefactors,
-                          path_to_tissue_positions,
-                          path_to_image,
-                          image_scale='hires',
-                          config=None):
+                          path_to_scalefactors: str,
+                          path_to_tissue_positions: str,
+                          path_to_image: str,
+                          image_scale: str ='hires',
+                          config: Dict =None):
         """
         Loads Visium10X object from spaceranger output.
         
@@ -437,13 +365,6 @@ class Visium10X(BaseMolecularImaging):
         config['path_to_image'] = path_to_image
         config['image_scale'] = image_scale
         config['scalefactor'] = get_scalefactor(scalefactors, image_scale)
-        # config = {
-        #     'scalefactors': path_to_scalefactors,
-        #     'tissue_positions_list': path_to_tissue_positions,
-        #     'highres_image': path_to_image,
-        #     'image_scale': image_scale,
-        #     'scalefactor': get_scalefactor(scalefactors, image_scale)
-        # }
         return cls(image, tissue_positions, scalefactors, config=config)
         
 

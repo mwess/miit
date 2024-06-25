@@ -33,6 +33,7 @@ from miit.utils.image_utils import read_image
 
 IntensityDict = Dict[Union[int, str], List[float]]
 
+
 def simple_baseline(intensities: numpy.array) -> numpy.array:
     return intensities - np.median(intensities[:100])
 

@@ -26,7 +26,7 @@ from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.custom_types import PdDataframe, ImzmlParserType, IntensityDict
 from miit.spatial_data.molecular_imaging.imaging_data import BaseMolecularImaging
-from miit.spatial_data.image import Annotation, Image, read_image
+from miit.spatial_data.image import Annotation, Image, read_image, BaseImage
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
@@ -160,10 +160,10 @@ def convert_to_matrix(msi,
     
     """
     # TODO: For some reason some of the exports are inverted. Keep for now, but fix later. Unfortunately, NiftyReg has trouble with this simple registration.
-    scale_x = msi.imzmldict['pixel size x']
-    scale_y = msi.imzmldict['pixel size y']
-    max_x = msi.imzmldict['max dimension x']
-    max_y = msi.imzmldict['max dimension y']
+    scale_x = msi.imzmldict['pixel size x']/target_resolution
+    scale_y = msi.imzmldict['pixel size y']/target_resolution
+    max_x = int(msi.imzmldict['max dimension x']/target_resolution)
+    max_y = int(msi.imzmldict['max dimension y']/target_resolution)
     proj_mat = np.zeros((max_y, max_x), dtype=int)
     # proj_mat = np.zeros((max_x, max_y), dtype=np.int32)
     spec_to_ref_map = {}
@@ -510,6 +510,58 @@ class ScilsExportImzml(BaseMolecularImaging):
         obj.id_ = id_
         return obj
         
+    @classmethod
+    def from_unknown(cls, 
+                     image: BaseImage, 
+                     imzml_path: str, 
+                     srd_path: Optional[str] = None,
+                     use_srd: bool = False,
+                     enable_msi_registration: bool = True,
+                     registerer: Optional[Registerer] = None,
+                     ref_image_resolution: Optional[int] = 1):
+        msi = ImzMLParser(imzml_path)
+        if srd_path is not None:
+            with open(srd_path, 'rb') as f:
+                srd = json.load(f)
+        else:
+            srd = None
+        ref_mat, spec_to_ref_map, ann_mat = convert_to_matrix(msi, srd, target_resolution=ref_image_resolution)
+        if enable_msi_registration:
+            if ann_mat is not None:
+                additional_images = [ann_mat]
+            else:
+                additional_images = []
+            if use_srd:
+                reg_img = ann_mat
+            else:
+                reg_img = None
+            _, ref_mat, add_imgs = do_msi_registration(image.data, 
+                                                       ref_mat, 
+                                                       spec_to_ref_map, 
+                                                       msi, 
+                                                       reg_img=reg_img,
+                                                       additional_images=additional_images,
+                                                       registerer=registerer)
+            if ann_mat is not None:
+                ann_mat = add_imgs[0]
+        
+        ref_mat = ref_mat.astype(int)
+        ref_mat = Annotation(data=ref_mat)
+        if ann_mat is not None:
+            ann_mat = Annotation(data=ann_mat)
+        else:
+            ann_mat = None
+        obj = cls(
+            config={},
+            image=image,
+            spec_to_ref_map=spec_to_ref_map,
+            ann_mat=ann_mat
+        )
+        obj.ref_mat = ref_mat
+        # TODO: Clean that up
+        # obj.__warped_moving_image = warped_moving_image
+        return obj
+            
     
     @classmethod
     def from_config(cls, config):

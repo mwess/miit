@@ -18,6 +18,12 @@ class OpenCVAffineTransformation:
     
 
 class OpenCVAffineRegisterer(Registerer):
+    """
+    Landmark registerer for rigid/affine alignments. Based on OpenCV 
+    functionality. This registerer is mostly suitable for matching the
+    same tissue section, e.g. when part of the image is cropped and
+    needs to be aligned to the reference image.
+    """
 
     name = 'OpenCVAffineRegisterer'
     

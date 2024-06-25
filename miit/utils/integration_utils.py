@@ -1,8 +1,12 @@
+import numpy
 import numpy as np
 import pandas as pd
 
 
-def get_mappings(ref_mat1, ref_mat2, background1, background2):
+def get_mappings(ref_mat1: numpy.array, 
+                 ref_mat2: numpy.array, 
+                 background1: float, 
+                 background2: float):
     mappings = compute_reference_matrix_mappings(ref_mat1, ref_mat2, background1)
     # Also get unique ids.
     unique_vals = set()
@@ -14,7 +18,9 @@ def get_mappings(ref_mat1, ref_mat2, background1, background2):
     return mappings, unique_vals
 
 
-def compute_reference_matrix_mappings(ref_mat1, ref_mat2, background1):
+def compute_reference_matrix_mappings(ref_mat1: numpy.array, 
+                                      ref_mat2: numpy.array, 
+                                      background1: float):
     spots = {}
     for i in range(ref_mat1.shape[0]):
         for j in range(ref_mat1.shape[1]):

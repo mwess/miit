@@ -3,9 +3,8 @@ from typing import Any, ClassVar, Dict, Optional, List, Tuple
 
 import greedyfhist
 import greedyfhist as gfh
-from greedyfhist.options import Options, GreedyOptions
+from greedyfhist.options import RegistrationOptions
 import numpy
-import SimpleITK
 
 from .base_registerer import Registerer, RegistrationResult
 
