@@ -7,6 +7,18 @@ These include:
 - Code cleaup to remove/move dependencies.
 - Documentation and tutorial.
 
+
+TODOS:
+
+- Test registerers and remove registerers that dont make sense anymore.
+- Make sure that MolecularImagingData loader is used and test extendability (global objects?)
+- Test groupwise registration.
+- Document at least most important functions/classes.
+- Write tutorial.
+- Make installation script.
+- Read the docs.
+
+
 If you use any of this code, please cite: 
 
 @article{wess2024spatial,

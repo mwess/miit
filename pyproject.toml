@@ -1,0 +1,39 @@
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.black]
+line-length = 79
+
+[tool.poetry]
+name = "miit"
+version = "0.0.1"
+description = "Integration of spatially resolved multi-omics data."
+authors = ["Maximilian Wess <maximilian.wess@ntnu.no>"]
+
+[tool.poetry.dependencies]
+
+geojson = "^3.1.0"
+imagecodecs = "^2023.3.16"
+imageio = "^2.31.5"
+numpy = "^1.24.4"
+opencv-python = "^4.8.1.78"
+pandas = "^2.0.3"
+Pillow = "^10.1.0"
+scikit-image = "^0.21.0"
+scipy = "^1.10.1"
+setuptools = "^68.2.2"
+SimpleITK = "^2.2.1"
+stack-data = "^0.6.2"
+tifffile = "^2023.7.10"
+tqdm = "^4.66.1"
+# Remove ultralytics dependency, since we only need opencv for reading the segmentation model
+onnxruntime = "1.17.0"
+toml = "0.10.2"
+# ultralytics = "^8.0.199"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.812"
+
+[tool.poetry.scripts]
+greedyfhist = "greedyfhist.__main__:cli"

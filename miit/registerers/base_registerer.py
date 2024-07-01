@@ -7,10 +7,15 @@ import numpy
 
 @dataclass
 class RegistrationResult:
+    """Should be returned after for each pairwise registration."""
     pass
+
 
 @dataclass
 class Registerer(abc.ABC):
+    """
+    Provides methods that each registerer should implement. 
+    """
 
     name: ClassVar[str]
     
@@ -39,3 +44,4 @@ class Registerer(abc.ABC):
     @abc.abstractmethod
     def load_from_config(cls, config: Dict[str, Any]) -> 'Registerer':
         pass
+

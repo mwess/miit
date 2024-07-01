@@ -15,11 +15,6 @@ import numpy as np
 from sklearn.decomposition import PCA
 
 
-path_to_nifty_reg_aladin = '/home/maximilw/workbench/applications/niftyreg/build/reg-apps/reg_aladin'
-path_to_nifty_reg_f3d = '/home/maximilw/workbench/applications/niftyreg/build/reg-apps/reg_f3d'
-path_to_nifty_resample = '/home/maximilw/workbench/applications/niftyreg/build/reg-apps/reg_resample'
-
-
 def do_msi_registration(histology_image: numpy.array, 
                         ref_mat: numpy.array, 
                         spec_to_ref_map: Dict, 
@@ -63,6 +58,7 @@ def post_registration_transforms(warped_images: List[numpy.array], processing_di
         warped_image_np = remove_padding(warped_image_np, processing_dict['fix_sym_pad'])
         unpadded_images.append(warped_image_np)
     return unpadded_images
+
 
 def remove_padding(image, padding: Tuple[int, int, int, int]):
     left, right, top, bottom = padding

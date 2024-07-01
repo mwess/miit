@@ -20,7 +20,7 @@ def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame, fixed_df: pa
 
 def compute_tre_sections_(target_section: Section, warped_section: Section):
     unified_lms = compute_distance_for_lm(warped_section.landmarks.data, target_section.landmarks.data)
-    shape = target_section.image.data.shape
+    shape = target_section.reference_image.data.shape
     image_diagonal = np.sqrt(np.square(shape[0]) + np.square(shape[1]))
     unified_lms['rtre'] = unified_lms['tre']/image_diagonal
     mean_rtre = np.mean(unified_lms['rtre'])

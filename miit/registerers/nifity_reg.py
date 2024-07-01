@@ -48,7 +48,6 @@ class NiftyRegWrapper(Registerer):
                         moving_img: numpy.array, 
                         fixed_img: numpy.array, 
                         tmp_dir: str = 'tmp',
-                        use_half_res: bool = True,
                         reg_mode: str = 'rigid',
                         **kwargs: Dict) -> RegistrationResult:
     # Export images
@@ -156,8 +155,7 @@ class NiftyRegWrapper(Registerer):
     
     @classmethod
     def load_from_config(cls, config: Dict[str, Any]) -> Registerer:
-        
-        nifti_directory = config['path_to_nifty']
+        nifti_directory = config.get('path_to_nifty', '')
         path_to_nifty_reg_aladin = join(nifti_directory, 'reg_aladin')
         path_to_nifty_reg_f3d = join(nifti_directory, 'reg_f3d')
         path_to_nifty_reg_resample = join(nifti_directory, 'reg_resample')

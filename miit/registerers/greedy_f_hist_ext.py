@@ -13,11 +13,17 @@ class GreedyFHistRegistrationResult(RegistrationResult):
 
     registration_result: greedyfhist.registration.greedy_f_hist.RegistrationResult
 
+
 @dataclass
 class GreedyFHistGroupRegistrationResult(RegistrationResult):
     
     registration_result: greedyfhist.registration.greedy_f_hist.GroupwiseRegResult
-    
+
+
+@dataclass
+class GreedyFHistGroupwiseRegistrationOptions:
+    pass
+
 
 @dataclass
 class GreedyFHistExt(Registerer):
@@ -34,7 +40,7 @@ class GreedyFHistExt(Registerer):
                         **kwargs: Dict) -> GreedyFHistRegistrationResult:
         moving_img_mask = kwargs.get('moving_img_mask', None)
         fixed_img_mask = kwargs.get('fixed_img_mask', None)
-        options = Options()
+        options = RegistrationOptions()
         options.parse_dict(kwargs)
         reg_result = self.registerer.register(moving_img=moving_img,
                                               fixed_img=fixed_img,
@@ -59,8 +65,6 @@ class GreedyFHistExt(Registerer):
                         **kwargs: Dict) -> numpy.array:
         warped_image = self.registerer.transform_image(image, transformation.registration_result.fixed_transform, interpolation_mode)
         return warped_image
-        # transformation_result = self.registerer.transform_image(image, transformation.forward_displacement_field, interpolation_mode, **kwargs)
-        # return transformation_result.final_transform.registered_image
 
     # TODO: Remove this.
     def get_default_args(self):
@@ -76,7 +80,8 @@ class GreedyFHistExt(Registerer):
     def groupwise_registration(self,
                                image_with_mask_list: List[Tuple[numpy.array, Optional[numpy.array]]],
                                skip_deformable_registration=False,
-                               apply_transforms: bool = True,
+                               affine_registration_options: Optional[RegistrationOptions] = None,
+                               nonrigid_registration_options: Optional[RegistrationOptions] = None,
                                **kwargs: Dict) -> Tuple[List[GreedyFHistRegistrationResult], Optional[GreedyFHistGroupRegistrationResult]]:
         group_reg, _ = self.registerer.groupwise_registration(image_with_mask_list, skip_deformable_registration=skip_deformable_registration)
         # To make it possible to apply transformations separately, we need to split them up before returning.

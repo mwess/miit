@@ -23,7 +23,7 @@ class Experiment:
 
     def rescale_sections(self, width, height):
         for key in self.sections:
-            self.sections[key].rescale_data(width=width, height=height)
+            self.sections[key].resize(width=width, height=height)
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> 'Experiment':
@@ -32,7 +32,7 @@ class Experiment:
         sections = OrderedDict()
         for section_config in sections_config:
             section = Section.from_config(section_config)
-            sections[section.id_] = section
+            sections[section._id] = section
         return cls(name=name, sections=sections)
 
     @classmethod

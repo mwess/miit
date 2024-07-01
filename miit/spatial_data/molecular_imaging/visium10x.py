@@ -13,10 +13,10 @@ import pandas
 import pandas as pd
 
 from miit.custom_types import PdDataframe
-from miit.spatial_data.molecular_imaging.imaging_data import BaseMolecularImaging
+from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import custom_max_voting_filter
-from miit.spatial_data.image import Annotation, Image, Pointset
+from miit.spatial_data.image import Annotation, DefaultImage, Pointset
 
 
 def get_scalefactor(scalefactors, image_scale):
@@ -43,10 +43,10 @@ def scale_tissue_positions(tissue_positions,
 
 
 @dataclass
-class Visium10X(BaseMolecularImaging):
+class Visium10X(BaseSpatialOmics):
     # TODO: Specify which Visium
     
-    image: Image
+    image: DefaultImage
     # Need a map from pos to ref_mat
     # TODO: Implement later. For now: If it works, it works!
     # pos_to_ref_map: dict
@@ -66,7 +66,7 @@ class Visium10X(BaseMolecularImaging):
         if self.spot_scaling_journal is None:
             self.__init_spot_scaling_journal()
             self.update_scaling_journal(operation_desc='init')
-        self.id_ = uuid.uuid1()
+        self._id = uuid.uuid1()
     
     def __init_spot_scaling_journal(self):
         ref_idx = np.unique(self.__ref_mat.data)
@@ -88,21 +88,21 @@ class Visium10X(BaseMolecularImaging):
     def store(self, root_directory: str):
         if not exists(root_directory):
             os.mkdir(root_directory)
-        directory = join(root_directory, str(self.id_))
+        directory = join(root_directory, str(self._id))
         if not exists(directory):
             os.mkdir(directory)
         f_dict = {}
         self.image.store(directory)
-        f_dict['image'] = join(directory, str(self.image.id_))
+        f_dict['image'] = join(directory, str(self.image._id))
         self.table.store(directory)
-        f_dict['table'] = join(directory, str(self.table.id_))
+        f_dict['table'] = join(directory, str(self.table._id))
         scale_factors_path = join(directory, 'scale_factors.json')
         with open(scale_factors_path, 'w') as f:
             json.dump(self.scale_factors, f)
         f_dict['scale_factors_path'] = scale_factors_path
         if self.__ref_mat is not None:
             self.__ref_mat.store(directory)
-            f_dict['__ref_mat'] = join(directory, str(self.__ref_mat.id_))
+            f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
         spec_to_ref_map_path = join(directory, 'spec_to_ref_mat.json')
         with open(spec_to_ref_map_path, 'w') as f:
             json.dump(self.spec_to_ref_map, f)
@@ -124,7 +124,7 @@ class Visium10X(BaseMolecularImaging):
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
-        image = Image.load(attributes['image'])
+        image = DefaultImage.load(attributes['image'])
         table = Pointset.load(attributes['table'])
         sf_path = attributes['scale_factors_path']
         with open(sf_path) as f:
@@ -161,7 +161,7 @@ class Visium10X(BaseMolecularImaging):
         )
         obj.ref_mat = __ref_mat
         obj.spec_to_ref_map = spec_to_ref_map
-        obj.id_ = id_
+        obj._id = id_
         return obj
         
 
@@ -214,19 +214,19 @@ class Visium10X(BaseMolecularImaging):
 
     def rescale(self, height: int, width: int):
         h_old, w_old = self.image.data.shape[0], self.image.data.shape[1]
-        self.image.rescale(height, width)
+        self.image.resize(height, width)
         width_scale = width / w_old
         height_scale = height / h_old
-        self.table.rescale(height_scale, width_scale)
-        self.__ref_mat.rescale(height, width) 
+        self.table.resize(height_scale, width_scale)
+        self.__ref_mat.resize(height, width) 
         self.update_scaling_journal(operation_desc=f'rescale_data(height={height}, width={width}')
 
     def apply_bounding_parameters(self, x1: int, x2: int, y1: int, y2: int):
-        self.image.apply_bounding_parameters(x1, x2, y1, y2)
-        self.table.apply_bounding_parameters(x1, x2, y1, y2)
+        self.image.crop(x1, x2, y1, y2)
+        self.table.crop(x1, x2, y1, y2)
         # TODO: Should points that are out-of-bounds of the image be filtered as well?
         if self.__ref_mat is not None:
-            self.__ref_mat.apply_bounding_parameters(x1, x2, y1, y2)
+            self.__ref_mat.crop(x1, x2, y1, y2)
             self.update_scaling_journal(operation_desc=f'apply_bounding_parameters({x1}, {x2}, {y1}, {y2})')
 
     def flip(self, axis: int =0):
@@ -348,7 +348,7 @@ class Visium10X(BaseMolecularImaging):
         if image_scale not in ['lowres', 'hires', 'fullres']:
             pass
             # Throw exception.
-        image = Image(data=cv2.imread(path_to_image))
+        image = DefaultImage(data=cv2.imread(path_to_image))
         with open(path_to_scalefactors) as f:
             scalefactors = json.load(f)
         tissue_positions_df = pd.read_csv(path_to_tissue_positions, header=None, index_col=0)

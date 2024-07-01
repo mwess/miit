@@ -8,8 +8,8 @@ from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.custom_types import PdDataframe
 from miit.spatial_data.image import Annotation
-from miit.spatial_data.molecular_imaging.imaging_data import BaseMolecularImaging
-from miit.spatial_data.molecular_imaging.scils_export_imzml import ScilsExportImzml
+from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
+from miit.spatial_data.molecular_imaging.imzml import Imzml
 
 
 def compute_reference_matrix_mappings(ref_mat1: numpy.array, 
@@ -93,14 +93,17 @@ def get_number_of_background_pixels(df, background_value=-1):
     return df.loc[background_value].shape[0]
 
 
-def map_mapping_index_to_table_index(mapped_data, target_section: BaseMolecularImaging):
+def map_mapping_index_to_table_index(mapped_data, target_section: BaseSpatialOmics):
     ref_to_spec_mapping = target_section.get_spec_to_ref_map(reverse=True)
     mapped_data = mapped_data.rename(index=ref_to_spec_mapping)
     return mapped_data
 
 
-def integrate_annotations(target_data: BaseMolecularImaging, 
+def integrate_annotations(target_data: BaseSpatialOmics, 
                           annotation: Annotation) -> PdDataframe:
+    """
+    Integrates spatial omics data on a provided annotation.
+    """
     integrated_annotations = []
     annotation_data = annotation.data
     if len(annotation_data.shape) == 2:
@@ -142,7 +145,7 @@ def map_annotations_to_table(spec_to_ref_map: Dict,
     return count_df
 
     
-def map_accumulated_data_to_imzml(target_bmi: ScilsExportImzml,
+def map_accumulated_data_to_imzml(target_bmi: Imzml,
                                   accumulated_df: PdDataframe,
                                   output_path: str,
                                   mzs: Optional[numpy.array] = None):

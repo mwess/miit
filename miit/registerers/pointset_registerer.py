@@ -61,6 +61,8 @@ class PointsetRegistrationResult(RegistrationResult):
 
 @dataclass
 class PointsetRegisterer(Registerer):
+    """Performs affine registration based on matching landmarks.
+    """
     
     name = 'PointsetRegisterer'
 

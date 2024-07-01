@@ -27,15 +27,15 @@ class RegGraph:
         if args is None:
             args = {}
         # Per default use masks.
-        transformation = self.default_registerer.register_images(moving_img=moving_section.image, 
+        transformation = self.default_registerer.register_images(moving_img=moving_section.reference_image, 
                                                                    moving_img_mask=moving_section.segmentation_mask,
-                                                                   fixed_img=fixed_section.image, 
+                                                                   fixed_img=fixed_section.reference_image, 
                                                                    fixed_img_mask=fixed_section.segmentation_mask,
                                                                    args=args)
-        warped_section = Section.warp(moving_section, self.default_registerer, transformation, args=args)
+        warped_section = Section.apply_transform(moving_section, self.default_registerer, transformation, args=args)
         registration = Registration(transformation_model=transformation,
-                                    moving_section_id=moving_section.id_,
-                                    fixed_section_id=fixed_section.id_,
+                                    moving_section_id=moving_section._id,
+                                    fixed_section_id=fixed_section._id,
                                     warped_section=warped_section,
                                     application_modes=dict())
         return registration
@@ -43,11 +43,11 @@ class RegGraph:
     def register_sections_by_idx(self, moving_id: int, fixed_id: int) -> Registration:
         moving_section = self.sections[moving_id]
         fixed_section = self.sections[fixed_id]
-        transformation = self.default_registerer.register_images(moving_img=moving_section.image, fixed_img=fixed_section.image)
-        warped_section = Section.warp(moving_section, self.default_registerer, transformation)
+        transformation = self.default_registerer.register_images(moving_img=moving_section.reference_image, fixed_img=fixed_section.reference_image)
+        warped_section = Section.apply_transform(moving_section, self.default_registerer, transformation)
         registration = Registration(transformation_model=transformation,
-                                    moving_section_id=moving_section.id_,
-                                    fixed_section_id=fixed_section.id_,
+                                    moving_section_id=moving_section._id,
+                                    fixed_section_id=fixed_section._id,
                                     warped_section=warped_section,
                                     application_modes=dict())
         return registration
@@ -70,7 +70,7 @@ class RegGraph:
 
     def rescale_sections(self, width, height):
         for key in self.sections:
-            self.sections[key].rescale_data(width=width, height=height)
+            self.sections[key].resize(width=width, height=height)
 
     @classmethod
     def from_config(cls, config):
@@ -79,7 +79,7 @@ class RegGraph:
         sections = OrderedDict()
         for section_config in sections_config:
             section = Section.from_config(section_config)
-            sections[section.id_] = section
+            sections[section._id] = section
         default_registerer = None
         registerers = []
         registrations = {}

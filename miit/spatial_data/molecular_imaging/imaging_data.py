@@ -8,9 +8,9 @@ from miit.spatial_data.image import Annotation
 
 
 @dataclass
-class BaseMolecularImaging(abc.ABC):
+class BaseSpatialOmics(abc.ABC):
     
-    id_: uuid.UUID = field(init=False)
+    _id: uuid.UUID = field(init=False)
     background: int
 
     @abc.abstractproperty
@@ -22,7 +22,7 @@ class BaseMolecularImaging(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def warp(self, registerer: Registerer, transformation: Any, args: Optional[Dict[Any, Any]] = None) -> 'BaseMolecularImaging':
+    def warp(self, registerer: Registerer, transformation: Any, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
         pass
 
     @abc.abstractmethod

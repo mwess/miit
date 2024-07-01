@@ -30,12 +30,12 @@ def get_symmetric_padding_for_sections(sections: List[Section]):
     paddings = {}
     max_size = get_max_size_from_sections(sections)
     for section in sections:
-        paddings[section.id_] = get_padding_params(section.image.data, max_size)
+        paddings[section._id] = get_padding_params(section.reference_image.data, max_size)
     return paddings
 
 
 def get_section_max_size(section: Section):
-    return max(section.image.data.shape[0], section.image.data.shape[1])
+    return max(section.reference_image.data.shape[0], section.reference_image.data.shape[1])
 
 
 def get_max_size_from_sections(sections: List[Section]):

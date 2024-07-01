@@ -1,20 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from miit.spatial_data.image import Image
+from miit.spatial_data.image import DefaultImage
 from miit.spatial_data.section import Section
 
 def plot_registration_summary(moving: Section, fixed: Section, warped: Section, save_path: str, with_landmarks: bool=True):
     fig, axs = plt.subplots(1, 3, figsize=(24, 8))
-    img = moving.image.data.astype(int)
+    img = moving.reference_image.data.astype(int)
     axs[0].imshow(img)
     axs[0].axis('off')
     axs[0].set_title('Moving')
-    img = fixed.image.data.astype(int)
+    img = fixed.reference_image.data.astype(int)
     axs[1].imshow(img)
     axs[1].axis('off')
     axs[1].set_title('Fixed')
-    img = warped.image.data.astype(int)
+    img = warped.reference_image.data.astype(int)
     axs[2].imshow(img)
     axs[2].axis('off')
     axs[2].set_title('Warped')
@@ -48,7 +48,7 @@ def plot_registration_summary(moving: Section, fixed: Section, warped: Section, 
 
 
 def plot_with_landmarks(section: Section):
-    plt.imshow(section.image.data.astype(int))
+    plt.imshow(section.reference_image.data.astype(int))
     plt.title('Image with landmarks')
     plt.axis('off')
     for idx, row in section.landmarks.data.iterrows():
@@ -56,7 +56,7 @@ def plot_with_landmarks(section: Section):
         y1 = row['y']
         plt.plot(x1, y1, 'b.')
 
-def plot_sections_with_landmark_distance(image: Image, unified_lms):
+def plot_sections_with_landmark_distance(image: DefaultImage, unified_lms):
     plt.imshow(image.data/255.)
     plt.title('Warped Image')
     plt.axis('off')

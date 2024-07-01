@@ -13,16 +13,84 @@ import numpy as np
 import SimpleITK as sitk
 from skimage import io
 
-from miit.spatial_data.molecular_imaging.imaging_data import BaseMolecularImaging
-from miit.spatial_data.molecular_imaging.loader import MolecularImagingLoader
-from miit.spatial_data.loaders import load_molecular_imaging_data, load_molecular_imaging_data_from_directory
+from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
+# from miit.spatial_data.molecular_imaging.loader import SpatialDataLoader
+from miit.spatial_data.loaders import load_spatial_omics_data, SpatialDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
-from miit.spatial_data.image import BaseImage, Image, Annotation, Pointset
-from miit.utils.utils import copy_if_not_none
+from miit.spatial_data.image import BaseImage, DefaultImage, Annotation, Pointset, GeojsonWrapper
+from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
-def get_boundary_box(image: numpy.array, background_value: float =0) -> Tuple[int, int, int, int]:
+def get_table_summary_string(section: 'Section') -> str:
+    """
+    Generates a summary string for all annotation and spatial omics data in a given section.
+
+    Will look like this:
+
+    ##############################################################################
+    # Name             # ID                                   # Type             #
+    ##############################################################################
+    # msi neg ion mode # b9e7f19e-37e6-11ef-9af1-fa163eee643f # ScilsExportImzml #
+    # landmarks        # 612d5b52-37e6-11ef-9af1-fa163eee643f # pointset         #
+    # tissue_mask      # 612d01b6-37e6-11ef-9af1-fa163eee643f # annotation       #
+    # msi neg ion mode # b9e7f19e-37e6-11ef-9af1-fa163eee643f # ScilsExportImzml #
+    ##############################################################################
+    """
+
+    identifiers = []
+    max_name_len = len('Name')
+    max_id_len = len('ID')
+    max_type_len = len('Type')
+    for annotation in section.annotations + section.so_data:
+        name_len = len(annotation.name)
+        if max_name_len < name_len:
+            max_name_len = name_len
+        id_len = len(str(annotation._id))
+        if max_id_len < id_len:
+            max_id_len = id_len
+        type_len = len(annotation.get_type())
+        if max_type_len < type_len:
+            max_type_len = type_len
+        identifiers.append((annotation.name, str(annotation._id), annotation.get_type()))
+
+    name_cell_len = max_name_len + 2
+    id_cell_len = max_id_len + 2
+    type_cell_len = max_type_len + 2
+
+    table = []
+    table_width = 1 + name_cell_len + 1 + id_cell_len + 1 + type_cell_len + 1
+    table.append('#'*table_width)
+    name = 'Name'
+    id2 = 'ID'
+    type_ = 'Type'
+
+    l_name_pad, r_name_pad = get_half_pad_size(name, name_cell_len)
+    l_id_pad, r_id_pad = get_half_pad_size(id2, id_cell_len)
+    l_type_pad, r_type_pad = get_half_pad_size(type_, type_cell_len)
+    header_line = '#' + ' ' * l_name_pad + name + ' ' * r_name_pad + '#' \
+                + ' ' * l_id_pad + id2 + ' ' * r_id_pad + '#' \
+                + ' ' * l_type_pad + type_ + ' ' * r_type_pad + '#'
+    table.append(header_line)
+    table.append('#'*table_width)
+    for identifier in identifiers:
+        name, id2, type_ = identifier
+        l_name_pad, r_name_pad = get_half_pad_size(name, name_cell_len)
+        l_id_pad, r_id_pad = get_half_pad_size(id2, id_cell_len)
+        l_type_pad, r_type_pad = get_half_pad_size(type_, type_cell_len)
+        line = '#' + ' ' * l_name_pad + name + ' ' * r_name_pad + '#' \
+                    + ' ' * l_id_pad + id2 + ' ' * r_id_pad + '#' \
+                    + ' ' * l_type_pad + type_ + ' ' * r_type_pad + '#'
+        table.append(line)
+    table.append('#'*table_width)
+    return '\n'.join(table)
+
+
+
+
+
+def get_boundary_box(image: numpy.array, background_value: float = 0) -> Tuple[int, int, int, int]:
+    # TODO: This works only for 2 dimensional image data?!
     points = np.argwhere(image != background_value)
     xmin = np.min(points[:, 0])
     xmax = np.max(points[:, 0])
@@ -46,7 +114,7 @@ def groupwise_registration(sections: List['Section'],
     # Setup list with images
     images_with_mask_list = []
     for idx, section in enumerate(sections):
-        image = section.image.data
+        image = section.reference_image.data
         # mask_annotation = section.segmentation_mask
         mask_annotation = section.get_annotations_by_names('tissue_mask')
         mask = mask_annotation.data if mask_annotation is not None else None
@@ -56,12 +124,10 @@ def groupwise_registration(sections: List['Section'],
     warped_sections = []
     for idx, section in enumerate(sections[:-1]):
         transform = transforms[idx]
-        warped_section = section.warp(registerer, transform)
+        warped_section = section.apply_transform(registerer, transform)
         warped_sections.append(warped_section)
     warped_sections.append(sections[-1].copy())
     return warped_sections, transforms
-    
-    
 
 
 def register_to_ref_image(target_image: numpy.array, 
@@ -80,119 +146,119 @@ def register_to_ref_image(target_image: numpy.array,
         args = {}
     transformation = registerer.register_images(target_image, source_image, **args)
     warped_data = data.warp(registerer, transformation)
-    warped_ref_image = Image(data=source_image).warp(registerer, transformation).data
+    warped_ref_image = DefaultImage(data=source_image).warp(registerer, transformation).data
     return warped_data, warped_ref_image
+
 
 @dataclass
 class Section:
-    image: Image
+    """
+    Composite object that contains all spatial data belonging to one 
+    sample section. It is assumed that all spatial data is aligned
+    with the reference image. The reference image is used to register
+    multiple sections with one another.
+    Contains some utility functions for simple image transformations.
+    Otherwise, consider using registerer/registration_results to apply
+    complex image transformations to all data.
+    
+    
+    Attributes
+    ----------
+    
+    reference_image: DefaultImage
+        Used for registration with other sections. In some cases 
+        used for spatial transformations on coordinate data.
+        
     name: str
-    id_: int
-    int_id_: uuid.UUID = field(init=False)
-    segmentation_mask: Optional[Annotation] = None
-    landmarks: Optional[Pointset] = None
-    molecular_data: Optional[BaseMolecularImaging] = None
-    molecular_datas: List[BaseMolecularImaging] = field(default_factory=lambda: [])
-    annotations: List[Union[Annotation, Pointset]] = field(default_factory=lambda: [])
-    config: Optional[Dict[Any, Any]] = None
+        Name of the section.
+        
+    id_: uuid.UUID = field(init=False)
+        Internal id. Used for serialization.
+                
+    so_data: List[BaseMolecularImaging] = field(default_factory=lambda: [])
+        Contains additional more complex spatial omics types (e.g. MSI, ST).
+        
+    annotations: List[Union[Annotation, Pointset, GeoJson]] = field(default_factory=lambda: [])
+        List of additional annotations. 
+    
+    meta_information: Optional[Dict[Any, Any]] = None
+        Additional meta information.
+    """
+    reference_image: Optional[DefaultImage] = None
+    name: Optional[str] = None
+    _id: uuid.UUID = field(init=False)
+    so_data: List[BaseSpatialOmics] = field(default_factory=lambda: [])
+    annotations: List[Union[DefaultImage, Annotation, Pointset, GeojsonWrapper]] = field(default_factory=lambda: [])
+    meta_information: Optional[Dict[Any, Any]] = None
 
 
     def __post_init__(self):
-        self.int_id_ = uuid.uuid1()
-        self.preprocess_imaging_data()
+        self._id = uuid.uuid1()
 
     def __hash__(self) -> int:
-        return self.id_
+        return self._id
 
     def copy(self):
-        image = self.image.copy()
-        segmentation_mask = copy_if_not_none(self.segmentation_mask)
-        landmarks = copy_if_not_none(self.landmarks)
-        config = copy_if_not_none(self.config)
-        molecular_data = copy_if_not_none(self.molecular_data)
+        image = self.reference_image.copy()
+        config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
+        so_data = self.so_data.copy()
         return Section(
-            image=image,
+            reference_image=image,
             name=self.name,
-            id_=self.id_,
-            segmentation_mask=segmentation_mask,
-            landmarks=landmarks,
-            molecular_data=molecular_data,
+            _id=self._id,
             annotations=annotations,
-            config=config)
+            so_data=so_data,
+            meta_information=config)
 
-    def preprocess_imaging_data(self):
-        if self.config.get('enable_mask_cropping', False):
-            self.crop_by_mask()
-
-    def apply_bounding_parameters(self, xmin, xmax, ymin, ymax):
-        self.image.apply_bounding_parameters(xmin, xmax, ymin, ymax)
-        if self.segmentation_mask is not None:
-            self.segmentation_mask.apply_bounding_parameters(xmin, xmax, ymin, ymax)
-        if self.landmarks is not None:
-            self.landmarks.apply_bounding_parameters(xmin, xmax, ymin, ymax)
-        if self.molecular_data is not None:
-            self.molecular_data.apply_bounding_parameters(xmin, xmax, ymin, ymax)
+    def crop(self, xmin, xmax, ymin, ymax):
+        self.reference_image.crop(xmin, xmax, ymin, ymax)
         for annotation in self.annotations:
-            annotation.apply_bounding_parameters(xmin, xmax, ymin, ymax)
+            annotation.crop(xmin, xmax, ymin, ymax)
+        for so_data_ in self.so_data:
+            so_data_.crop(xmin, xmax, ymin, ymax)
 
     def crop_by_mask(self, mask):
-        # if self.segmentation_mask is None:
-        #     print('Cannot do autocropping by segmentation mask as mask does not exist.')
-        #     # TODO: Throw exception
         xmin, xmax, ymin, ymax = get_boundary_box(mask)
-        self.apply_bounding_parameters(xmin, xmax, ymin, ymax)
+        self.crop(xmin, xmax, ymin, ymax)
 
     def pad(self, padding: Tuple[int, int, int, int]):
-        self.image.pad(padding)
-        if self.segmentation_mask is not None:
-            self.segmentation_mask.pad(padding)
-        if self.landmarks is not None:
-            self.landmarks.pad(padding)
-        if self.molecular_data is not None:
-            self.molecular_data.pad(padding)
+        self.reference_image.pad(padding)
         for annotation in self.annotations:
             annotation.pad(padding)
+        for so_data_ in self.so_data:
+            so_data_.pad(padding)
 
-    def rescale_data(self, height, width):
-        h_old, w_old = self.image.data.shape[0], self.image.data.shape[1]
-        self.image.rescale(height, width)
-        width_scale = width / w_old
-        height_scale = height / h_old
-        if self.segmentation_mask is not None:
-            self.segmentation_mask.rescale(height, width)
-        if self.landmarks is not None:
-            self.landmarks.rescale(height_scale, width_scale)
-        if self.molecular_data is not None:
-            self.molecular_data.rescale(height, width)
+    def resize(self, height: int, width: int):
+        self.reference_image.resize(height, width)
+        for annotation in self.annotations:
+            annotation.resize(height, width)
+        for so_data_ in self.so_data:
+            so_data_.resize(height, width)
 
-    def warp(self, 
+    def apply_transform(self, 
              registerer: Registerer, 
              transformation: RegistrationResult, 
              **kwargs: Dict) -> 'Section':
-        image_transformed = self.image.warp(registerer, transformation, **kwargs)
-        mask_transformed = None
-        if self.segmentation_mask is not None:
-            mask_transformed = self.segmentation_mask.warp(registerer, transformation, **kwargs)
-        landmarks_transformed = None
-        if self.landmarks is not None:
-            landmarks_transformed = self.landmarks.warp(registerer, transformation, **kwargs)
-        molecular_data_transformed = None
-        if self.molecular_data is not None:
-            molecular_data_transformed = self.molecular_data.warp(registerer, transformation, **kwargs)
+        """Applies transformation to all spatially resolved data in the section object.
+        """
+        image_transformed = self.reference_image.warp(registerer, transformation, **kwargs)
         annotations_transformed = []
         for annotation in self.annotations:
             annotation_transformed = annotation.warp(registerer, transformation, **kwargs)
             annotations_transformed.append(annotation_transformed)
-        config = self.config if self.config is not None else None
-        return Section(image=image_transformed,
+        so_data_transformed_list = []
+        for so_data_ in self.so_data:
+            so_data_transformed = so_data_.warp(registerer, transformation, **kwargs)
+            so_data_transformed_list.append(so_data_transformed)
+        
+        config = self.meta_information.copy() if self.meta_information is not None else None
+        return Section(reference_image=image_transformed,
                        name=self.name,
-                       id_=self.id_,
-                       segmentation_mask=mask_transformed,
-                       landmarks=landmarks_transformed,
-                       molecular_data=molecular_data_transformed,
+                       _id=self._id,
                        annotations=annotations_transformed,
-                       config=config)
+                       so_data=so_data_transformed,
+                       meta_information=config)
 
     def store(self, directory):
         # TODO: Rewrite that function.
@@ -206,30 +272,38 @@ class Section:
         if not exists(directory):
             os.mkdir(directory)
         f_dict = {}
-        f_dict['id'] = self.id_
-        f_dict['int_id'] = str(self.int_id_)
+        f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        self.image.store(directory)
-        f_dict['primary_image'] = str(self.image.id_)
-        if self.landmarks is not None:
-            self.landmarks.store(directory)
-            f_dict['landmarks'] = str(self.landmarks.id_)
-        config_path = join(directory, 'config.json')
-        with open(config_path, 'w') as f:
-            json.dump(self.config, f)
-            f_dict['config_path'] = config_path
-        if self.segmentation_mask is not None:
-            self.segmentation_mask.store(directory)
-            f_dict['segmentation_mask'] = str(self.segmentation_mask.id_)
-        if self.molecular_data is not None:
-            self.molecular_data.store(directory)
-            f_dict['molecular_data'] = str(self.molecular_data.id_)
-            f_dict['molecular_data_type'] = self.molecular_data.get_type()
+        self.reference_image.store(directory)
+        f_dict['reference_image'] = {
+            'id': str(self.reference_image._id),
+            'type': self.reference_image.get_type()
+        }
+        meta_information_path = join(directory, 'meta_information.json')
+        with open(meta_information_path, 'w') as f:
+            json.dump(self.meta_information, f)
+            f_dict['meta_information_path'] = 'meta_information.json' 
         annotation_ids = []
         for annotation in self.annotations:
             annotation.store(directory)
-            annotation_ids.append(str(annotation.id_))
+            annotation_ids.append(
+                {
+                    'id': str(annotation._id),
+                    'type': annotation.get_type()
+                }
+            )
         f_dict['annotations'] = annotation_ids
+        so_data_ids = []
+        for so_data in self.so_data:
+            so_data.store(directory)
+            so_data_ids.append({
+                'id': str(so_data._id),
+                'type': so_data.get_type()
+                }
+            )
+        f_dict['so_datas'] = so_data_ids
+            
+        print(f_dict)
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
@@ -241,67 +315,57 @@ class Section:
     
     def get_annotation_by_id(self, id_: str):
         for annotation in self.annotations:
-            if str(annotation.id_) == id_:
+            if str(annotation._id) == id_:
                 return annotation
         return None
+    
+    def print_additional_data_summary(self):
+        print(get_table_summary_string(self))
             
-
     @classmethod
-    def load(cls, directory: str, loader: Optional[MolecularImagingLoader] = None):
+    def load(cls, directory: str, loader: Optional[SpatialDataLoader] = None):
         if not exists(directory):
             # TODO: Throw custom error message
             pass
         if loader is None:
-            loader = MolecularImagingLoader.load_default_loader()
+            loader = SpatialDataLoader.load_default_loader()
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
-        image = Image.load(join(directory, attributes['primary_image']))
-        if 'landmarks' in attributes:
-            landmarks = Pointset.load(join(directory, attributes['landmarks']))
+        ref_image_dict = attributes['reference_image']
+        ref_image_path = join(directory, ref_image_dict['id'])
+        reference_image = loader.load(ref_image_dict['type'], ref_image_path)
+        if 'meta_information_path' in attributes:
+            meta_information_path = join(directory, attributes['meta_information_path'])
+            with open(meta_information_path) as f:
+                meta_information = json.load(f)
         else:
-            landmarks = None
-        if 'config_path' in attributes:
-            with open(attributes['config_path']) as f:
-                config = json.load(f)
-        else:
-            config = None
-        if 'segmentation_mask' in attributes:
-            segmentation_mask = Annotation.load(join(directory, attributes['segmentation_mask']))
-        else:
-            segmentation_mask = None
-        if 'molecular_data' in attributes:
-            molecular_data = loader.load(attributes['molecular_data_type'],
-                                                         join(directory, attributes['molecular_data']))
-            # molecular_data = load_molecular_imaging_data_from_directory(attributes['molecular_data_type'], 
-            #                                                             join(directory, attributes['molecular_data']))
-        else:
-            molecular_data = None
+            meta_information = None
         annotations = []
-        for sub_dir in attributes['annotations']:
-            if exists(join(directory, sub_dir, 'pointset.csv')):
-                annotation = Pointset.load(join(directory, sub_dir))
-            else:
-                annotation = Annotation.load(join(directory, sub_dir))
+        for annotation_dict in attributes['annotations']:
+            sub_dir = annotation_dict['id']
+            annotation = loader.load(annotation_dict['type'], join(directory, sub_dir))
             annotations.append(annotation)
+        so_datas = []
+        for so_dict in attributes['so_datas']:
+            sub_dir = so_dict['id']
+            so_data = loader.load(so_dict['type'],
+                                  join(directory, sub_dir))
+            so_datas.append(so_data)
         obj = cls(
-            image=image,
+            reference_image=reference_image,
             name=attributes['name'],
-            segmentation_mask=segmentation_mask,
-            landmarks=landmarks,
-            molecular_data=molecular_data,
-            id_=attributes['id'],
             annotations=annotations,
-            config=config
+            so_data=so_datas,
+            meta_information=meta_information
         )
-        # obj.int_id_ = uuid.UUID(attributes['int_id'])
+        obj._id = uuid.UUID(attributes['id'])
         return obj
-        
-
 
     def add_molecular_imaging_data(self,
-                                   mi: BaseMolecularImaging,
+                                   mi: BaseSpatialOmics,
                                    register_to_primary_image=True,
-                                   reference_image: numpy.array = None):
+                                   reference_image: numpy.array = None,
+                                   registerer: Optional[Registerer] = None):
         """
         Adds molecular imaging data to section.
         
@@ -310,44 +374,30 @@ class Section:
         """
         # TODO: Add this function to loading from config!
         if register_to_primary_image:
-            warped_mi = register_to_ref_image(self.image.data, reference_image, mi)
+            warped_mi = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
         else:
             warped_mi = mi
-        self.molecular_datas.append(warped_mi)
+        self.so_data.append(warped_mi)
 
     def flip(self, axis: int = 0):
         """
         Flip all spatial data in this section.
         """
-        self.image.flip(axis=axis)
-        if self.segmentation_mask is not None:
-            self.segmentation_mask.flip(axis=axis)
-        if self.landmarks is not None:
-            self.landmarks.flip(self.image.data.shape, axis=axis)
-        if self.molecular_data is not None:
-            self.molecular_data.flip(axis=axis)
-        for mol_data in enumerate(self.molecular_datas):
-            mol_data.flip(axis=axis)
+        self.reference_image.flip(axis=axis)
         for annotation in self.annotations:
-            annotation.flip(axis=axis)
+            if isinstance(annotation, Pointset):
+                annotation.flip(self.reference_image.data.shape[:2], axis=axis)
+            else:
+                annotation.flip(axis=axis)
+        for so_data_ in self.so_data:
+            so_data_.flip(axis=axis)
 
     @classmethod
     def from_config(cls, config: Dict[str, str]):
         name = config['name']
         image_path = config['image_path']
-        image = Image(data=io.imread(image_path))
+        image = DefaultImage(data=io.imread(image_path))
         id_ = int(config['id'])
-        segmenation_mask = None
-        if 'segmentation_mask_path' in config:
-            segmenation_mask_path = config['segmentation_mask_path']
-            segmenation_mask = Annotation(data=io.imread(segmenation_mask_path))
-        landmarks = None
-        landmarks_path = config.get('landmarks_path', None)
-        if landmarks_path is not None:
-            landmarks = Pointset(data=pd.read_csv(landmarks_path))
-        molecular_data = None
-        if 'molecular_imaging_data' in config:
-            molecular_data = load_molecular_imaging_data(config['molecular_imaging_data'])
         annotations = []
         if 'annotations' in config:
             for path in config['annotations']:
@@ -358,6 +408,14 @@ class Section:
                     annotation_data = np.moveaxis(annotation_data, 0, -1)
                 annotation = Annotation(data=annotation_data)
                 annotations.append(annotation)
+        if 'segmentation_mask_path' in config:
+            segmenation_mask_path = config['segmentation_mask_path']
+            segmenation_mask = Annotation(data=io.imread(segmenation_mask_path), name='tissue_mask')
+            annotations.append(segmenation_mask)
+        if 'landmarks_path' in config:
+            landmarks = Pointset(data=pd.read_csv(config['landmarks_path']), name='landmarks')
+            annotations.append(landmarks)
+        # molecular_data = None
         if 'named_annotations' in config:
             for na_config in config['named_annotations']:
                 path = na_config['annotation_path']
@@ -371,70 +429,15 @@ class Section:
                     labels = [x.strip() for x in f.readlines()]
                 annotation = Annotation(data=annotation_data, labels=labels)
                 annotations.append(annotation)                
+        so_datas = []
+        if 'so_data' in config:
+            for so_config in config['so_datas']:
+                so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
+                so_datas.append(so_data)
 
         return cls(image=image,
                    name=name,
-                   segmentation_mask=segmenation_mask,
-                   landmarks=landmarks,
-                   molecular_data=molecular_data,
                    id_=id_,
                    annotations=annotations,
+                   so_data=so_datas,
                    config=config)
-
-    @classmethod
-    def from_directory(cls, directory):
-        if not exists(directory):
-            # Throw error
-            pass
-        with open(join(directory, 'config.json')) as f:
-            config = json.load(f)
-        name = config['name']
-        id_ = config['id']
-        image_path = join(directory, 'image.nii.gz')
-        image = Image(sitk.GetArrayFromImage(sitk.ReadImage(image_path)))
-        segmentation_mask_path = join(directory, 'mask.nii.gz')
-        segmentation_mask = None
-        if exists(segmentation_mask_path):
-            segmentation_mask = Annotation(sitk.GetArrayFromImage(sitk.ReadImage(segmentation_mask_path)))
-        landmarks = None
-        landmarks_path = join(directory, 'landmarks.csv')
-        if exists(landmarks_path):
-            landmarks = Pointset(pd.read_csv(landmarks_path))
-        molecular_data = None
-        if 'molecular_imaging_data' in config:
-            mol_data_path = join(directory, 'moldata')
-            data_type = config['molecular_imaging_data']['data_type']
-            molecular_data = load_molecular_imaging_data_from_directory(data_type, mol_data_path)
-        annotation_dirs = [x for x in os.listdir(directory) if x.startswith('annotation_')]
-        annotation_dirs.sort(key=lambda x: int(x.split('_')[-1]))
-        annotations = []
-        for annotation_dir in annotation_dirs:
-            path = glob.glob(join(directory, annotation_dir, '*.nii.gz'))[0]
-            label_path = join(directory, annotation_dir, 'labels.txt')
-            ann_img = sitk.GetArrayFromImage(sitk.ReadImage(path))
-            if exists(label_path):
-                with open(label_path) as f:
-                    labels = [x.strip() for x in f.readlines()]
-                annotation = Annotation(ann_img, labels)
-            else:
-                annotation = Annotation(ann_img)
-            # annotation = Annotation(sitk.GetArrayFromImage(sitk.ReadImage(path)))
-            annotations.append(annotation)
-
-        return cls(
-            image=image,
-            name=name,
-            segmentation_mask=segmentation_mask,
-            landmarks=landmarks,
-            molecular_data=molecular_data,
-            id_=id_,
-            annotations=annotations,
-            config=config
-        )
-        
-    def init_mol_data(self):
-        """
-        Loads molecular data, in case any operation (like establishing file streams etc.) should 
-        only be executed ones for performance reasons.
-        """
-        pass

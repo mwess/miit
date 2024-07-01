@@ -1,7 +1,9 @@
 # from dataclasses import Protocol
 
+import math
 import os
-from typing import TypeVar
+from typing import TypeVar, Dict, List, Tuple
+
 import numpy as np
 import numpy
 
@@ -24,7 +26,7 @@ def copy_if_not_none(obj):
     return run_fun_if_not_none(fun, obj)
 
 
-def create_if_not_exists(directory):
+def create_if_not_exists(directory: str):
     if not os.path.exists(directory):
         os.mkdir(directory)
 
@@ -50,14 +52,14 @@ def custom_max_voting_filter(img: numpy.array,
     return filtered_image
 
 
-def clean_configs(config):
+def clean_configs(config: Dict) -> Dict:
     for section in config['sections']:
         if 'molecular_imaging_data' in section:
             del section['molecular_imaging_data']
     return config
 
 
-def filter_node_ids(config, id_list):
+def filter_node_ids(config: Dict, id_list: List) -> Dict:
     keep_sections = []
     for section in config['sections']:
         # print(section['id'])
@@ -65,3 +67,14 @@ def filter_node_ids(config, id_list):
             keep_sections.append(section)
     config['sections'] = keep_sections
     return config
+
+
+def get_half_pad_size(value_string: str, max_len: int) -> Tuple[int, int]:
+    diff = max_len - len(value_string)
+    if diff % 2 == 0:
+        l_pad = diff / 2
+        r_pad = diff / 2
+    else:
+        l_pad = math.floor(diff / 2)
+        r_pad = math.ceil(diff / 2)
+    return 1, diff - 1

@@ -1,4 +1,5 @@
 import abc
+from collections import defaultdict
 from dataclasses import dataclass, field
 import json
 from typing import Any, ClassVar, Optional, Protocol, Tuple, List, Dict
@@ -41,11 +42,11 @@ def read_image(fpath):
     if fpath.endswith('.tiff'):
         tiff_file = tifffile.TiffFile(fpath)
         # resolution = get_resolution_from_tiff(tiff_file)
-        return Image(data=tiff_file.asarray())
+        return DefaultImage(data=tiff_file.asarray())
         # Read tiffil.
     else:
         img =  cv2.imread(fpath)
-        image = Image(data=img)
+        image = DefaultImage(data=img)
         return image
     
 
@@ -57,26 +58,29 @@ def get_resolution_from_tiff(tiff_file):
     y = float(node.attrib['PhysicalSizeY'])
     return (x + y)/2
 
+
 @dataclass(kw_only=True)
 class BaseImage(abc.ABC):
 
     data: numpy.array
     interpolation_mode: ClassVar[str]
-    id_:uuid.UUID = field(init=False)
+    name: str = ''
+    _id:uuid.UUID = field(init=False)
+    meta_information: Dict = field(default_factory=lambda: defaultdict(dict))
 
     def __post_init__(self) -> None:
-        self.id_ = uuid.uuid1()
+        self._id = uuid.uuid1()
 
     def transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         image_transformed = registerer.transform_image(self.data, transformation, self.interpolation_mode, **kwargs)
         return image_transformed
 
     @abc.abstractmethod
-    def apply_bounding_parameters(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         pass
 
     @abc.abstractmethod
-    def rescale(self, height: int, width: int):
+    def resize(self, height: int, width: int):
         pass
 
     @abc.abstractmethod
@@ -94,6 +98,14 @@ class BaseImage(abc.ABC):
     @abc.abstractmethod
     def store(self, path: str):
         pass
+    
+    @abc.abstractmethod
+    def get_resolution(self) -> Optional[float]:
+        pass
+
+    @abc.abstractmethod
+    def get_type(self) -> str:
+        pass
 
     @classmethod
     @abc.abstractmethod
@@ -102,67 +114,80 @@ class BaseImage(abc.ABC):
 
 
 @dataclass(kw_only=True)
-class Image(BaseImage):
+class DefaultImage(BaseImage):
     
     interpolation_mode: ClassVar[str] = 'LINEAR'
 
-    def apply_bounding_parameters(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data = self.data[xmin:xmax, ymin:ymax]
 
-    def rescale(self, height, width):
-        # TODO: Replace that with skimage's resize function.
+    def resize(self, height, width):
+        # Use opencv's resize function here, because it typically works a lot faster and for now
+        # we assume that data in Image is always some kind of rgb like image.
         self.data = cv2.resize(self.data, (width, height))
 
     def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
-        # TODO: Find out whether we can replace that with a function from skimage.
         self.data = cv2.copyMakeBorder(self.data, top, bottom, left, right, cv2.BORDER_CONSTANT, constant_values)
 
-    def flip(self, axis: int =0):
+    def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
 
     def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
-        return Image(data=transformed_image)
+        return DefaultImage(data=transformed_image)
 
     def copy(self):
-        return Image(data=self.data.copy())
+        return DefaultImage(data=self.data.copy())
 
     def store(self, path: str):
-        sub_path = join(path, str(self.id_))
+        sub_path = join(path, str(self._id))
         create_if_not_exists(sub_path)
         fname = 'image.nii.gz'
         img_path = join(sub_path, fname)
+        attributes = {'name': self.name}
+        with open(join(sub_path, 'attributes.json'), 'w') as f:
+            json.dump(attributes, f)
         sitk.WriteImage(sitk.GetImageFromArray(self.data), img_path)
+
+    def get_resolution(self) -> Optional[float]:
+        return self.meta_information.get('resolution', None)
+
+    @staticmethod
+    def get_type() -> str:
+        return 'default_image'
 
     @classmethod
     def load(cls, path: str):
         img = sitk.GetArrayFromImage(sitk.ReadImage(join(path, 'image.nii.gz')))
         image = cls(data=img)
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
-        image.id_ = id_
+        image._id = id_
         return image
         
 
-# TODO: Fix orientation from C x H x W to H x W x C.
 @dataclass(kw_only=True)
 class Annotation(BaseImage):
     """
-    Assumes annotations are stored as H x W x C.
+    Annotations consists of a spatially resolved map of discrete 
+    classes. Classes can either be scalar of vector valued. It
+    is assumed that each annotation has the shape of H x W x C.
+
+    Image transformations applied to annotations should use a 
+    nearest neighbor interpolation to not introduce new classes.
     """
 
     interpolation_mode: ClassVar[str] = 'NN'
     labels: List[str] = None
-    name: str = ''
 
-    def apply_bounding_parameters(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         # TODO: Add check for image bounds
         if len(self.data.shape) == 2:
             self.data = self.data[xmin:xmax, ymin:ymax]
         else:
             self.data = self.data[xmin:xmax, ymin:ymax, :]
 
-    def rescale(self, height: int, width: int):
+    def resize(self, height: int, width: int):
         if len(self.data.shape) == 2:
             # TODO: Rewrite that with skimage's resize function
             self.data = cv2.resize(self.data, (width, height), interpolation=cv2.INTER_NEAREST)
@@ -202,7 +227,7 @@ class Annotation(BaseImage):
     def store(self, path: str):
         # Use path as a directory here.
         create_if_not_exists(path)
-        sub_path = join(path, str(self.id_))
+        sub_path = join(path, str(self._id))
         create_if_not_exists(sub_path)
         fname = 'annotations.nii.gz'
         img_path = join(sub_path, fname)
@@ -223,6 +248,13 @@ class Annotation(BaseImage):
         idx = self.labels.index(label)
         return self.data[:, :, idx]
 
+    def get_resolution(self) -> Optional[float]:
+        return self.meta_information.get('resolution', None)
+
+    @staticmethod
+    def get_type() -> str:
+        return 'annotation'
+
     @classmethod
     def load(cls, path):
         annotation = sitk.GetArrayFromImage(sitk.ReadImage(join(path, 'annotations.nii.gz')))
@@ -237,19 +269,24 @@ class Annotation(BaseImage):
         name = additional_attributes['name']
         annotation = cls(data=annotation, labels=labels, name=name)
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
-        annotation.id_ = id_
+        annotation._id = id_
         return annotation
 
 
+# TODO: Add some more attributes from GreedyFHist implementation.
 @dataclass(kw_only=True)
 class Pointset:
 
     data: pandas.core.frame.DataFrame
-    id_: uuid.UUID = field(init=False)
+    _id: uuid.UUID = field(init=False)
     name: str = ''
+    x_axis: Any = 'x'
+    y_axis: Any = 'y'
+    index_col: Optional[Any] = None
+    header: Optional[Any] = 'infer'
 
     def __post_init__(self) -> None:
-        self.id_ = uuid.uuid1()
+        self._id = uuid.uuid1()
 
     def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         warped_pc = self.data.copy()
@@ -262,19 +299,19 @@ class Pointset:
         warped_pc = warped_pc.assign(x=coordinates_transformed['x'].values, y=coordinates_transformed['y'].values)
         return Pointset(data=warped_pc)
 
-    def apply_bounding_parameters(self, xmin: int, xmax: int, ymin: int, ymax: int):
-        self.data['x'] = self.data['x'] - ymin
-        self.data['y'] = self.data['y'] - xmin
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+        self.data[self.x_axis] = self.data[self.x_axis] - ymin
+        self.data[self.y_axis] = self.data[self.y_axis] - xmin
 
-    def rescale(self, height_scale: float, width_scale: float):
+    def resize(self, height: float, width: float):
         # Remember to convert new dimensions to scale.
-        self.data['x'] = self.data['x'] * width_scale
-        self.data['y'] = self.data['y'] * height_scale
+        self.data[self.x_axis] = self.data[self.x_axis] * width
+        self.data[self.y_axis] = self.data[self.y_axis] * height
 
     def pad(self, padding: Tuple[int, int, int, int]):
         left, right, top, bottom = padding
-        self.data['x'] = self.data['x'] + left
-        self.data['y'] = self.data['y'] + top
+        self.data[self.x_axis] = self.data[self.x_axis] + left
+        self.data[self.y_axis] = self.data[self.y_axis] + top
 
     def flip(self, ref_img_shape: Tuple[int, int], axis: int = 0):
         if axis == 0:
@@ -289,50 +326,74 @@ class Pointset:
     def copy(self):
         return Pointset(data=self.data.copy())
 
-    def store(self, path: str):
+    @staticmethod
+    def get_type() -> str:
+        return 'pointset'
+
+    def store(self, 
+              path: str):
         create_if_not_exists(path)
-        sub_path = join(path, str(self.id_))
+        sub_path = join(path, str(self._id))
         create_if_not_exists(sub_path)
         fname = 'pointset.csv'
         fpath = join(sub_path, fname)
-        self.data.to_csv(fpath)
+        index = True if self.index_col is not None else False
+        header = True if self.header is not None else False
+        self.data.to_csv(fpath, header=header, index=index)
+        attributes = {
+            'name': self.name,
+            'header': self.header,
+            'index_col': self.index_col,
+            'x_axis': self.x_axis,
+            'y_axis': self.y_axis
+        }
+        with open(join(sub_path, 'attributes.json'), 'w') as f:
+            json.dump(attributes, f)
 
     @classmethod
-    def load(cls, path: str):
+    def load(cls, 
+             path: str):
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
-        df = pd.read_csv(join(path, 'pointset.csv'))
-        ps = cls(data=df)
-        ps.id_ = id_
+        with open(join(path, 'attributes.json')) as f:
+            attributes = json.load(f)
+        header = attributes['header']
+        index_col = attributes['index_col']
+        x_axis = attributes['x_axis']
+        y_axis = attributes['y_axis']
+        name = attributes['name']
+        df = pd.read_csv(join(path, 'pointset.csv'), header=header, index_col=index_col)
+        ps = cls(data=df,
+                 name=name,
+                 header=header,
+                 index_col=index_col,
+                 x_axis=x_axis,
+                 y_axis=y_axis)
+        ps._id = id_
         return ps
     
+
+# TODO: Do operations directly on geojson
 @dataclass(kw_only=True)
-class GeoJson:
+class GeojsonWrapper:
 
     # TODO:  Rewrite geojson_data to data
     geojson_data: geojson.GeoJSON
     data: pandas.core.frame.DataFrame = field(init=False)
-    id_: uuid.UUID = field(init=False)
+    _id: uuid.UUID = field(init=False)
     name: str = ''
 
     def __post_init__(self) -> None:
-        self.id_ = uuid.uuid1()
+        self._id = uuid.uuid1()
         self.data = geojson_2_table(self.geojson_data)
 
     def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         data_ann = Pointset(data=self.data)
         data_warped = data_ann.warp(registerer, transformation, **kwargs)
-        warped_geojson = GeoJson(geojson_data=self.geojson_data, name=self.name)
+        warped_geojson = GeojsonWrapper(geojson_data=self.geojson_data, name=self.name)
         warped_geojson.data = data_warped.data
         return warped_geojson
-        # warped_pc = self.data.copy()
-        # pc_ = self.data[['x', 'y']]
-        # coordinates_transformed = registerer.transform_pointset(pc_, transformation, **kwargs)
-        # # coordinates_transformed = transform_result.final_transform.pointcloud
-        # warped_pc = warped_pc.assign(x=coordinates_transformed['x'].values, y=coordinates_transformed['y'].values)
-        
-        # return GeoJson(warped_pc)
 
-    def apply_bounding_parameters(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data['x'] = self.data['x'] - ymin
         self.data['y'] = self.data['y'] - xmin
 
@@ -358,30 +419,41 @@ class GeoJson:
     
     def copy(self):
         geojson_data = convert_table_2_geo_json(self.data, self.geojson_data)
-        return GeoJson(geojson_data=geojson_data)
+        return GeojsonWrapper(geojson_data=geojson_data)
 
     def store(self, path: str):
         create_if_not_exists(path)
-        sub_path = join(path, str(self.id_))
+        sub_path = join(path, str(self._id))
         create_if_not_exists(sub_path)
         fname = 'geojson_data.geojson'
         fpath = join(sub_path, fname)
         geojson_data = convert_table_2_geo_json(self.data, self.geojson_data)
         with open(fpath, 'w') as f:
             geojson.dump(geojson_data)
+        attributes = {'name': self.name}
+        with open(join(sub_path, 'attributes.json'), 'w') as f:
+            json.dump(attributes, f)
+
+    @staticmethod
+    def get_type() -> str:
+        return 'geojson_wrapper'
 
     @classmethod
     def load(cls, path):
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
         geojson_data = read_geojson(join(path, 'geojson_data.geojson'))
         gdata = cls(geojson_data=geojson_data)
-        gdata.id_ = id_
+        gdata._id = id_
         return gdata
 
     def get_geojson_data(self):
         return convert_table_2_geo_json(self.geojson_data, self.data)
 
     def convert_geojson_to_mask(self, ref_image: numpy.array):
+        """Utility function for converting a geojson object to an 
+        annotation. For each geometry a label is first chosen as
+        the name of the classification and, if not found, the name
+        of the property."""
         labels = []
         masks = []
         geojson_data = self.get_geojson_data()
