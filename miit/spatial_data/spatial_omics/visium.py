@@ -13,7 +13,7 @@ import pandas
 import pandas as pd
 
 from miit.custom_types import PdDataframe
-from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
+from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import custom_max_voting_filter
 from miit.spatial_data.image import Annotation, DefaultImage, Pointset
@@ -43,7 +43,7 @@ def scale_tissue_positions(tissue_positions,
 
 
 @dataclass
-class Visium10X(BaseSpatialOmics):
+class Visium(BaseSpatialOmics):
     # TODO: Specify which Visium
     
     image: DefaultImage
@@ -54,6 +54,7 @@ class Visium10X(BaseSpatialOmics):
     scale_factors: dict
     __ref_mat: Annotation = field(init=False)
     spec_to_ref_map: dict = field(init=False)
+    name: str = ''
     skip_ref_mat_creation: bool = False
     config: Optional[dict] = None
     spot_scaling_journal: Optional[PdDataframe] = None
@@ -116,6 +117,7 @@ class Visium10X(BaseSpatialOmics):
             spot_scaling_journal_path = join(directory, 'spot_scaling_journal.csv')
             self.spot_scaling_journal.to_csv(spot_scaling_journal_path)
             f_dict['spot_scaling_journal_path'] = spot_scaling_journal_path
+        f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
@@ -151,13 +153,15 @@ class Visium10X(BaseSpatialOmics):
         else:
             spot_scaling_journal = None
         id_ = uuid.UUID(os.path.basename(directory.rstrip('/')))
+        name = attributes['name']
         obj = cls(
             image=image,
             table=table,
             scale_factors=scale_factors,
             skip_ref_mat_creation=True,
             config=config,
-            spot_scaling_journal=spot_scaling_journal
+            spot_scaling_journal=spot_scaling_journal,
+            name=name
         )
         obj.ref_mat = __ref_mat
         obj.spec_to_ref_map = spec_to_ref_map
@@ -203,7 +207,7 @@ class Visium10X(BaseSpatialOmics):
 
     @staticmethod
     def get_type() -> str:
-        return 'Visium10X'
+        return 'visium'
         
     def pad(self, padding: Tuple[int, int, int, int]):
         left, right, top, bottom = padding
@@ -212,7 +216,7 @@ class Visium10X(BaseSpatialOmics):
         self.__ref_mat.pad(padding)
         self.update_scaling_journal(operation_desc=f'pad_data({padding})')
 
-    def rescale(self, height: int, width: int):
+    def resize(self, height: int, width: int):
         h_old, w_old = self.image.data.shape[0], self.image.data.shape[1]
         self.image.resize(height, width)
         width_scale = width / w_old
@@ -221,7 +225,7 @@ class Visium10X(BaseSpatialOmics):
         self.__ref_mat.resize(height, width) 
         self.update_scaling_journal(operation_desc=f'rescale_data(height={height}, width={width}')
 
-    def apply_bounding_parameters(self, x1: int, x2: int, y1: int, y2: int):
+    def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
         self.table.crop(x1, x2, y1, y2)
         # TODO: Should points that are out-of-bounds of the image be filtered as well?
@@ -242,7 +246,7 @@ class Visium10X(BaseSpatialOmics):
             ref_mat = self.__ref_mat.copy()
         else:
             ref_mat = None
-        obj = Visium10X(
+        obj = Visium(
             image=self.image.copy(),
             table=self.table.copy(),
             scale_factors=self.scale_factors.copy(),
@@ -257,14 +261,14 @@ class Visium10X(BaseSpatialOmics):
     def warp(self, 
              registerer: Registerer, 
              transformation: Any, 
-             **kwargs: Dict) -> 'Visium10X':
+             **kwargs: Dict) -> 'Visium':
         image_transformed = self.image.warp(registerer, transformation, **kwargs)
         ref_mat_warped = self.__ref_mat.warp(registerer, transformation, **kwargs)
         # TODO: See if we can get around the custom_max_voting_filter
         ref_mat_warped = Annotation(data=custom_max_voting_filter(ref_mat_warped.data))
         table = self.table.warp(registerer, transformation, **kwargs)
         config = self.config.copy() if self.config is not None else None
-        transformed_st_data = Visium10X(
+        transformed_st_data = Visium(
             image=image_transformed, 
             table=table, 
             scale_factors=self.scale_factors, 
@@ -286,7 +290,7 @@ class Visium10X(BaseSpatialOmics):
         return map_
 
     @classmethod
-    def from_config(cls, config: Dict[str, str]) -> 'Visium10X':
+    def from_config(cls, config: Dict[str, str]) -> 'Visium':
         load_type = config['load_type']
         if load_type == 'spcrng_directory':
             spcrng_dir = config['spcrng_directory']
@@ -295,7 +299,7 @@ class Visium10X(BaseSpatialOmics):
                 image_path = config['path_to_fullres_image']
             else:
                 image_path = None
-            return Visium10X.from_spcrng(spcrng_dir, 
+            return Visium.from_spcrng(spcrng_dir, 
                                          image_scale, 
                                          image_path,
                                          config)
@@ -323,7 +327,7 @@ class Visium10X(BaseSpatialOmics):
             path_to_image = join(directory, 'spatial', 'tissue_hires_image.png')
         else:
             path_to_image = fullres_image_path
-        return Visium10X.from_spcrng_files(path_to_scalefactors,
+        return Visium.from_spcrng_files(path_to_scalefactors,
                                            path_to_tissue_positions,
                                            path_to_image,
                                            image_scale,

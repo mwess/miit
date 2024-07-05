@@ -25,7 +25,7 @@ import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.custom_types import PdDataframe, ImzmlParserType, IntensityDict
-from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
+from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.image import Annotation, DefaultImage, read_image, BaseImage
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
@@ -334,13 +334,13 @@ class Imzml(BaseSpatialOmics):
 
     #TODO: Add proper support for srd file format.
     
-    config: dict
     image: DefaultImage 
     __ref_mat: Annotation = field(init=False, default=None)
     spec_to_ref_map: dict
     ann_mat: Optional[Annotation] = None
     spot_scaling_journal: Optional[PdDataframe] = None
     background: ClassVar[int] = 0
+    config: Optional[dict] = None
     name: str = ''
 
     def __post_init__(self):
@@ -382,7 +382,7 @@ class Imzml(BaseSpatialOmics):
         operation_desc = f'pad_data({padding})'
         self.update_scaling_journal(operation_desc)
 
-    def rescale(self, height: int, width: int):
+    def resize(self, height: int, width: int):
         self.image.resize(height, width)
         self.__ref_mat.resize(height, width)
         if self.ann_mat is not None:
@@ -390,7 +390,7 @@ class Imzml(BaseSpatialOmics):
         operation_desc = f'rescale_data(height={height}, width={width})'
         self.update_scaling_journal(operation_desc=operation_desc)
 
-    def apply_bounding_parameters(self, x1: int, x2: int, y1: int, y2: int):
+    def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
         self.__ref_mat.crop(x1, x2, y1, y2)
         if not self.ann_mat is None:
@@ -526,11 +526,11 @@ class Imzml(BaseSpatialOmics):
         msi = ImzMLParser(imzml_path)
         if config is None:
             config = {}
-        if 'imzml_path' not in config:
-            config['imzml_path'] = imzml_path
+        if 'imzml' not in config:
+            config['imzml'] = imzml_path
         if srd_path is not None:
-            if 'srd_path' not in config:
-                config['srd_path'] = srd_path
+            if 'srd' not in config:
+                config['srd'] = srd_path
             with open(srd_path, 'rb') as f:
                 srd = json.load(f)
         else:
@@ -561,7 +561,7 @@ class Imzml(BaseSpatialOmics):
         else:
             ann_mat = None
         obj = cls(
-            config={},
+            config=config,
             image=image,
             spec_to_ref_map=spec_to_ref_map,
             ann_mat=ann_mat,
@@ -574,9 +574,8 @@ class Imzml(BaseSpatialOmics):
     @classmethod
     def from_config(cls, config):
         # TODO: Maybe add resolution to config
-        image_path = config['image_path']
-        image = read_image(image_path)
         imzml_path = config['imzml']
+        image = read_image(image_path)
         resolution = config.get('resolution', 1)
         msi = ImzMLParser(imzml_path)
         srd_path = config.get('srd', None)

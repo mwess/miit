@@ -41,7 +41,7 @@ class GreedyFHistExt(Registerer):
         moving_img_mask = kwargs.get('moving_img_mask', None)
         fixed_img_mask = kwargs.get('fixed_img_mask', None)
         options = RegistrationOptions()
-        options.parse_dict(kwargs)
+        # options.parse_dict(kwargs)
         reg_result = self.registerer.register(moving_img=moving_img,
                                               fixed_img=fixed_img,
                                               moving_img_mask=moving_img_mask,
@@ -54,7 +54,7 @@ class GreedyFHistExt(Registerer):
                            pointset: numpy.array, 
                            transformation: GreedyFHistRegistrationResult, 
                            **kwargs: Dict) -> numpy.array:
-        transformed_pointset = self.registerer.transform_pointset(pointset, transformation.registration_result.moving_transform)
+        transformed_pointset = self.registerer.transform_pointset(pointset, transformation.registration_result.backward_transform)
         # transformation_result = self.registerer.transform_pointset(pointset, transformation.backward_displacement_field, **kwargs)
         return transformed_pointset 
     
@@ -63,7 +63,7 @@ class GreedyFHistExt(Registerer):
                         transformation: GreedyFHistRegistrationResult, 
                         interpolation_mode: str, 
                         **kwargs: Dict) -> numpy.array:
-        warped_image = self.registerer.transform_image(image, transformation.registration_result.fixed_transform, interpolation_mode)
+        warped_image = self.registerer.transform_image(image, transformation.registration_result.forward_transform, interpolation_mode)
         return warped_image
 
     # TODO: Remove this.
@@ -71,7 +71,7 @@ class GreedyFHistExt(Registerer):
         return gfh.registration.get_default_args()
 
     @classmethod
-    def load_from_config(cls, config: Optional[Dict[str, Any]]):
+    def load_from_config(cls, config: Optional[Dict[str, Any]] = None):
         if config is None:
             config = {}
         registerer = gfh.registration.GreedyFHist.load_from_config(config)

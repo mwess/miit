@@ -112,6 +112,50 @@ class BaseImage(abc.ABC):
     def load(path: str):
         pass
 
+@dataclass(kw_only=True)
+class BasePointset(abc.ABC):
+
+    data: Any
+    name: str = ''
+    _id:uuid.UUID = field(init=False)
+    meta_information: Dict = field(default_factory=lambda: defaultdict(dict))
+
+    def __post_init__(self) -> None:
+        self._id = uuid.uuid1()
+
+    @abc.abstractmethod
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+        pass
+
+    @abc.abstractmethod
+    def resize(self, height: int, width: int):
+        pass
+
+    @abc.abstractmethod
+    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
+        pass
+
+    @abc.abstractmethod
+    def flip(self, axis: int = 0):
+        pass
+
+    @abc.abstractmethod
+    def warp(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def store(self, path: str):
+        pass
+    
+    @abc.abstractmethod
+    def get_type(self) -> str:
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def load(path: str):
+        pass
+    
 
 @dataclass(kw_only=True)
 class DefaultImage(BaseImage):
@@ -121,10 +165,10 @@ class DefaultImage(BaseImage):
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data = self.data[xmin:xmax, ymin:ymax]
 
-    def resize(self, height, width):
+    def resize(self, width, height):
         # Use opencv's resize function here, because it typically works a lot faster and for now
         # we assume that data in Image is always some kind of rgb like image.
-        self.data = cv2.resize(self.data, (width, height))
+        self.data = cv2.resize(self.data, (height, width))
 
     def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
@@ -217,9 +261,6 @@ class Annotation(BaseImage):
                           name=self.name)
 
     def copy(self):
-        """
-        Warning! Returns a new id.
-        """
         return Annotation(data=self.data.copy(),
                           labels=self.labels,
                           name=self.name)
@@ -275,7 +316,7 @@ class Annotation(BaseImage):
 
 # TODO: Add some more attributes from GreedyFHist implementation.
 @dataclass(kw_only=True)
-class Pointset:
+class Pointset(BasePointset):
 
     data: pandas.core.frame.DataFrame
     _id: uuid.UUID = field(init=False)
@@ -297,7 +338,12 @@ class Pointset:
             coordinates_transformed = temp_df
         # coordinates_transformed = transform_result.final_transform.pointcloud
         warped_pc = warped_pc.assign(x=coordinates_transformed['x'].values, y=coordinates_transformed['y'].values)
-        return Pointset(data=warped_pc)
+        return Pointset(data=warped_pc,
+                        name=self.name,
+                        x_axis=self.x_axis,
+                        y_axis=self.y_axis,
+                        index_col=self.index_col,
+                        header=self.header)
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data[self.x_axis] = self.data[self.x_axis] - ymin
@@ -324,7 +370,15 @@ class Pointset:
             pass
     
     def copy(self):
-        return Pointset(data=self.data.copy())
+        return Pointset(data=self.data.copy(),
+                        name=self.name,
+                        x_axis=self.x_axis,
+                        y_axis=self.y_axis,
+                        index_col=self.index_col,
+                        header=self.header)
+
+    def to_numpy(self) -> numpy.array:
+        return self.data[[self.x_axis, self.y_axis]].to_numpy()
 
     @staticmethod
     def get_type() -> str:
@@ -371,55 +425,88 @@ class Pointset:
         ps._id = id_
         return ps
     
-
-# TODO: Do operations directly on geojson
 @dataclass(kw_only=True)
-class GeojsonWrapper:
+class GeoJSONData(BasePointset):
 
     # TODO:  Rewrite geojson_data to data
-    geojson_data: geojson.GeoJSON
-    data: pandas.core.frame.DataFrame = field(init=False)
+    data: geojson.GeoJSON
     _id: uuid.UUID = field(init=False)
     name: str = ''
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
-        self.data = geojson_2_table(self.geojson_data)
 
     def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
-        data_ann = Pointset(data=self.data)
-        data_warped = data_ann.warp(registerer, transformation, **kwargs)
-        warped_geojson = GeojsonWrapper(geojson_data=self.geojson_data, name=self.name)
-        warped_geojson.data = data_warped.data
+        geometries = self.data['features'] if 'features' in self.data else self.data
+        warped_geometries = []
+        for _, geometry in enumerate(geometries):
+            warped_geometry = geojson.utils.map_tuples(lambda coords: self.__warp_geojson_coord_tuple(coords, registerer, transformation), geometry)
+            warped_geometries.append(warped_geometry)
+        if 'features' in self.data:
+            warped_data = self.data.copy()
+            warped_data['features'] = warped_geometries
+        else:
+            warped_data = warped_geometries
+        warped_geojson = GeoJSONData(data=warped_data, name=self.name)
         return warped_geojson
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
-        self.data['x'] = self.data['x'] - ymin
-        self.data['y'] = self.data['y'] - xmin
+        # TODO: Should anything outside max be removed?
+        features = self.data['features'] if 'features' in self.data else self.data
+        features_new = []
+        for feature in features:
+            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] - ymin, coords[1] - xmin), feature)
+            features_new.append(feature_new)
+        if 'features' in self.data:
+            self.data['features'] = features_new
+        else:
+            self.data = features_new
 
-    def rescale(self, height_scale: float, width_scale: float):
-        # Remember to convert new dimensions to scale.
-        self.data['x'] = self.data['x'] * width_scale
-        self.data['y'] = self.data['y'] * height_scale
+    def resize(self, height: float, width: float):
+        features = self.data['features'] if 'features' in self.data else self.data
+        features_new = []
+        for feature in features:
+            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] * width, coords[1] * height), feature)
+            features_new.append(feature_new)
+        if 'features' in self.data:
+            self.data['features'] = features_new
+        else:
+            self.data = features_new
 
     def pad(self, padding: Tuple[int, int, int, int]):
         left, right, top, bottom = padding
-        self.data['x'] = self.data['x'] + left
-        self.data['y'] = self.data['y'] + top
+        features = self.data['features'] if 'features' in self.data else self.data
+        features_new = []
+        for feature in features:
+            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] + left, coords[1] + right), feature)
+            features_new.append(feature_new)
+        if 'features' in self.data:
+            self.data['features'] = features_new
+        else:
+            self.data = features_new
 
     def flip(self, ref_img_shape: Tuple[int, int], axis: int = 0):
+        features = self.data['features'] if 'features' in self.data else self.data
+        features_new = []
         if axis == 0:
             center_x = ref_img_shape[1] // 2
-            self.data.x = self.data.x + 2 * (center_x - self.data.x)
+            for feature in features:
+                feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] + 2 * (center_x - coords[0]), coords[1]), feature)
+                features_new.append(feature_new)
         elif axis == 1:
             center_y = ref_img_shape[0] // 2
-            self.data.y = self.data.y + 2 * (center_y - self.data.y)
+            for feature in features:
+                feature_new = geojson.utils.map_tuples(lambda coords: (coords[0], coords[1] + 2 * (center_y - coords[1])), feature)
+                features_new.append(feature_new)
         else:
             pass
-    
+        if 'features' in self.data:
+            self.data['features'] = features_new
+        else:
+            self.data = features_new
+
     def copy(self):
-        geojson_data = convert_table_2_geo_json(self.data, self.geojson_data)
-        return GeojsonWrapper(geojson_data=geojson_data)
+        return GeoJSONData(data=self.data.copy(), name=self.name)
 
     def store(self, path: str):
         create_if_not_exists(path)
@@ -427,36 +514,46 @@ class GeojsonWrapper:
         create_if_not_exists(sub_path)
         fname = 'geojson_data.geojson'
         fpath = join(sub_path, fname)
-        geojson_data = convert_table_2_geo_json(self.data, self.geojson_data)
         with open(fpath, 'w') as f:
-            geojson.dump(geojson_data)
+            geojson.dump(self.data)
         attributes = {'name': self.name}
         with open(join(sub_path, 'attributes.json'), 'w') as f:
             json.dump(attributes, f)
 
     @staticmethod
     def get_type() -> str:
-        return 'geojson_wrapper'
+        return 'geojson'
 
     @classmethod
     def load(cls, path):
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
-        geojson_data = read_geojson(join(path, 'geojson_data.geojson'))
-        gdata = cls(geojson_data=geojson_data)
+        with open(join(path, 'geojson_data.geojson')) as f:
+            data = geojson.load(f)
+        # geojson_data = read_geojson(join(path, 'geojson_data.geojson'))
+        with open(join(path, 'attributes.json')) as f:
+            attributes = json.load(f)
+        gdata = cls(geojson_data=data, name=attributes.get('name', ''))
         gdata._id = id_
         return gdata
 
-    def get_geojson_data(self):
-        return convert_table_2_geo_json(self.geojson_data, self.data)
-
-    def convert_geojson_to_mask(self, ref_image: numpy.array):
+    def to_annotation(self, 
+                      ref_image: numpy.array,
+                      label_fun: Optional[callable] = None) -> 'Annotation':
         """Utility function for converting a geojson object to an 
-        annotation. For each geometry a label is first chosen as
-        the name of the classification and, if not found, the name
-        of the property."""
+        annotation. 
+        
+        Args:
+            ref_image (numpy.array):
+                Defines the shape of the result annotation.
+            
+            label_fun (callable):
+                Optional function for extracting label names from feature objects. 
+                If not supplied, the labels of the annotation are taken from 'id',
+                otherwise 'label_fun' is called.
+        """
         labels = []
         masks = []
-        geojson_data = self.get_geojson_data()
+        geojson_data = self.data
         for feature in geojson_data['features']:
             # If no name can be found, ignore for now.
             if 'classification' not in feature['properties'] and 'name' not in feature['properties']:
@@ -466,7 +563,6 @@ class GeojsonWrapper:
             if feature['properties']['objectType'] != 'annotation':
                 continue
             geom = shapely.from_geojson(str(feature))
-            # mask = np.zeros(ref_image.shape[:2], dtype=np.uint8)
             if geom.is_empty:
                 print(f"""Feature of type {feature['geometry']['type']} is empty.""")
                 continue
@@ -479,23 +575,30 @@ class GeojsonWrapper:
                     ext_coords = np.array(list(geom_.exterior.coords))
                     mask_ = skimage.draw.polygon2mask(shape, ext_coords)
                     mask[mask_] = 1
-                    # poly_ = skimage.draw.polygon(ext_coords[:, 1], ext_coords[:, 0], ref_image.shape)
-                    # mask[poly_[0], poly_[1]] = 1
             else:
                 ext_coords = np.array(list(geom.exterior.coords))
                 shape = (ref_image.shape[1], ref_image.shape[0])
                 mask = skimage.draw.polygon2mask(shape, ext_coords)
-                # poly_ = skimage.draw.polygon(ext_coords[:, 0], ext_coords[:, 1], ref_image.shape)
-                # mask[poly_[0], poly_[1]] = 1
             mask = mask.transpose().astype(np.uint8)
             masks.append(mask)
-            if 'classification' in feature['properties']:
-                labels.append(feature['properties']['classification']['name'])
+            if label_fun is None:
+                labels.append(feature['id'])
             else:
-                labels.append(feature['properties']['name'])
-            # TODO: Find a more generic way for this.
-            # labels.append(feature['properties']['name'])
+                labels.append(label_fun(feature))
         annotation_mask = np.dstack(masks)
-        # annotation_mask = np.moveaxis(annotation_mask, 2, 0)
         annotation = Annotation(data=annotation_mask, labels=labels, name=self.name)
         return annotation
+
+    def __warp_geojson_coord_tuple(self, coord: Tuple[float, float], registerer: Registerer, transform) -> Tuple[float, float]:
+        """Transforms coordinates from geojson data from moving to fixed image space.
+
+        Args:
+            coord (Tuple[float, float]): 
+            transform (SimpleITK.SimpleITK.Transform): 
+
+        Returns:
+            Tuple[float, float]: 
+        """
+        ps = np.array([[coord[0], coord[1]]]).astype(float)
+        warped_ps = registerer.transform_pointset(ps, transform)
+        return (warped_ps[0, 0], warped_ps[0, 1])

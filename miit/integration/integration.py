@@ -8,8 +8,8 @@ from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.custom_types import PdDataframe
 from miit.spatial_data.image import Annotation
-from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
-from miit.spatial_data.molecular_imaging.imzml import Imzml
+from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.spatial_omics.imzml import Imzml
 
 
 def compute_reference_matrix_mappings(ref_mat1: numpy.array, 
@@ -51,8 +51,8 @@ def compute_reference_matrix_mappings(ref_mat1: numpy.array,
 
 def get_mappings(ref_mat1: numpy.array, 
                  ref_mat2: numpy.array, 
-                 background1: int, 
-                 background2: int) -> Tuple[Dict[int, numpy.array], Dict[int, int], Set]:
+                 background1: int = 0, 
+                 background2: int = 0) -> Tuple[Dict[int, numpy.array], Dict[int, int], Set]:
     """
     Gets mappings for ref_mat1 from ref_mat2.
     Returns:

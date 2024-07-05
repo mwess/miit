@@ -13,13 +13,23 @@ import numpy as np
 import SimpleITK as sitk
 from skimage import io
 
-from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
-# from miit.spatial_data.molecular_imaging.loader import SpatialDataLoader
+from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.loaders import load_spatial_omics_data, SpatialDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
-from miit.spatial_data.image import BaseImage, DefaultImage, Annotation, Pointset, GeojsonWrapper
+from miit.spatial_data.image import BaseImage, DefaultImage, Annotation, Pointset, GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
+
+
+def get_boundary_box(image: numpy.array, background_value: float = 0) -> Tuple[int, int, int, int]:
+    if len(image.shape) != 2:
+        raise Exception(f'Bounding box requires a 2 dimensional array, but has: {len(image.shape)}')
+    points = np.argwhere(image != background_value)
+    xmin = np.min(points[:, 0])
+    xmax = np.max(points[:, 0])
+    ymin = np.min(points[:, 1])
+    ymax = np.max(points[:, 1])
+    return xmin, xmax, ymin, ymax        
 
 
 def get_table_summary_string(section: 'Section') -> str:
@@ -37,7 +47,6 @@ def get_table_summary_string(section: 'Section') -> str:
     # msi neg ion mode # b9e7f19e-37e6-11ef-9af1-fa163eee643f # ScilsExportImzml #
     ##############################################################################
     """
-
     identifiers = []
     max_name_len = len('Name')
     max_id_len = len('ID')
@@ -84,19 +93,6 @@ def get_table_summary_string(section: 'Section') -> str:
         table.append(line)
     table.append('#'*table_width)
     return '\n'.join(table)
-
-
-
-
-
-def get_boundary_box(image: numpy.array, background_value: float = 0) -> Tuple[int, int, int, int]:
-    # TODO: This works only for 2 dimensional image data?!
-    points = np.argwhere(image != background_value)
-    xmin = np.min(points[:, 0])
-    xmax = np.max(points[:, 0])
-    ymin = np.min(points[:, 1])
-    ymax = np.max(points[:, 1])
-    return xmin, xmax, ymin, ymax
 
 
 def groupwise_registration(sections: List['Section'],
@@ -188,7 +184,7 @@ class Section:
     name: Optional[str] = None
     _id: uuid.UUID = field(init=False)
     so_data: List[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: List[Union[DefaultImage, Annotation, Pointset, GeojsonWrapper]] = field(default_factory=lambda: [])
+    annotations: List[Union[DefaultImage, Annotation, Pointset, GeoJSONData]] = field(default_factory=lambda: [])
     meta_information: Optional[Dict[Any, Any]] = None
 
 
@@ -203,13 +199,14 @@ class Section:
         config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
         so_data = self.so_data.copy()
-        return Section(
+        copied_section = Section(
             reference_image=image,
             name=self.name,
-            _id=self._id,
             annotations=annotations,
             so_data=so_data,
             meta_information=config)
+        copied_section._id = self._id
+        return copied_section
 
     def crop(self, xmin, xmax, ymin, ymax):
         self.reference_image.crop(xmin, xmax, ymin, ymax)
@@ -253,12 +250,13 @@ class Section:
             so_data_transformed_list.append(so_data_transformed)
         
         config = self.meta_information.copy() if self.meta_information is not None else None
-        return Section(reference_image=image_transformed,
+        transformed_section = Section(reference_image=image_transformed,
                        name=self.name,
-                       _id=self._id,
                        annotations=annotations_transformed,
-                       so_data=so_data_transformed,
+                       so_data=so_data_transformed_list,
                        meta_information=config)
+        transformed_section._id = self._id
+        return transformed_section
 
     def store(self, directory):
         # TODO: Rewrite that function.
@@ -397,7 +395,7 @@ class Section:
         name = config['name']
         image_path = config['image_path']
         image = DefaultImage(data=io.imread(image_path))
-        id_ = int(config['id'])
+        _id = int(config['id'])
         annotations = []
         if 'annotations' in config:
             for path in config['annotations']:
@@ -435,9 +433,9 @@ class Section:
                 so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
                 so_datas.append(so_data)
 
-        return cls(image=image,
+        obj = cls(image=image,
                    name=name,
-                   id_=id_,
                    annotations=annotations,
                    so_data=so_datas,
                    config=config)
+        obj._id = _id

@@ -30,11 +30,11 @@ class BaseSpatialOmics(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def rescale(self, height: int, width: int):
+    def resize(self, height: int, width: int):
         pass
 
     @abc.abstractmethod
-    def apply_bounding_parameters(self, x1: int, x2: int, y1: int, y2: int):
+    def crop(self, x1: int, x2: int, y1: int, y2: int):
         pass
 
     @abc.abstractmethod

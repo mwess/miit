@@ -55,3 +55,5 @@ def write_affine_to_file(mat, path):
     with open(path, 'w') as f:
         output_str = f"""{mat[0,0]} {mat[0,1]} {mat[0,2]}\n{mat[1,0]} {mat[1,1]} {mat[1,2]}\n0.0 0.0 1.0"""
         f.write(output_str)
+
+

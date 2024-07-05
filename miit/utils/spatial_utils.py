@@ -3,7 +3,7 @@ import numpy as np
 import pandas
 
 from miit.custom_types import PdDataframe
-from miit.spatial_data.molecular_imaging.imaging_data import BaseSpatialOmics
+from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 
 def map_counts_to_ref_mat(counts: PdDataframe, bmi: BaseSpatialOmics) -> numpy.array:
     spec_to_ref_map = bmi.get_spec_to_ref_map()
