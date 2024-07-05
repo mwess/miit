@@ -6,7 +6,6 @@ __pycache__
 .ipynb_checkpoints
 
 save_directories/
-examples/
 impl/
 impl2/
 impl3/
@@ -20,6 +19,7 @@ notebooks/
 
 data/
 examples/
+examples/data/tmp_store
 notebooks/
 out/
 save_directories/
