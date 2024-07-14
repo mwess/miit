@@ -1,26 +1,24 @@
-Welcome to the repository of MIIT - the Multiomics Imaging Integration Toolset.
+# MIIT (the Multi-omics Imaging Integration Toolset)
 
-At the moment this is only the initial code. Over the next 2-4 weeks the following features will be added (i.e. until the middle of July).
+MIIT (pronounce: `meet`) is a Python framework for integratig spatially resolved multi-omcis data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
+(through Visium) and MSI (ImzML). There is additional_data support for various types of annotations (pointset valued data, geojson data, and masks).
 
-These include:
-- Proper installation
-- Code cleaup to remove/move dependencies.
-- Documentation and tutorial.
+## Installation
 
+MIIT can be installed using pip:
 
-TODOS:
+```
+pip install --user git+https://github.com/mwess/miit@master
+```
 
-- Test registerers and remove registerers that dont make sense anymore.
-- Make sure that MolecularImagingData loader is used and test extendability (global objects?)
-- Test groupwise registration.
-- Document at least most important functions/classes.
-- Write tutorial.
-- Make installation script.
-- Read the docs.
+## Usage
+
+We list examples of using miit in `examples/notebooks`. 
 
 
-If you use any of this code, please cite: 
+If you use this code, please cite: 
 
+```
 @article{wess2024spatial,
   title={Spatial Integration of Multi-Omics Data using the novel Multi-Omics Imaging Integration Toolset},
   author={Wess, Maximillian and Andersen, Maria K and Midtbust, Elise and Guillem, Juan Carlos Cabellos and Viset, Trond and St{\o}rkersen, {\O}ystein and Krossa, Sebastian and Rye, Morten Beck and Tessem, May-Britt},
@@ -29,3 +27,4 @@ If you use any of this code, please cite:
   year={2024},
   publisher={Cold Spring Harbor Laboratory}
 }
+```

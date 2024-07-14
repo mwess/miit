@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 import json
 import os
@@ -10,11 +11,11 @@ from typing import (
     Tuple, 
     Set,
     List,
-    Union
 )
-
 import uuid
 
+from lxml import etree
+import pandas
 import numpy
 import numpy as np
 import pandas as pd
@@ -23,6 +24,7 @@ from scipy.signal import find_peaks
 import SimpleITK as sitk
 import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
+from pyimzml.ImzMLWriter import ImzMLWriter
 
 from miit.custom_types import PdDataframe, ImzmlParserType, IntensityDict
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
@@ -30,6 +32,44 @@ from miit.spatial_data.image import Annotation, DefaultImage, read_image, BaseIm
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
+
+
+def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
+                 output_path: str,
+                 integrated_data: pandas.core.frame.DataFrame) -> None:
+    mzs = integrated_data.columns.to_numpy()
+    if mzs.dtype != np.float64:
+        mzs = mzs.astype(np.float64)
+    with ImzMLWriter(output_path, mz_dtype=np.float64, intensity_dtype=np.float64) as writer:
+        for i, coords in enumerate(template_msi.coordinates):
+            if i not in integrated_data.index:
+                continue
+            intensities = integrated_data.loc[i].to_numpy()
+            if intensities.dtype != np.float64:
+                intensities = intensities.astype(np.float64)
+            writer.addSpectrum(mzs, intensities, coords)
+    # Now we add additional parameters that imzml skipped.
+    scan_settings_params = [
+        ("max dimension x", "IMS:1000044", template_msi.imzmldict['max dimension x']),
+        ("max dimension y", "IMS:1000045", template_msi.imzmldict['max dimension y']),
+        ("pixel size x", "IMS:1000046", template_msi.imzmldict['pixel size x']),
+        ("pixel size y", "IMS:1000047", template_msi.imzmldict['pixel size y']),
+    ]
+    sl = "{http://psi.hupo.org/ms/mzml}"
+    elem_iterator = etree.parse(output_path)
+    root = elem_iterator.getroot()
+    scan_settings_list_elem = root.find('%sscanSettingsList' % sl)
+    first_scan_setting = scan_settings_list_elem.find('./%sscanSettings' %sl)
+    first_cv_param_elem = first_scan_setting.findall('./')[0]
+    for (name, accession, value) in scan_settings_params:
+        template_cv_param_elem = deepcopy(first_cv_param_elem)
+        template_cv_param_elem.attrib['accession'] = accession
+        template_cv_param_elem.attrib['value'] = str(value)
+        template_cv_param_elem.attrib['name'] = name
+        first_scan_setting.append(template_cv_param_elem)
+    xml_as_str = etree.tostring(root, pretty_print=True)
+    with open(output_path, 'wb') as f:
+        f.write(xml_as_str)
 
 
 def simple_baseline(intensities: numpy.array) -> numpy.array:
@@ -575,6 +615,7 @@ class Imzml(BaseSpatialOmics):
     def from_config(cls, config):
         # TODO: Maybe add resolution to config
         imzml_path = config['imzml']
+        image_path = config['image']
         image = read_image(image_path)
         resolution = config.get('resolution', 1)
         msi = ImzMLParser(imzml_path)

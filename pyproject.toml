@@ -30,10 +30,8 @@ tqdm = "^4.66.1"
 # Remove ultralytics dependency, since we only need opencv for reading the segmentation model
 onnxruntime = "1.17.0"
 toml = "0.10.2"
-# ultralytics = "^8.0.199"
+pyimzML = "1.5.3"
+
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"
-
-[tool.poetry.scripts]
-greedyfhist = "greedyfhist.__main__:cli"
