@@ -32,6 +32,7 @@ onnxruntime = "1.17.0"
 toml = "0.10.2"
 pyimzML = "1.5.3"
 greedyfhist = { git = "https://github.com/mwess/greedyfhist@master" }
+niftyreg = "1.5.70rc1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"

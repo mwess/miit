@@ -4,9 +4,10 @@ from os.path import join, exists
 import shlex
 import shutil
 import subprocess
-from typing import Any, Dict, Optional, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import cv2
+import niftyreg
 import numpy
 import numpy as np
 import SimpleITK as sitk
@@ -88,6 +89,8 @@ class NiftyRegWrapper(Registerer):
         # Perform registrations
         cmd_aladin_rig = f"""'{self.path_to_nifty_reg_aladin}' -ref '{fixed_path}' -flo '{moving_path}' -res '{warped_rig_image_path}' -aff '{rigid_transform_path}' -rigOnly"""
         ret_aladin_rig = subprocess.run(shlex.split(cmd_aladin_rig), capture_output=True)
+        # cmd_aladin_rig = ['aladin', '-ref', f'{fixed_path}', '-flo', f'{moving_path}', '-res', f'{warped_rig_image_path}', '-aff', f'{rigid_transform_path}', '-rigOnly']
+        # ret_aladin_rig = nifity_reg.main(args=cmd_aladin_rig)
         if len(ret_aladin_rig.stderr) != 0:
             print('Error during rigid registration:')
             print(ret_aladin_rig.stderr.decode('utf-8'))
@@ -154,8 +157,9 @@ class NiftyRegWrapper(Registerer):
         pass
     
     @classmethod
-    def load_from_config(cls, config: Dict[str, Any]) -> Registerer:
-        nifti_directory = config.get('path_to_nifty', '')
+    def load_from_config(cls, config: Optional[Dict[str, Any]] = None) -> Registerer:
+        # We dont use the interface of the niftyreg package directly to better control output to the console.
+        nifti_directory = str(niftyreg.bin_path)
         path_to_nifty_reg_aladin = join(nifti_directory, 'reg_aladin')
         path_to_nifty_reg_f3d = join(nifti_directory, 'reg_f3d')
         path_to_nifty_reg_resample = join(nifti_directory, 'reg_resample')

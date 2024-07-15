@@ -19,7 +19,7 @@ notebooks/
 
 data/
 example/data/tmp_store
-notebooks/
+secret_notebooks/
 out/
 save_directories/
 tmp/
