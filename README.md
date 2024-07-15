@@ -8,7 +8,7 @@ MIIT (pronounce: `meet`) is a Python framework for integratig spatially resolved
 MIIT can be installed using pip:
 
 ```
-pip install --user git+https://github.com/mwess/miit@master
+pip install --user git+https://github.com/mwess/miit@v0.0.1
 ```
 
 ## Usage
