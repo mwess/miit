@@ -13,11 +13,9 @@ impl3/
 configs/
 trained_models/
 
-notebooks/
 .Rproj.user
 
 
-data/
 secret_notebooks/
 out/
 save_directories/
