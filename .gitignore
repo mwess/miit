@@ -18,7 +18,6 @@ notebooks/
 
 
 data/
-example/data/tmp_store
 secret_notebooks/
 out/
 save_directories/
@@ -30,3 +29,4 @@ scripts/
 .vscode
 
 secret_scripts/
+secret_examples/
