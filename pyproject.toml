@@ -14,12 +14,16 @@ authors = ["Maximilian Wess <maximilian.wess@ntnu.no>"]
 [tool.poetry.dependencies]
 
 geojson = "^3.1.0"
+matplotlib = "^3.8.2"
+shapely = "^2.0.2"
+lxml = "^5.2.2"
 imagecodecs = "^2023.3.16"
 imageio = "^2.31.5"
 numpy = "^1.24.4"
 opencv-python = "^4.8.1.78"
 pandas = "^2.0.3"
 Pillow = "^10.1.0"
+scikit-learn = "^1.4.0"
 scikit-image = "^0.21.0"
 scipy = "^1.10.1"
 setuptools = "^68.2.2"

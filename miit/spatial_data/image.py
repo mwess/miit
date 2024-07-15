@@ -19,7 +19,6 @@ import tifffile
 import shapely
 import skimage
 
-from greedyfhist.utils.geojson_utils import geojson_2_table, convert_table_2_geo_json, read_geojson
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
 
