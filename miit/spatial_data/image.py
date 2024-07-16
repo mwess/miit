@@ -28,19 +28,10 @@ def convert_linestring_to_polygon(geom):
         coords = np.vstack((coords, coords[0, :]))
     return shapely.Polygon(coords)
 
-@dataclass
-class SupportsImageInterpolation(Protocol):
-
-    image_data: numpy.array
-    interpolation_mode: str
-
-    def transform_image(self, registerer: Registerer, transformation: RegistrationResult, args: Optional[Any] = None) -> Any:
-        ...
 
 def read_image(fpath):
     if fpath.endswith('.tiff'):
         tiff_file = tifffile.TiffFile(fpath)
-        # resolution = get_resolution_from_tiff(tiff_file)
         return DefaultImage(data=tiff_file.asarray())
         # Read tiffil.
     else:
@@ -91,7 +82,7 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def warp(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
         pass
 
     @abc.abstractmethod
@@ -139,7 +130,7 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def warp(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
         pass
 
     @abc.abstractmethod
@@ -176,7 +167,7 @@ class DefaultImage(BaseImage):
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
 
-    def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return DefaultImage(data=transformed_image)
 
@@ -253,7 +244,7 @@ class Annotation(BaseImage):
     def flip(self, axis: int =0):
         self.data = np.flip(self.data, axis=axis)
 
-    def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return Annotation(data=transformed_image, 
                           labels=self.labels,
@@ -328,15 +319,15 @@ class Pointset(BasePointset):
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         warped_pc = self.data.copy()
-        pc_ = self.data[['x', 'y']].to_numpy()
+        pc_ = self.data[[self.x_axis, self.y_axis]].to_numpy()
         coordinates_transformed = registerer.transform_pointset(pc_, transformation, **kwargs)
         if isinstance(coordinates_transformed, np.ndarray):
-            temp_df = pd.DataFrame(coordinates_transformed, columns=['x', 'y'])
+            temp_df = pd.DataFrame(coordinates_transformed, columns=[self.x_axis, self.y_axis])
             coordinates_transformed = temp_df
         # coordinates_transformed = transform_result.final_transform.pointcloud
-        warped_pc = warped_pc.assign(x=coordinates_transformed['x'].values, y=coordinates_transformed['y'].values)
+        warped_pc = warped_pc.assign(x=coordinates_transformed[self.x_axis].values, y=coordinates_transformed[self.y_axis].values)
         return Pointset(data=warped_pc,
                         name=self.name,
                         x_axis=self.x_axis,
@@ -435,7 +426,7 @@ class GeoJSONData(BasePointset):
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def warp(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         geometries = self.data['features'] if 'features' in self.data else self.data
         warped_geometries = []
         for _, geometry in enumerate(geometries):

@@ -19,6 +19,46 @@ from miit.utils.utils import custom_max_voting_filter
 from miit.spatial_data.image import Annotation, DefaultImage, Pointset
 
 
+def merge_dicts(dict1, dict2):
+    new_dict = {}
+    for key in dict1:
+        if dict1[key] in dict2:
+            new_dict[key] = dict2[dict1[key]]
+    return new_dict
+
+
+def convert_table_to_mat(table: pandas.core.frame.DataFrame,
+                         visium: 'Visium',
+                         col: Any):
+    """
+    Utility function that uses a visium object to convert integrated data
+    from a dataframe format to a matrix format by projecting onto the
+    reference matrix.
+    """
+    return get_measurement_matrix_sep(table, 
+                                      visium.ref_mat.data,
+                                      visium.table.data,
+                                      col)
+    
+
+def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
+    local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
+    intern_idx_local_idx_dict = {}
+    for idx, row in st_table.iterrows():
+        intern_idx_local_idx_dict[int(row['int_idx'])] = idx
+    merged_dict = merge_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
+    indexer = np.array([merged_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+    measurement_mat = indexer[(ref_mat - ref_mat.min())]
+    return measurement_mat
+
+
+def get_measurement_dict(df, col1):
+    dct = {}
+    for idx, row in df.iterrows():
+        dct[idx] = row[col1]
+    return dct
+
+
 def get_scalefactor(scalefactors, image_scale):
     # 1 corresponds to ogirinal image size.
     scalefactor = 1
@@ -44,12 +84,8 @@ def scale_tissue_positions(tissue_positions,
 
 @dataclass
 class Visium(BaseSpatialOmics):
-    # TODO: Specify which Visium
     
     image: DefaultImage
-    # Need a map from pos to ref_mat
-    # TODO: Implement later. For now: If it works, it works!
-    # pos_to_ref_map: dict
     table: Pointset
     scale_factors: dict
     __ref_mat: Annotation = field(init=False)
@@ -57,26 +93,16 @@ class Visium(BaseSpatialOmics):
     name: str = ''
     skip_ref_mat_creation: bool = False
     config: Optional[dict] = None
-    spot_scaling_journal: Optional[PdDataframe] = None
     tissue_mask: Optional[numpy.array] = None
     background: ClassVar[int] = 0
     
     def __post_init__(self):
         if not self.skip_ref_mat_creation:
             self.__init_ref_mat()
-        if self.spot_scaling_journal is None:
-            self.__init_spot_scaling_journal()
-            self.update_scaling_journal(operation_desc='init')
         self._id = uuid.uuid1()
     
-    def __init_spot_scaling_journal(self):
-        ref_idx = np.unique(self.__ref_mat.data)
-        ref_idx = ref_idx[ref_idx!=self.background]
-        self.spot_scaling_journal = pd.DataFrame(index=ref_idx)
-
     def __init_ref_mat(self):
         self.build_ref_mat()
-        # self.__ref_mat = Annotation(self.build_ref_mat())
 
     @property
     def ref_mat(self):
@@ -113,10 +139,6 @@ class Visium(BaseSpatialOmics):
             with open(config_path, 'w') as f:
                 json.dump(self.config, f)
             f_dict['config_path'] = config_path
-        if self.spot_scaling_journal is not None:
-            spot_scaling_journal_path = join(directory, 'spot_scaling_journal.csv')
-            self.spot_scaling_journal.to_csv(spot_scaling_journal_path)
-            f_dict['spot_scaling_journal_path'] = spot_scaling_journal_path
         f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
@@ -147,11 +169,6 @@ class Visium(BaseSpatialOmics):
                 config = json.load(f)
         else:
             config = None
-        spot_scaling_journal_path = attributes.get('spot_scaling_journal_path', None)
-        if spot_scaling_journal_path is not None:
-            spot_scaling_journal = pd.read_csv(spot_scaling_journal_path)
-        else:
-            spot_scaling_journal = None
         id_ = uuid.UUID(os.path.basename(directory.rstrip('/')))
         name = attributes['name']
         obj = cls(
@@ -160,7 +177,6 @@ class Visium(BaseSpatialOmics):
             scale_factors=scale_factors,
             skip_ref_mat_creation=True,
             config=config,
-            spot_scaling_journal=spot_scaling_journal,
             name=name
         )
         obj.ref_mat = __ref_mat
@@ -170,14 +186,12 @@ class Visium(BaseSpatialOmics):
         
 
     def build_ref_mat(self):
-        # TODO: Check whether "scale_ref_original_fullres" should be removed and replace with the original key.
         scalefactor = self.config['scalefactor']
         spot_diameter = int(round(self.scale_factors['spot_diameter_fullres'] * scalefactor))
         spot_radius = spot_diameter//2
         
         # Add numeric indices for the ref_mat
         self.spec_to_ref_map = {}
-        # TODO: Clean up so that we remove int_idx information from table.
         ref_mat_idx_counter = 1
         for tbl_idx, _ in self.table.data.iterrows():
             self.spec_to_ref_map[tbl_idx] = ref_mat_idx_counter
@@ -186,7 +200,6 @@ class Visium(BaseSpatialOmics):
         ref_mat = np.zeros((self.image.data.shape[0], self.image.data.shape[1]), dtype=np.int64)
         for tbl_idx, row in self.table.data.iterrows():
             x, y = row['x'], row['y']
-            # int_idx = row['int_idx']
             int_idx = self.spec_to_ref_map[tbl_idx]
             xl = max(math.floor(x - spot_radius), 0)
             xh = min(math.ceil(x + spot_radius), self.image.data.shape[0])
@@ -197,13 +210,7 @@ class Visium(BaseSpatialOmics):
                 for j in range(yl, yh):
                     if np.sqrt((i - x)**2 + (j - y)**2) <= spot_radius:
                         ref_mat[i,j] = int_idx
-        # TODO: See whether I can get ardount the np.float32. Can Greedy register with just ints.
-        self.__ref_mat = Annotation(data=ref_mat.astype(np.float32))
-
-    def update_scaling_journal(self, operation_desc=None):
-        ref_idxs, counts = np.unique(self.__ref_mat.data, return_counts=True)
-        new_col = pd.DataFrame(counts, index=ref_idxs, columns=[operation_desc])
-        self.spot_scaling_journal = self.spot_scaling_journal.merge(new_col, left_index=True, right_index=True)
+        self.__ref_mat = Annotation(data=ref_mat)
 
     @staticmethod
     def get_type() -> str:
@@ -214,7 +221,6 @@ class Visium(BaseSpatialOmics):
         self.image.pad(padding)
         self.table.pad(padding)
         self.__ref_mat.pad(padding)
-        self.update_scaling_journal(operation_desc=f'pad_data({padding})')
 
     def resize(self, height: int, width: int):
         h_old, w_old = self.image.data.shape[0], self.image.data.shape[1]
@@ -223,7 +229,6 @@ class Visium(BaseSpatialOmics):
         height_scale = height / h_old
         self.table.resize(height_scale, width_scale)
         self.__ref_mat.resize(height, width) 
-        self.update_scaling_journal(operation_desc=f'rescale_data(height={height}, width={width}')
 
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
@@ -231,7 +236,6 @@ class Visium(BaseSpatialOmics):
         # TODO: Should points that are out-of-bounds of the image be filtered as well?
         if self.__ref_mat is not None:
             self.__ref_mat.crop(x1, x2, y1, y2)
-            self.update_scaling_journal(operation_desc=f'apply_bounding_parameters({x1}, {x2}, {y1}, {y2})')
 
     def flip(self, axis: int =0):
         self.image.flip(axis=axis)
@@ -252,21 +256,21 @@ class Visium(BaseSpatialOmics):
             scale_factors=self.scale_factors.copy(),
             skip_ref_mat_creation=True,
             config=self.config.copy(),
-            spot_scaling_journal=self.spot_scaling_journal.copy()
         )
         obj.spec_to_ref_map = self.spec_to_ref_map
         obj.ref_mat = ref_mat
         return obj
 
-    def warp(self, 
+    def apply_transform(self, 
              registerer: Registerer, 
              transformation: Any, 
              **kwargs: Dict) -> 'Visium':
-        image_transformed = self.image.warp(registerer, transformation, **kwargs)
-        ref_mat_warped = self.__ref_mat.warp(registerer, transformation, **kwargs)
+        image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
+        ref_mat_warped = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
         # TODO: See if we can get around the custom_max_voting_filter
-        ref_mat_warped = Annotation(data=custom_max_voting_filter(ref_mat_warped.data))
-        table = self.table.warp(registerer, transformation, **kwargs)
+        # ref_mat_warped = Annotation(data=custom_max_voting_filter(ref_mat_warped.data))
+        ref_mat_warped = Annotation(data=ref_mat_warped.data)
+        table = self.table.apply_transform(registerer, transformation, **kwargs)
         config = self.config.copy() if self.config is not None else None
         transformed_st_data = Visium(
             image=image_transformed, 
@@ -274,11 +278,9 @@ class Visium(BaseSpatialOmics):
             scale_factors=self.scale_factors, 
             skip_ref_mat_creation=True,
             config=config,
-            spot_scaling_journal=self.spot_scaling_journal.copy()
         )
         transformed_st_data.ref_mat = ref_mat_warped
         transformed_st_data.spec_to_ref_map = self.spec_to_ref_map.copy()
-        transformed_st_data.update_scaling_journal(operation_desc='warping')
         return transformed_st_data
 
     def get_spec_to_ref_map(self, reverse=False):
@@ -315,7 +317,6 @@ class Visium(BaseSpatialOmics):
         
         directory: output directory of spaceranger, typically named out.
         """
-        # TODO: What should be the default file?
         if not exists(directory):
             # Throw nice custom exception here.
             pass

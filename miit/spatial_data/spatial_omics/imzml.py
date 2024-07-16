@@ -26,7 +26,7 @@ import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
 
-from miit.custom_types import PdDataframe, ImzmlParserType, IntensityDict
+from miit.custom_types import ImzmlParserType, IntensityDict
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.image import Annotation, DefaultImage, read_image, BaseImage
 from miit.registerers.base_registerer import Registerer
@@ -34,9 +34,37 @@ from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
 
 
+def to_ion_images(table, imzml, background_value = 0):
+    """
+    Converts integrated msi data into an image presentation using an `ImzML` object.
+
+    Experimental function at the moment.
+    """
+    n_ints = table.shape[1]
+    ref_to_spec_map = imzml.get_spec_to_ref_map(reverse=True)
+    ref_mat = imzml.ref_mat.data
+    ion_cube = np.zeros((ref_mat.shape[0], ref_mat.shape[1], n_ints))
+    for i in range(ref_mat.shape[0]):
+        for j in range(ref_mat.shape[1]):
+            val = ref_mat[i,j]
+            if background_value == val:
+                ion_cube[i,j,:] = 0
+            else:
+                imzml_idx = ref_to_spec_map[val]
+                ints = table.loc[imzml_idx].to_numpy()
+                ion_cube[i,j] = ints
+                # local_ints = int_dict[val]
+                # for int_idx, val in enumerate(local_ints):
+                #     ion_cube[i,j,int_idx] = val
+    return ion_cube
+
+
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
                  output_path: str,
                  integrated_data: pandas.core.frame.DataFrame) -> None:
+    """Exports integrated msi data into the imzML format. Most of the data is written using
+    `pyimzml`'s `ImzMLWriter`. However some information such as pixel size is not provided, which
+    we add by manually adding the information to the imzML file."""
     mzs = integrated_data.columns.to_numpy()
     if mzs.dtype != np.float64:
         mzs = mzs.astype(np.float64)
@@ -114,26 +142,33 @@ def get_metabolite_intensities(
     return intensities_per_spot
 
 
-def get_metabolite_intensities2(msi, 
+def get_metabolite_intensities_from_full_spectrum(msi, 
                                 spectra_idxs, 
                                 mz_intervals,
                                 norm_f=None,
-                                baseline_f=None,
-                                smooth_f=None) -> Dict:
+                                baseline_f=None) -> Dict:
+    """
+    Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
+    used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
+    Only spectra within `spectra_idxs` will be processed.
+    
+    Returns:
+        Dictionary of spectra_idxs to intensity peaks.
+    
+    
+    """
     if norm_f is None:
         norm_f = tic_trapz
     if intensity_f is None:
         intensity_f = np.max
     if baseline_f is None:
         baseline_f = simple_baseline
-    # smooth_f = None
     
     intensities_per_spot = {}
     for spectrum_idx in spectra_idxs:
         if spectrum_idx not in intensities_per_spot:
             intensities_per_spot[spectrum_idx] = []
         mzs, intensities = msi.getspectrum(spectrum_idx)
-        # Smoothing is still missing
         intensities = baseline_f(intensities)
         for start, end, _ in mz_intervals:
             lower_bound = find_nearest(mzs, start)
@@ -198,24 +233,20 @@ def convert_to_matrix(msi,
     
     
     """
-    # TODO: For some reason some of the exports are inverted. Keep for now, but fix later. Unfortunately, NiftyReg has trouble with this simple registration.
     scale_x = msi.imzmldict['pixel size x']/target_resolution
     scale_y = msi.imzmldict['pixel size y']/target_resolution
     max_x = int(msi.imzmldict['max dimension x']/target_resolution)
     max_y = int(msi.imzmldict['max dimension y']/target_resolution)
     proj_mat = np.zeros((max_y, max_x), dtype=int)
-    # proj_mat = np.zeros((max_x, max_y), dtype=np.int32)
     spec_to_ref_map = {}
     for idx, (x,y,_) in enumerate(msi.coordinates):
         x_s = int((x-1)*scale_x)
         x_e = int(x_s + scale_x)
         y_s = int((y-1)*scale_y)
         y_e = int(y_s + scale_y)
-        # proj_mat[x_s:x_e,y_s:y_e] = idx + 1
         proj_mat[y_s:y_e,x_s:x_e] = idx + 1
         spec_to_ref_map[idx] = idx + 1
     if srd is not None:
-        # annotation_mat = np.zeros((max_x, max_y), dtype=np.uint8)
         annotation_mat = np.zeros((max_y, max_x), dtype=np.uint8)
         points = []
         for _, point in enumerate(srd['Regions'][0]['Sources'][0]['Spots']):
@@ -232,7 +263,6 @@ def convert_to_matrix(msi,
             x_e = int(x_s + scale_x)
             y_s = int(y*scale_y)
             y_e = int(y_s + scale_y)
-            # annotation_mat[x_s:x_e,y_s:y_e] = 1
             annotation_mat[y_s:y_e,x_s:x_e] = 1
     else:
         annotation_mat = None
@@ -338,10 +368,6 @@ def msi_default_spot_accumulation_fun(source_keys,
     selected_datas = measurement_df[source_keys].transpose() 
     if unrolled_keys.shape[0] == 0:
         unrolled_datas_stats = selected_datas.copy()
-        # selected_datas = pd.DataFrame(np.zeros((bck_weight, unrolled_datas.shape[1])), 
-        #                                  columns=unrolled_datas.columns,
-        #                                  index=bck_weight*['background'])
-
         unrolled_datas = pd.DataFrame(np.zeros((bck_weight, selected_datas.shape[1])), 
                                       index=bck_weight*['background'], 
                                       columns=selected_datas.columns)
@@ -352,13 +378,10 @@ def msi_default_spot_accumulation_fun(source_keys,
                                              columns=unrolled_datas.columns,
                                              index=bck_weight*['background'])
             unrolled_datas = pd.concat([unrolled_datas, zero_df], axis=0)
-        # unrolled_datas = unrolled_datas.transpose()
     accumulated_vals = unrolled_datas.apply(accumulator_function).transpose()
-        # return accumulated_vals, unrolled_datas
     unrolled_datas_stats = flatten_to_row(accumulated_vals)
     unrolled_datas_stats['n_bck_pixls'] = bck_weight
     # Background pixel information here
-    # unrolled_datas_stats['n_bck_pixels'] = get_number_of_background_pixels(unrolled_datas, background_identifier)
     unrolled_datas_stats['n_pixels'] = unrolled_keys.shape[0] + bck_weight 
     return unrolled_datas_stats
 
@@ -372,32 +395,16 @@ def flatten_to_row(df):
 @dataclass
 class Imzml(BaseSpatialOmics):
 
-    #TODO: Add proper support for srd file format.
-    
     image: DefaultImage 
     __ref_mat: Annotation = field(init=False, default=None)
     spec_to_ref_map: dict
     ann_mat: Optional[Annotation] = None
-    spot_scaling_journal: Optional[PdDataframe] = None
     background: ClassVar[int] = 0
     config: Optional[dict] = None
     name: str = ''
 
     def __post_init__(self):
-        if self.spot_scaling_journal is None and self.__ref_mat is not None:
-            self.__init_spot_scaling_journal()
-            self.update_scaling_journal(operation_desc='init')
         self._id = uuid.uuid1()
-
-    def __init_spot_scaling_journal(self):
-        ref_idx = np.unique(self.__ref_mat.data)
-        ref_idx = ref_idx[ref_idx != self.background]
-        self.spot_scaling_journal = pd.DataFrame(index=ref_idx)
-        
-    def update_scaling_journal(self, operation_desc=None):
-        ref_idxs, counts = np.unique(self.__ref_mat.data, return_counts=True)
-        new_col = pd.DataFrame(counts, index=ref_idxs, columns=[operation_desc])
-        self.spot_scaling_journal = self.spot_scaling_journal.merge(new_col, left_index=True, right_index=True)
 
     @property
     def ref_mat(self):
@@ -406,9 +413,6 @@ class Imzml(BaseSpatialOmics):
     @ref_mat.setter
     def ref_mat(self, ref_mat: Annotation):
         self.__ref_mat = ref_mat
-        if self.spot_scaling_journal is None:
-            self.__init_spot_scaling_journal()
-            self.update_scaling_journal(operation_desc='init')
 
     @staticmethod
     def get_type() -> str:
@@ -419,24 +423,18 @@ class Imzml(BaseSpatialOmics):
         self.__ref_mat.pad(padding, constant_values=self.background)
         if self.ann_mat is not None:
             self.ann_mat.pad(padding, constant_values=0)
-        operation_desc = f'pad_data({padding})'
-        self.update_scaling_journal(operation_desc)
 
     def resize(self, height: int, width: int):
         self.image.resize(height, width)
         self.__ref_mat.resize(height, width)
         if self.ann_mat is not None:
             self.ann_mat.resize(height, width)
-        operation_desc = f'rescale_data(height={height}, width={width})'
-        self.update_scaling_journal(operation_desc=operation_desc)
 
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
         self.__ref_mat.crop(x1, x2, y1, y2)
         if not self.ann_mat is None:
             self.ann_mat.crop(x1, x2, y1, y2)
-        operation_desc = f'apply_bounding_box({x1}, {x2}, {y1}, {y2})'
-        self.update_scaling_journal(operation_desc=operation_desc)
 
     def get_spec_to_ref_map(self, reverse=False):
         map_ = None
@@ -455,19 +453,18 @@ class Imzml(BaseSpatialOmics):
             image=self.image.copy(),
             spec_to_ref_map=spec_to_ref_map,
             ann_mat=ann_mat,
-            spot_scaling_journal=self.spot_scaling_journal.copy()
         )
         obj.ref_mat = ref_mat
         return obj
 
-    def warp(self, 
+    def apply_transform(self, 
              registerer: Registerer, 
              transformation: Any, 
              **kwargs: Dict) -> 'Imzml':
-        image_transformed = self.image.warp(registerer, transformation, **kwargs)
-        ref_mat_transformed = self.__ref_mat.warp(registerer, transformation, **kwargs)
+        image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
+        ref_mat_transformed = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
         if self.ann_mat is not None:
-            ann_mat_transformed = self.ann_mat.warp(registerer, transformation, **kwargs)
+            ann_mat_transformed = self.ann_mat.apply_transform(registerer, transformation, **kwargs)
         else:
             ann_mat_transformed = None
         config = self.config.copy() if self.config is not None else None
@@ -476,10 +473,8 @@ class Imzml(BaseSpatialOmics):
             image=image_transformed, 
             spec_to_ref_map=self.spec_to_ref_map,
             ann_mat=ann_mat_transformed,
-            spot_scaling_journal=self.spot_scaling_journal.copy(),
             name=self.name)
         scils_export_imzml_transformed.ref_mat = ref_mat_transformed
-        scils_export_imzml_transformed.update_scaling_journal(operation_desc='warping')
         return scils_export_imzml_transformed
 
     def flip(self, axis: int = 0):
@@ -510,10 +505,6 @@ class Imzml(BaseSpatialOmics):
         if self.ann_mat is not None:
             self.ann_mat.store(directory)
             f_dict['ann_mat'] = join(directory, str(self.ann_mat._id))
-        if self.spot_scaling_journal is not None:
-            spot_scaling_journal_path = join(directory, 'spot_scaling_journal.csv')
-            self.spot_scaling_journal.to_csv(spot_scaling_journal_path)
-            f_dict['spot_scaling_journal_path'] = spot_scaling_journal_path
         f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
@@ -533,18 +524,12 @@ class Imzml(BaseSpatialOmics):
             ann_mat = Annotation.load(ann_mat_path)
         else:
             ann_mat = None
-        spot_scaling_journal_path = attributes.get('spot_scaling_journal_path', None)
-        if spot_scaling_journal_path is not None:
-            spot_scaling_journal = pd.read_csv(spot_scaling_journal_path)
-        else:
-            spot_scaling_journal = None
         name = attributes.get('name', '')
         obj = cls(
             config=config,
             image=image,
             spec_to_ref_map=spec_to_ref_map,
             ann_mat=ann_mat,
-            spot_scaling_journal=spot_scaling_journal,
             name=name
         ) 
         obj.ref_mat = __ref_mat
@@ -666,7 +651,6 @@ class Imzml(BaseSpatialOmics):
         unique_ids = {x - 1 for x in unique_ids}
         return mappings, unique_ids
 
-    # TODO: Find out why spec to refmap maps strings???
     def set_map_to_msi_pixel_idxs(self, ref_mat_values: Set) -> Set:
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
         return {int(spec_to_ref_map_rev[x]) for x in ref_mat_values}

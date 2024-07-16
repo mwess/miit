@@ -141,8 +141,8 @@ def register_to_ref_image(target_image: numpy.array,
     if args is None:
         args = {}
     transformation = registerer.register_images(target_image, source_image, **args)
-    warped_data = data.warp(registerer, transformation)
-    warped_ref_image = DefaultImage(data=source_image).warp(registerer, transformation).data
+    warped_data = data.apply_transform(registerer, transformation)
+    warped_ref_image = DefaultImage(data=source_image).apply_transform(registerer, transformation).data
     return warped_data, warped_ref_image
 
 
@@ -239,14 +239,14 @@ class Section:
              **kwargs: Dict) -> 'Section':
         """Applies transformation to all spatially resolved data in the section object.
         """
-        image_transformed = self.reference_image.warp(registerer, transformation, **kwargs)
+        image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
         annotations_transformed = []
         for annotation in self.annotations:
-            annotation_transformed = annotation.warp(registerer, transformation, **kwargs)
+            annotation_transformed = annotation.apply_transform(registerer, transformation, **kwargs)
             annotations_transformed.append(annotation_transformed)
         so_data_transformed_list = []
         for so_data_ in self.so_data:
-            so_data_transformed = so_data_.warp(registerer, transformation, **kwargs)
+            so_data_transformed = so_data_.apply_transform(registerer, transformation, **kwargs)
             so_data_transformed_list.append(so_data_transformed)
         
         config = self.meta_information.copy() if self.meta_information is not None else None

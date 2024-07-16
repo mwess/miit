@@ -22,7 +22,7 @@ class BaseSpatialOmics(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def warp(self, registerer: Registerer, transformation: Any, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
+    def apply_transform(self, registerer: Registerer, transformation: Any, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
         pass
 
     @abc.abstractmethod
