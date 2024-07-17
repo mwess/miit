@@ -53,9 +53,6 @@ def to_ion_images(table, imzml, background_value = 0):
                 imzml_idx = ref_to_spec_map[val]
                 ints = table.loc[imzml_idx].to_numpy()
                 ion_cube[i,j] = ints
-                # local_ints = int_dict[val]
-                # for int_idx, val in enumerate(local_ints):
-                #     ion_cube[i,j,int_idx] = val
     return ion_cube
 
 
@@ -154,8 +151,6 @@ def get_metabolite_intensities_from_full_spectrum(msi,
     
     Returns:
         Dictionary of spectra_idxs to intensity peaks.
-    
-    
     """
     if norm_f is None:
         norm_f = tic_trapz
