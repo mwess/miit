@@ -1,13 +1,10 @@
-from typing import List, Tuple
+from typing import List
 
 
-import cv2
 import numpy, numpy as np
-import tifffile
 
 
 from miit.spatial_data.section import Section
-from miit.spatial_data.base_types.default_image import DefaultImage
 
 def get_symmetric_padding(img1: numpy.array, img2: numpy.array):
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
@@ -61,14 +58,5 @@ def write_affine_to_file(mat, path):
         f.write(output_str)
 
 
-def read_image(fpath):
-    if fpath.endswith('.tiff'):
-        tiff_file = tifffile.TiffFile(fpath)
-        return DefaultImage(data=tiff_file.asarray())
-        # Read tiffil.
-    else:
-        img =  cv2.imread(fpath)
-        image = DefaultImage(data=img)
-        return image
 
 

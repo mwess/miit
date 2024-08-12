@@ -27,11 +27,11 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from miit.spatial_data.base_types import (
     Annotation,
     BaseImage,
-    DefaultImage
+    DefaultImage,
+    read_image
 )
 from miit.custom_types import ImzmlParserType, IntensityDict
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
-from miit.utils.image_utils import read_image
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
