@@ -7,16 +7,13 @@ from typing import Any, ClassVar, Dict, Optional, Tuple
 import uuid
 
 import cv2
-import numpy
-import numpy as np
-import pandas
-import pandas as pd
+import numpy, numpy as np
+import pandas, pandas as pd
 
-from miit.custom_types import PdDataframe
+from miit.spatial_data.base_types import Annotation, DefaultImage, Pointset
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
-from miit.utils.utils import custom_max_voting_filter
-from miit.spatial_data.image import Annotation, DefaultImage, Pointset
+# from miit.utils.utils import custom_max_voting_filter
 
 
 def merge_dicts(dict1, dict2):

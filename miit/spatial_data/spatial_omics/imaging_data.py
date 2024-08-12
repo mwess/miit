@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 import uuid
 
 from miit.registerers.base_registerer import Registerer
-from miit.spatial_data.image import Annotation
+from miit.spatial_data.base_types.annotation import Annotation
 
 
 @dataclass

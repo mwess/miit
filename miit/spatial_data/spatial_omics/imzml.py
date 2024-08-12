@@ -15,20 +15,23 @@ from typing import (
 import uuid
 
 from lxml import etree
-import pandas
-import numpy
-import numpy as np
-import pandas as pd
+import pandas, pandas as pd
+import numpy, numpy as np
 from scipy.integrate import trapezoid
 from scipy.signal import find_peaks
-import SimpleITK as sitk
+
 import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
 
+from miit.spatial_data.base_types import (
+    Annotation,
+    BaseImage,
+    DefaultImage
+)
 from miit.custom_types import ImzmlParserType, IntensityDict
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
-from miit.spatial_data.image import Annotation, DefaultImage, read_image, BaseImage
+from miit.utils.image_utils import read_image
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration

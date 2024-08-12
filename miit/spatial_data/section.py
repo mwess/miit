@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import glob
 import json
 import os
 from os.path import join, exists
@@ -7,17 +6,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import uuid
 import shutil
 
-import pandas as pd
-import numpy
-import numpy as np
-import SimpleITK as sitk
-from skimage import io
+import numpy, numpy as np
 
+from miit.spatial_data.base_types import (
+    DefaultImage,
+    BaseImage,
+    BasePointset,
+)
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.loaders import load_spatial_omics_data, SpatialDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
-from miit.spatial_data.image import BaseImage, DefaultImage, Annotation, Pointset, GeoJSONData
+from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
@@ -128,9 +128,9 @@ def groupwise_registration(sections: List['Section'],
 
 def register_to_ref_image(target_image: numpy.array, 
                           source_image: numpy.array, 
-                          data: Union[BaseImage, Pointset],
+                          data: Union[BaseImage, BasePointset],
                           registerer=None,
-                          args=None) -> Tuple[Union[BaseImage, Pointset], numpy.array]:
+                          args=None) -> Tuple[Union[BaseImage, BasePointset], numpy.array]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
@@ -161,7 +161,7 @@ class Section:
     Attributes
     ----------
     
-    reference_image: DefaultImage
+    reference_image: BaseImage
         Used for registration with other sections. In some cases 
         used for spatial transformations on coordinate data.
         
@@ -174,17 +174,17 @@ class Section:
     so_data: List[BaseMolecularImaging] = field(default_factory=lambda: [])
         Contains additional more complex spatial omics types (e.g. MSI, ST).
         
-    annotations: List[Union[Annotation, Pointset, GeoJson]] = field(default_factory=lambda: [])
+    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
         List of additional annotations. 
     
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
-    reference_image: Optional[DefaultImage] = None
+    reference_image: Optional[BaseImage] = None
     name: Optional[str] = None
     _id: uuid.UUID = field(init=False)
     so_data: List[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: List[Union[DefaultImage, Annotation, Pointset, GeoJSONData]] = field(default_factory=lambda: [])
+    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
     meta_information: Optional[Dict[Any, Any]] = None
 
 
@@ -383,59 +383,59 @@ class Section:
         """
         self.reference_image.flip(axis=axis)
         for annotation in self.annotations:
-            if isinstance(annotation, Pointset):
+            if isinstance(annotation, BasePointset):
                 annotation.flip(self.reference_image.data.shape[:2], axis=axis)
             else:
                 annotation.flip(axis=axis)
         for so_data_ in self.so_data:
             so_data_.flip(axis=axis)
 
-    @classmethod
-    def from_config(cls, config: Dict[str, str]):
-        name = config['name']
-        image_path = config['image_path']
-        image = DefaultImage(data=io.imread(image_path))
-        _id = int(config['id'])
-        annotations = []
-        if 'annotations' in config:
-            for path in config['annotations']:
-                annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-                # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-                # TODO: Change preprocessing from Qupath output and remove line below.
-                if len(annotation_data.shape) > 2:
-                    annotation_data = np.moveaxis(annotation_data, 0, -1)
-                annotation = Annotation(data=annotation_data)
-                annotations.append(annotation)
-        if 'segmentation_mask_path' in config:
-            segmenation_mask_path = config['segmentation_mask_path']
-            segmenation_mask = Annotation(data=io.imread(segmenation_mask_path), name='tissue_mask')
-            annotations.append(segmenation_mask)
-        if 'landmarks_path' in config:
-            landmarks = Pointset(data=pd.read_csv(config['landmarks_path']), name='landmarks')
-            annotations.append(landmarks)
-        # molecular_data = None
-        if 'named_annotations' in config:
-            for na_config in config['named_annotations']:
-                path = na_config['annotation_path']
-                annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-                # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-                # TODO: Change preprocessing from Qupath output and remove line below.
-                if len(annotation_data.shape) > 2:
-                    annotation_data = np.moveaxis(annotation_data, 0, -1)
-                label_path = na_config['label_path']
-                with open(label_path, 'r') as f:
-                    labels = [x.strip() for x in f.readlines()]
-                annotation = Annotation(data=annotation_data, labels=labels)
-                annotations.append(annotation)                
-        so_datas = []
-        if 'so_data' in config:
-            for so_config in config['so_datas']:
-                so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
-                so_datas.append(so_data)
+    # @classmethod
+    # def from_config(cls, config: Dict[str, str]):
+    #     name = config['name']
+    #     image_path = config['image_path']
+    #     image = DefaultImage(data=io.imread(image_path))
+    #     _id = int(config['id'])
+    #     annotations = []
+    #     if 'annotations' in config:
+    #         for path in config['annotations']:
+    #             annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
+    #             # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
+    #             # TODO: Change preprocessing from Qupath output and remove line below.
+    #             if len(annotation_data.shape) > 2:
+    #                 annotation_data = np.moveaxis(annotation_data, 0, -1)
+    #             annotation = Annotation(data=annotation_data)
+    #             annotations.append(annotation)
+    #     if 'segmentation_mask_path' in config:
+    #         segmenation_mask_path = config['segmentation_mask_path']
+    #         segmenation_mask = Annotation(data=io.imread(segmenation_mask_path), name='tissue_mask')
+    #         annotations.append(segmenation_mask)
+    #     if 'landmarks_path' in config:
+    #         landmarks = Pointset(data=pd.read_csv(config['landmarks_path']), name='landmarks')
+    #         annotations.append(landmarks)
+    #     # molecular_data = None
+    #     if 'named_annotations' in config:
+    #         for na_config in config['named_annotations']:
+    #             path = na_config['annotation_path']
+    #             annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
+    #             # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
+    #             # TODO: Change preprocessing from Qupath output and remove line below.
+    #             if len(annotation_data.shape) > 2:
+    #                 annotation_data = np.moveaxis(annotation_data, 0, -1)
+    #             label_path = na_config['label_path']
+    #             with open(label_path, 'r') as f:
+    #                 labels = [x.strip() for x in f.readlines()]
+    #             annotation = Annotation(data=annotation_data, labels=labels)
+    #             annotations.append(annotation)                
+    #     so_datas = []
+    #     if 'so_data' in config:
+    #         for so_config in config['so_datas']:
+    #             so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
+    #             so_datas.append(so_data)
 
-        obj = cls(image=image,
-                   name=name,
-                   annotations=annotations,
-                   so_data=so_datas,
-                   config=config)
-        obj._id = _id
+    #     obj = cls(image=image,
+    #                name=name,
+    #                annotations=annotations,
+    #                so_data=so_datas,
+    #                config=config)
+    #     obj._id = _id

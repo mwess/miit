@@ -1,13 +1,12 @@
 from typing import  Dict, Set, Tuple, List, Optional
 
-import numpy
-import numpy as np
+import numpy, numpy as np
 import pandas as pd
 from pyimzml.ImzMLWriter import ImzMLWriter
 from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.custom_types import PdDataframe
-from miit.spatial_data.image import Annotation
+from miit.spatial_data.base_types.annotation import Annotation
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.spatial_omics.imzml import Imzml
 

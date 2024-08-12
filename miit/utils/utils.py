@@ -2,10 +2,10 @@
 
 import math
 import os
+from pathlib import Path
 from typing import TypeVar, Dict, List, Tuple
 
-import numpy as np
-import numpy
+import numpy, numpy as np
 
 # T = TypeVar('T')
 
@@ -27,8 +27,7 @@ def copy_if_not_none(obj):
 
 
 def create_if_not_exists(directory: str):
-    if not os.path.exists(directory):
-        os.mkdir(directory)
+    Path(directory).mkdir(parents=True, exist_ok=True)
 
 
 # Filters

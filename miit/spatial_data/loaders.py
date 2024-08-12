@@ -1,16 +1,18 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Union
 
+from miit.spatial_data.base_types import (
+    Annotation,
+    DefaultImage,
+    BaseImage,
+    BasePointset,
+    Pointset,
+    GeoJSONData,
+    OMETIFFImage
+)
 from miit.spatial_data.spatial_omics.imzml import Imzml
 from miit.spatial_data.spatial_omics.visium import Visium
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
-from miit.spatial_data.image import (
-    BaseImage,
-    DefaultImage, 
-    Pointset, 
-    Annotation, 
-    GeoJSONData
-)
 
 
 class SpatialDataLoaderException(Exception):
@@ -30,6 +32,7 @@ class SpatialDataLoader:
         self.class_map[Annotation.get_type()] = Annotation
         self.class_map[Pointset.get_type()] = Pointset
         self.class_map[GeoJSONData.get_type()] = GeoJSONData
+        self.class_map[OMETIFFImage.get_type()] = OMETIFFImage
 
     def load(self, 
              data_type: Any, 
@@ -39,7 +42,7 @@ class SpatialDataLoader:
             raise SpatialDataLoaderException(f'data_type {data_type} not found in loader.')
         return self.class_map[data_type].load(path, **kwargs)
 
-    def add_class(self, clazz: Union[BaseImage, BaseSpatialOmics, Pointset, GeoJSONData]):
+    def add_class(self, clazz: Union[BaseImage, BaseSpatialOmics, BasePointset]):
         if clazz.get_type() in self.class_map:
             raise SpatialDataLoaderException(f'class: {clazz.get_type()} already present in SpatialDataLoader.')
         self.class_map[clazz.get_type()] = clazz
