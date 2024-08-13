@@ -2,6 +2,7 @@
 
 import math
 import os
+from os.path import exists, join
 from pathlib import Path
 from typing import TypeVar, Dict, List, Tuple
 
@@ -77,3 +78,25 @@ def get_half_pad_size(value_string: str, max_len: int) -> Tuple[int, int]:
         l_pad = math.floor(diff / 2)
         r_pad = math.ceil(diff / 2)
     return 1, diff - 1
+
+
+def derive_output_path(directory: str, fname: str, limit: int = 1000) -> str:
+    """Generates a unique output path. If path is already existing,
+    adds a counter value until a unique path is found.
+
+    Args:
+        directory (str): target directory
+        fname (str): target filename
+        limit (int, optional): Limit number to prevent endless loops. Defaults to 1000.
+
+    Returns:
+        str: Target path
+    """
+    target_path = join(directory, fname)
+    if not os.path.exists(target_path):
+        return target_path
+    for suffix in range(limit):
+        new_target_path = f'{target_path}_{suffix}'
+        if not os.path.exists(new_target_path):
+            return new_target_path
+    return target_path

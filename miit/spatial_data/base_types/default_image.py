@@ -49,7 +49,7 @@ class DefaultImage(BaseImage):
         img_path = join(path, fname)
         attributes = {
             'name': self.name,
-            'id': self._id
+            'id': str(self._id)
         }
         with open(join(path, 'attributes.json'), 'w') as f:
             json.dump(attributes, f)
@@ -68,7 +68,7 @@ class DefaultImage(BaseImage):
         with open(join(path, 'attributes.json')) as f:
             attributes = json.load(f)
         name = attributes['name']
-        id_ = attributes['id']
+        id_ = uuid.UUID(attributes['id'])
         image = cls(data=img, name=name)
         image._id = id_
         return image

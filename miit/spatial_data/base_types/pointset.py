@@ -87,10 +87,10 @@ class Pointset(BasePointset):
     def store(self,
               path: str):
         create_if_not_exists(path)
-        sub_path = join(path, str(self._id))
-        create_if_not_exists(sub_path)
+        # sub_path = join(path, str(self._id))
+        # create_if_not_exists(sub_path)
         fname = 'pointset.csv'
-        fpath = join(sub_path, fname)
+        fpath = join(path, fname)
         index = True if self.index_col is not None else False
         header = True if self.header is not None else False
         self.data.to_csv(fpath, header=header, index=index)
@@ -99,15 +99,16 @@ class Pointset(BasePointset):
             'header': self.header,
             'index_col': self.index_col,
             'x_axis': self.x_axis,
-            'y_axis': self.y_axis
+            'y_axis': self.y_axis,
+            'id': str(self._id)
         }
-        with open(join(sub_path, 'attributes.json'), 'w') as f:
+        with open(join(path, 'attributes.json'), 'w') as f:
             json.dump(attributes, f)
 
     @classmethod
     def load(cls,
              path: str):
-        id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
+        # id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
         with open(join(path, 'attributes.json')) as f:
             attributes = json.load(f)
         header = attributes['header']
@@ -115,6 +116,7 @@ class Pointset(BasePointset):
         x_axis = attributes['x_axis']
         y_axis = attributes['y_axis']
         name = attributes['name']
+        id_ = uuid.UUID(attributes['id'])
         df = pd.read_csv(join(path, 'pointset.csv'), header=header, index_col=index_col)
         ps = cls(data=df,
                  name=name,

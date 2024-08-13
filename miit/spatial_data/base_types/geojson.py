@@ -136,6 +136,7 @@ class GeoJSONData(BasePointset):
         gdata._id = id_
         return gdata
 
+    # TODO: Add option for conversion to multichannel annotation
     def to_annotation(self,
                       ref_image: numpy.array,
                       label_fun: Optional[callable] = None) -> 'Annotation':
@@ -168,7 +169,7 @@ class GeoJSONData(BasePointset):
                 continue
             if geom.geom_type == 'LineString':
                 geom = convert_linestring_to_polygon(geom)
-            if geom.geom_type == 'MultiPolygon':
+            elif geom.geom_type == 'MultiPolygon':
                 shape = (ref_image.shape[1], ref_image.shape[0])
                 mask = np.zeros(shape, dtype=np.uint8)
                 for geom_ in geom.geoms:

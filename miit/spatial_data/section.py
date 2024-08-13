@@ -272,7 +272,7 @@ class Section:
         f_dict = {}
         f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        self.reference_image.store(directory)
+        self.reference_image.store(join(directory, str(self.reference_image._id)))
         f_dict['reference_image'] = {
             'id': str(self.reference_image._id),
             'type': self.reference_image.get_type()
@@ -283,7 +283,7 @@ class Section:
             f_dict['meta_information_path'] = 'meta_information.json' 
         annotation_ids = []
         for annotation in self.annotations:
-            annotation.store(directory)
+            annotation.store(join(directory, str(annotation._id)))
             annotation_ids.append(
                 {
                     'id': str(annotation._id),

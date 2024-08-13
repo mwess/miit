@@ -1,9 +1,9 @@
+from collections import OrderedDict
 import json
-import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from os.path import exists, join
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 
 import cv2
@@ -28,7 +28,17 @@ class Annotation(BaseImage):
     """
 
     interpolation_mode: ClassVar[str] = 'NN'
-    labels: List[str] = None
+    labels: Optional[Union[List[str], Dict[str, int]]] = None
+    is_multichannel: bool = False
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.labels is None:
+            if self.is_multichannel:
+                labels = {x: x for x in range(1, self.data.shape[-1] + 1)}
+            else:
+                labels = list(1, range(self.data.shape[-1] + 1))
+            self.labels = labels 
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         # TODO: Add check for image bounds
@@ -57,7 +67,7 @@ class Annotation(BaseImage):
             # Assume 3 dimensions
             self.data = np.pad(self.data, ((top, bottom), (left, right), (0, 0)), constant_values=constant_values)
 
-    def flip(self, axis: int =0):
+    def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
@@ -69,7 +79,8 @@ class Annotation(BaseImage):
     def copy(self):
         return Annotation(data=self.data.copy(),
                           labels=self.labels,
-                          name=self.name)
+                          name=self.name,
+                          is_multichannel=self.is_multichannel)
 
     def store(self, path: str):
         # Use path as a directory here.
@@ -83,16 +94,60 @@ class Annotation(BaseImage):
                 f.write('\n'.join(self.labels))
         additional_attributes = {
             'name' : self.name,
-            'id': self._id
+            'id': str(self._id)
         }
         with open(join(path, 'additional_attributes.json'), 'w') as f:
             json.dump(additional_attributes, f)
+        if self.labels:
+            with open(join(path, 'labels.json'), 'w') as f:
+                json.dump(self.labels, f)            
 
     def get_by_label(self, label):
-        if self.labels is None:
+        if not self.labels:
             return None
-        idx = self.labels.index(label)
-        return self.data[:, :, idx]
+        if self.is_multichannel:
+            idx = self.labels.get(label, None)
+            if idx is None:
+                return None
+            return self.data[self.data == idx]
+        else:
+            try:
+                idx = self.labels.index(label)
+                return self.data[:,:,idx]
+            except ValueError:
+                return None
+            
+    def convert_to_multichannel(self):
+        if self.is_multichannel:
+            return
+        mc_mat = np.zeros(self.data.shape[:2], dtype=self.data.dtype)
+        label_dict = OrderedDict()
+        for i in range(self.data.shape[-1]):
+            if self.labels:
+                label_name = self.labels[i]
+            else:
+                label_name = i
+            mat = self.data[:,:,i]
+            label_dict[label_name] = i + 1
+            mc_mat[mat == 1] = i + 1
+        self.data = mc_mat
+        self.labels = label_dict
+        self.is_multichannel = True
+
+    def convert_to_singlechannel(self):
+        if not self.is_multichannel:
+            return
+        h, w = self.data.shape
+        c = len(self.labels)
+        sc_mat = np.zeros((h, w, c), dtype=self.data.dtype)
+        labels = []
+        for label_name in self.labels:
+            idx = self.labels[label_name]
+            sc_mat[:,:,idx] = (self.data == idx).astype(self.data.dtype)
+            labels.append(label_name)
+        self.labels = labels
+        self.data = sc_mat
+        self.is_multichannel = False              
 
     def get_resolution(self) -> Optional[float]:
         return self.meta_information.get('resolution', None)
@@ -113,7 +168,7 @@ class Annotation(BaseImage):
         with open(join(path, 'additional_attributes.json')) as f:
             additional_attributes = json.load(f)
         name = additional_attributes['name']
-        id_ = additional_attributes['id']
+        id_ = uuid.UUID(additional_attributes['id'])
         annotation = cls(data=annotation, labels=labels, name=name)
         annotation._id = id_
         return annotation

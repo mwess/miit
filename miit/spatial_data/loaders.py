@@ -8,7 +8,8 @@ from miit.spatial_data.base_types import (
     BasePointset,
     Pointset,
     GeoJSONData,
-    OMETIFFImage
+    OMETIFFImage,
+    OMETIFFAnnotation
 )
 from miit.spatial_data.spatial_omics.imzml import Imzml
 from miit.spatial_data.spatial_omics.visium import Visium
@@ -33,6 +34,7 @@ class SpatialDataLoader:
         self.class_map[Pointset.get_type()] = Pointset
         self.class_map[GeoJSONData.get_type()] = GeoJSONData
         self.class_map[OMETIFFImage.get_type()] = OMETIFFImage
+        self.class_map[OMETIFFAnnotation.get_type()] = OMETIFFAnnotation
 
     def load(self, 
              data_type: Any, 
