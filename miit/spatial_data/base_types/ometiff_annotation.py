@@ -44,7 +44,8 @@ class OMETIFFAnnotation(Annotation):
             with open(join(path, 'labels.json'), 'w') as f:
                 json.dump(self.labels, f)
 
-    def get_type(self) -> str:
+    @staticmethod
+    def get_type() -> str:
         return 'ometiff_annotation'
     
     def get_resolution(self):

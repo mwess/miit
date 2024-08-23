@@ -55,7 +55,7 @@ class GeoJSONData(BasePointset):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] - ymin, coords[1] - xmin), feature)
+            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] - ymin, coords[1] - xmin], feature)
             features_new.append(feature_new)
         if 'features' in self.data:
             self.data['features'] = features_new
@@ -66,7 +66,7 @@ class GeoJSONData(BasePointset):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] * width, coords[1] * height), feature)
+            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
             features_new.append(feature_new)
         if 'features' in self.data:
             self.data['features'] = features_new
@@ -78,7 +78,7 @@ class GeoJSONData(BasePointset):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] + left, coords[1] + right), feature)
+            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + left, coords[1] + right], feature)
             features_new.append(feature_new)
         if 'features' in self.data:
             self.data['features'] = features_new
@@ -91,12 +91,12 @@ class GeoJSONData(BasePointset):
         if axis == 0:
             center_x = ref_img_shape[1] // 2
             for feature in features:
-                feature_new = geojson.utils.map_tuples(lambda coords: (coords[0] + 2 * (center_x - coords[0]), coords[1]), feature)
+                feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + 2 * (center_x - coords[0]), coords[1]], feature)
                 features_new.append(feature_new)
         elif axis == 1:
             center_y = ref_img_shape[0] // 2
             for feature in features:
-                feature_new = geojson.utils.map_tuples(lambda coords: (coords[0], coords[1] + 2 * (center_y - coords[1])), feature)
+                feature_new = geojson.utils.map_tuples(lambda coords: [coords[0], coords[1] + 2 * (center_y - coords[1])], feature)
                 features_new.append(feature_new)
         else:
             pass

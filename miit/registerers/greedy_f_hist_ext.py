@@ -37,10 +37,12 @@ class GreedyFHistExt(Registerer):
     def register_images(self, 
                         moving_img: numpy.array, 
                         fixed_img: numpy.array, 
+                        options: Optional[RegistrationOptions] = None ,
                         **kwargs: Dict) -> GreedyFHistRegistrationResult:
         moving_img_mask = kwargs.get('moving_img_mask', None)
         fixed_img_mask = kwargs.get('fixed_img_mask', None)
-        options = RegistrationOptions()
+        if options is None:
+            options = RegistrationOptions()
         # options.parse_dict(kwargs)
         reg_result = self.registerer.register(moving_img=moving_img,
                                               fixed_img=fixed_img,
@@ -53,8 +55,10 @@ class GreedyFHistExt(Registerer):
     def transform_pointset(self, 
                            pointset: numpy.array, 
                            transformation: GreedyFHistRegistrationResult, 
+                           do_reverse_transform: bool = False,
                            **kwargs: Dict) -> numpy.array:
-        transformed_pointset = self.registerer.transform_pointset(pointset, transformation.registration_result.backward_transform)
+        reg_transform = transformation.registration_result.registration_transform if not do_reverse_transform else transformation.registration_result.reverse_registration_transform
+        transformed_pointset = self.registerer.transform_pointset(pointset, reg_transform.backward_transform)
         # transformation_result = self.registerer.transform_pointset(pointset, transformation.backward_displacement_field, **kwargs)
         return transformed_pointset 
     
@@ -62,8 +66,10 @@ class GreedyFHistExt(Registerer):
                         image: numpy.array, 
                         transformation: GreedyFHistRegistrationResult, 
                         interpolation_mode: str, 
+                        do_reverse_transform: bool = False,
                         **kwargs: Dict) -> numpy.array:
-        warped_image = self.registerer.transform_image(image, transformation.registration_result.forward_transform, interpolation_mode)
+        reg_transform = transformation.registration_result.registration_transform if not do_reverse_transform else transformation.registration_result.reverse_registration_transform
+        warped_image = self.registerer.transform_image(image, reg_transform.forward_transform, interpolation_mode)
         return warped_image
 
     # TODO: Remove this.

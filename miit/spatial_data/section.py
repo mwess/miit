@@ -226,10 +226,16 @@ class Section:
         for so_data_ in self.so_data:
             so_data_.pad(padding)
 
-    def resize(self, height: int, width: int):
+    def resize(self, width: int, height: int):
+        w, h = self.reference_image.data[:2]
+        ws = w // width
+        hs = h // height
         self.reference_image.resize(height, width)
         for annotation in self.annotations:
-            annotation.resize(height, width)
+            if isinstance(annotation, BasePointset):
+                annotation.resize(hs, ws)
+            else:
+                annotation.resize(height, width)
         for so_data_ in self.so_data:
             so_data_.resize(height, width)
 
