@@ -68,6 +68,7 @@ This example mounts the local directory `/home/maxi/applications/miit` to the pa
 The docker container clones this repository explicitly and contains all example data. After 
 starting the instance and connecting to it, the example data can be found int `/miit/examples/`.
 
+## Citation
 
 If you use this code, please cite: 
 

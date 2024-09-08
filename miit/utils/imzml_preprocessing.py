@@ -8,7 +8,7 @@ import numpy
 import numpy as np
 import SimpleITK as sitk
 
-from greedyfhist.segmentation.segmenation import load_yolo_segmentation
+from greedyfhist.segmentation import load_yolo_segmentation
 
 
 import numpy as np

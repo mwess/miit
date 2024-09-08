@@ -143,7 +143,7 @@ class Annotation(BaseImage):
         labels = []
         for label_name in self.labels:
             idx = self.labels[label_name]
-            sc_mat[:,:,idx] = (self.data == idx).astype(self.data.dtype)
+            sc_mat[:,:,idx-1] = (self.data == idx).astype(self.data.dtype)
             labels.append(label_name)
         self.labels = labels
         self.data = sc_mat

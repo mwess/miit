@@ -307,7 +307,6 @@ class Section:
             )
         f_dict['so_datas'] = so_data_ids
             
-        print(f_dict)
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
