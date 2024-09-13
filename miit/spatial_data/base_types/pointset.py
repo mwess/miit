@@ -49,10 +49,14 @@ class Pointset(BasePointset):
         self.data[self.x_axis] = self.data[self.x_axis] - ymin
         self.data[self.y_axis] = self.data[self.y_axis] - xmin
 
-    def resize(self, height: float, width: float):
+    def resize(self, width: float, height: float):
         # Remember to convert new dimensions to scale.
         self.data[self.x_axis] = self.data[self.x_axis] * width
         self.data[self.y_axis] = self.data[self.y_axis] * height
+
+    def rescale(self, scaling_factor: float):
+        self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor
+        self.data[self.y_axis] = self.data[self.y_axis] * scaling_factor
 
     def pad(self, padding: Tuple[int, int, int, int]):
         left, right, top, bottom = padding

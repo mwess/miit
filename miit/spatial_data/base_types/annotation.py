@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 
 import cv2
-import numpy, numpy as np
+import numpy as np
 import SimpleITK as sitk
 
 
@@ -21,7 +21,8 @@ class Annotation(BaseImage):
     """
     Annotations consists of a spatially resolved map of discrete 
     classes. Classes can either be scalar of vector valued. It
-    is assumed that each annotation has the shape of H x W x C.
+    is assumed that each annotation has the shape of H x W x C
+    or H x W.
 
     Image transformations applied to annotations should use a 
     nearest neighbor interpolation to not introduce new classes.
@@ -29,15 +30,18 @@ class Annotation(BaseImage):
 
     interpolation_mode: ClassVar[str] = 'NN'
     labels: Optional[Union[List[str], Dict[str, int]]] = None
-    is_multichannel: bool = False
+    is_multichannel: bool = True
 
     def __post_init__(self) -> None:
         super().__post_init__()
         if self.labels is None:
             if self.is_multichannel:
-                labels = {x: x for x in range(1, self.data.shape[-1] + 1)}
+                labels = {int(x): int(x) for x in np.unique(self.data) if x != 0}
             else:
-                labels = list(1, range(self.data.shape[-1] + 1))
+                if len(self.data.shape) == 2:
+                    labels = [1]
+                else:
+                    labels = list(1, range(self.data.shape[-1] + 1))
             self.labels = labels 
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
@@ -47,17 +51,22 @@ class Annotation(BaseImage):
         else:
             self.data = self.data[xmin:xmax, ymin:ymax, :]
 
-    def resize(self, height: int, width: int):
+    def resize(self, width: int, height: int):
         if len(self.data.shape) == 2:
             # TODO: Rewrite that with skimage's resize function
-            self.data = cv2.resize(self.data, (width, height), interpolation=cv2.INTER_NEAREST)
+            self.data = cv2.resize(self.data, (height, width), interpolation=cv2.INTER_NEAREST)
         else:
             # Didn't find a better rescale function yet.
-            new_image_data = np.zeros((height, width, self.data.shape[2]), dtype=self.data.dtype)
+            new_image_data = np.zeros((width, height, self.data.shape[2]), dtype=self.data.dtype)
             for i in range(self.data.shape[2]):
-                # TODO: Rewrite that with skimage's resize function
-                new_image_data[:, :, i] = cv2.resize(self.data[:, :, i], (width, height), interpolation=cv2.INTER_NEAREST)
+                # Use cv as it performs significantly faster on larger images.
+                new_image_data[:, :, i] = cv2.resize(self.data[:, :, i], (height, width), interpolation=cv2.INTER_NEAREST)
             self.data = new_image_data
+
+    def rescale(self, scaling_factor: float):
+        w, h = self.data.shape[:2]
+        w_n, h_n = int(w*scaling_factor), int(h*scaling_factor)
+        self.resize(w_n, h_n)            
 
     def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
@@ -88,10 +97,6 @@ class Annotation(BaseImage):
         fname = 'annotations.nii.gz'
         img_path = join(path, fname)
         sitk.WriteImage(sitk.GetImageFromArray(self.data), img_path)
-        if self.labels is not None:
-            labels_path = join(path, 'labels.txt')
-            with open(labels_path, 'w') as f:
-                f.write('\n'.join(self.labels))
         additional_attributes = {
             'name' : self.name,
             'id': str(self._id)
@@ -120,6 +125,8 @@ class Annotation(BaseImage):
     def convert_to_multichannel(self):
         if self.is_multichannel:
             return
+        if len(self.data.shape) == 2:
+            self.data = np.expand_dims(self.data, -1)
         mc_mat = np.zeros(self.data.shape[:2], dtype=self.data.dtype)
         label_dict = OrderedDict()
         for i in range(self.data.shape[-1]):
@@ -159,10 +166,10 @@ class Annotation(BaseImage):
     @classmethod
     def load(cls, path):
         annotation = sitk.GetArrayFromImage(sitk.ReadImage(join(path, 'annotations.nii.gz')))
-        labels_path = join(path, 'labels.txt')
+        labels_path = join(path, 'labels.json')
         if exists(labels_path):
             with open(labels_path) as f:
-                labels = [x.strip() for x in f.readlines()]
+                labels = json.load(f)
         else:
             labels = None
         with open(join(path, 'additional_attributes.json')) as f:

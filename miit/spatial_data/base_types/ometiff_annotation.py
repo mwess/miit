@@ -1,18 +1,14 @@
 from dataclasses import dataclass
 import json
 from os.path import join, exists
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Tuple
 import uuid
 
+import numpy as np
 
-import numpy, numpy as np
-import tifffile
-
-
-# from .ometiff_image import OMETIFFImage
 from .annotation import Annotation
+from greedyfhist.utils.io import read_image, write_to_ometiffile
 from miit.utils.utils import create_if_not_exists
-from miit.utils.tif_utils import get_tif_metadata, write_ome_tif_file, write_tif_file
 
 
 @dataclass(kw_only=True)
@@ -26,7 +22,7 @@ class OMETIFFAnnotation(Annotation):
     
     def store(self, path: str):
         create_if_not_exists(path)
-        image_fname = 'image.ome.tif' if self.is_ome else 'image.tif'
+        image_fname = 'image.ome.tif'
         image_path = join(path, image_fname)
         self.__to_file(image_path)
         additional_attributes = {
@@ -35,7 +31,6 @@ class OMETIFFAnnotation(Annotation):
             'meta_information': self.meta_information,
             'is_ome': self.is_ome,
             'keep_axis_orientation': self.keep_axis_orientation,
-            'tif_metadata': self.tif_metadata,
             'is_multichannel': self.is_multichannel
         }
         with open(join(path, 'additional_attributes.json'), 'w') as f:
@@ -47,7 +42,24 @@ class OMETIFFAnnotation(Annotation):
     @staticmethod
     def get_type() -> str:
         return 'ometiff_annotation'
+
+    def resize(self, width: float, height: float):
+        # Use opencv's resize function here, because it typically works a lot faster and for now
+        # we assume that data in Image is always some kind of rgb like image.
+        w, h = self.data.shape[:2]
+        w_spacing = self.tif_metadata['PhysicalSizeX']
+        h_spacing = self.tif_metadata['PhysicalSizeY']
+        w_spacing_new = w_spacing * w / width
+        h_spacing_new = h_spacing * h / height
+        self.tif_metadata['PhysicalSizeX'] = w_spacing_new
+        self.tif_metadata['PhysicalSizeY'] = h_spacing_new
+        super().resize(width, height)
     
+    def get_spacing(self) -> Tuple[float, float]:
+        w_spacing = self.tif_metadata.get('PhysicalSizeX', 1)
+        h_spacing = self.tif_metadata.get('PhysicalSizeY', 1)
+        return (w_spacing, h_spacing)
+
     def get_resolution(self):
         return float(self.tif_metadata['PhysicalSizeX'])
             
@@ -56,10 +68,9 @@ class OMETIFFAnnotation(Annotation):
             data = np.moveaxis(self.data, 2, 0)
         else:
             data = self.data
-        if self.is_ome:
-            write_ome_tif_file(path, data, self.tif_metadata)
-        else:
-            write_tif_file(path, data)
+        write_to_ometiffile(
+            data, path, self.tif_metadata, True
+        )
     
     @classmethod
     def load(cls, path: str):
@@ -68,11 +79,10 @@ class OMETIFFAnnotation(Annotation):
             additional_attributes = json.load(f)
         is_ome = additional_attributes['is_ome']
         is_multichannel = additional_attributes['is_multichannel']
-        image_fname = 'image.ome.tif' if is_ome else 'image.tif'
+        image_fname = 'image.ome.tif'
         image_path = join(path, image_fname)           
         keep_axis_orientation = additional_attributes['keep_axis_orientation']
-        tif = tifffile.TiffFile(image_path)
-        tif_metadata = get_tif_metadata(tif)
+        data, tif_metadata = read_image(image_path)
         name = additional_attributes['name']
         meta_information = additional_attributes['meta_information']
         _id = uuid.UUID(additional_attributes['id'])
@@ -80,7 +90,6 @@ class OMETIFFAnnotation(Annotation):
         if exists(labels_path):
             with open(labels_path) as f:
                 labels = json.load(f)
-        data = tif.asarray()
         if not keep_axis_orientation and len(data.shape) > 2:
             data = np.moveaxis(data, 0, 2)
         ometiff_image = cls(
@@ -103,8 +112,7 @@ class OMETIFFAnnotation(Annotation):
                        is_multichannel=False,
                        labels: Optional[Union[List, Dict]] = None,
                        name: str = ''):
-        tif = tifffile.TiffFile(path)
-        data = tif.asarray()
+        data, tif_metadata = read_image(path)
         if not keep_axis_orientation and len(data.shape) > 2:
             data = np.moveaxis(data, 0, 2)
         if path.endswith('ome.tif') or path.endswith('ome.tiff'):
@@ -114,7 +122,6 @@ class OMETIFFAnnotation(Annotation):
         meta_information = {
             'path': path
         }
-        tif_metadata = get_tif_metadata(tif)
         return cls(data=data,
                    name=name, 
                    meta_information=meta_information,

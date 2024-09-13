@@ -4,9 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Dict, Optional, Tuple
 
-
 import numpy
-
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 
@@ -32,7 +30,11 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def resize(self, height: int, width: int):
+    def resize(self, width: int, height: int):
+        pass
+
+    @abc.abstractmethod
+    def resize(self, scaling_factor: float):
         pass
 
     @abc.abstractmethod
@@ -40,7 +42,7 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def flip(self, axis: int =0):
+    def flip(self, axis: int = 0):
         pass
 
     @abc.abstractmethod
@@ -82,6 +84,10 @@ class BasePointset(abc.ABC):
 
     @abc.abstractmethod
     def resize(self, height: int, width: int):
+        pass
+
+    @abc.abstractmethod
+    def rescale(self, scaling_factor: float):
         pass
 
     @abc.abstractmethod

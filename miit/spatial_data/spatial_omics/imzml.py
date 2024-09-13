@@ -428,6 +428,12 @@ class Imzml(BaseSpatialOmics):
         if self.ann_mat is not None:
             self.ann_mat.resize(height, width)
 
+    def rescale(self, scaling_factor: float):
+        self.image.rescale(scaling_factor)
+        self.__ref_mat.rescale(scaling_factor)
+        if self.ann_mat is not None:
+            self.ann_mat.rescale(scaling_factor)
+
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
         self.__ref_mat.crop(x1, x2, y1, y2)

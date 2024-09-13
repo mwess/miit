@@ -62,7 +62,7 @@ class GeoJSONData(BasePointset):
         else:
             self.data = features_new
 
-    def resize(self, height: float, width: float):
+    def resize(self, width: float, height: float):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         for feature in features:
@@ -72,6 +72,9 @@ class GeoJSONData(BasePointset):
             self.data['features'] = features_new
         else:
             self.data = features_new
+
+    def rescale(self, scaling_factor: float):
+        self.resize(scaling_factor, scaling_factor)
 
     def pad(self, padding: Tuple[int, int, int, int]):
         left, right, top, bottom = padding
@@ -136,7 +139,6 @@ class GeoJSONData(BasePointset):
         gdata._id = id_
         return gdata
 
-    # TODO: Add option for conversion to multichannel annotation
     def to_annotation(self,
                       ref_image: numpy.array,
                       label_fun: Optional[callable] = None) -> 'Annotation':
@@ -169,17 +171,21 @@ class GeoJSONData(BasePointset):
                 continue
             if geom.geom_type == 'LineString':
                 geom = convert_linestring_to_polygon(geom)
-            elif geom.geom_type == 'MultiPolygon':
+            if geom.geom_type == 'MultiPolygon':
                 shape = (ref_image.shape[1], ref_image.shape[0])
+                # print(f'Multipolygon: {shape}')
                 mask = np.zeros(shape, dtype=np.uint8)
                 for geom_ in geom.geoms:
                     ext_coords = np.array(list(geom_.exterior.coords))
                     mask_ = skimage.draw.polygon2mask(shape, ext_coords)
                     mask[mask_] = 1
+                # print(f'Multipolygon mask: {mask.shape}')
             else:
                 ext_coords = np.array(list(geom.exterior.coords))
                 shape = (ref_image.shape[1], ref_image.shape[0])
+                # print(f'Polygon: {shape}')
                 mask = skimage.draw.polygon2mask(shape, ext_coords)
+                # print(f'Polygon mask: {mask.shape}')
             mask = mask.transpose().astype(np.uint8)
             masks.append(mask)
             if label_fun is None:
@@ -187,7 +193,11 @@ class GeoJSONData(BasePointset):
             else:
                 labels.append(label_fun(feature))
         annotation_mask = np.dstack(masks)
-        annotation = Annotation(data=annotation_mask, labels=labels, name=self.name)
+        if len(annotation_mask.shape) > 2:
+            is_multichannel = False
+        else:
+            is_multichannel = True
+        annotation = Annotation(data=annotation_mask, labels=labels, name=self.name, is_multichannel=is_multichannel)
         return annotation
 
     def __warp_geojson_coord_tuple(self, coord: Tuple[float, float], registerer: Registerer, transform) -> Tuple[float, float]:

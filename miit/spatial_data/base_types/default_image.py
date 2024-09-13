@@ -1,5 +1,4 @@
 import json
-import os
 import uuid
 from dataclasses import dataclass
 from os.path import join
@@ -7,7 +6,7 @@ from typing import Any, ClassVar, Dict, Optional, Tuple
 
 
 import cv2
-import numpy, numpy as np
+import numpy as np
 import SimpleITK as sitk
 
 
@@ -28,6 +27,11 @@ class DefaultImage(BaseImage):
         # Use opencv's resize function here, because it typically works a lot faster and for now
         # we assume that data in Image is always some kind of rgb like image.
         self.data = cv2.resize(self.data, (height, width))
+
+    def rescale(self, scaling_factor: float):
+        w, h = self.data.shape[:2]
+        w_n, h_n = int(w*scaling_factor), int(h*scaling_factor)
+        self.resize(w_n, h_n)
 
     def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding

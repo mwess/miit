@@ -230,14 +230,14 @@ class Section:
         w, h = self.reference_image.data[:2]
         ws = w // width
         hs = h // height
-        self.reference_image.resize(height, width)
+        self.reference_image.resize(width, height)
         for annotation in self.annotations:
             if isinstance(annotation, BasePointset):
-                annotation.resize(hs, ws)
+                annotation.resize(ws, hs)
             else:
-                annotation.resize(height, width)
+                annotation.resize(width, height)
         for so_data_ in self.so_data:
-            so_data_.resize(height, width)
+            so_data_.resize(width, height)
 
     def apply_transform(self, 
              registerer: Registerer, 

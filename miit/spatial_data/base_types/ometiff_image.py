@@ -3,26 +3,22 @@ from dataclasses import dataclass, field
 import json
 import os
 from os.path import join
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple, Union
 import uuid
 import xml.etree.ElementTree as ET
 
-
-import cv2
-import numpy, numpy as np
+import numpy
 import tifffile
 
-
-from .base_imaging import BaseImage
+from greedyfhist.utils.io import read_image, write_to_ometiffile
+from .default_image import DefaultImage
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
-from miit.utils.tif_utils import get_tif_metadata, write_tif_file, write_ome_tif_file
-
-
+from miit.utils.tif_utils import get_tif_metadata
 
 
 @dataclass(kw_only=True)
-class OMETIFFImage(BaseImage):
+class OMETIFFImage(DefaultImage):
     """
     Class for processing TIFF and OMETIFF images. 
     
@@ -41,74 +37,62 @@ class OMETIFFImage(BaseImage):
 
     is_ome: bool
         Indicates whether the read file is ome.
-        
-    is_annotation: bool
-        If OME TIFF is an annotation this should be set to True, so 
-        that Nearest Neighbor interpolation is used during 
-        transformation.
-        
-    keep_axis: bool
-        If set to True, first and third channel are not switched if 
-        is_annotation is also true. Normally, images are provided 
-        in W x H x C format, but some tools generate annotations in 
-        format C x H x W, e.g. multi class annotations from QuPath. 
     """
-    interpolation_mode: ClassVar[str] = 'LINEAR'
+    # interpolation_mode: ClassVar[str] = 'LINEAR'
     is_ome: bool = True
-    tif_metadata: Dict = field(default_factory=defaultdict(dict))
-
-    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
-        self.data = self.data[xmin:xmax, ymin:ymax]
-
-    def resize(self, width, height):
+    tif_metadata: Dict = field(default_factory=lambda: defaultdict(dict))
+    
+    def resize(self, width: int, height: int):
         # Use opencv's resize function here, because it typically works a lot faster and for now
         # we assume that data in Image is always some kind of rgb like image.
-        self.data = cv2.resize(self.data, (height, width))
-
-    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
-        left, right, top, bottom = padding
-        self.data = cv2.copyMakeBorder(self.data, top, bottom, left, right, cv2.BORDER_CONSTANT, constant_values)
-
-    def flip(self, axis: int = 0):
-        self.data = np.flip(self.data, axis=axis)    
+        w, h = self.data.shape[:2]
+        w_spacing = self.tif_metadata['PhysicalSizeX']
+        h_spacing = self.tif_metadata['PhysicalSizeY']
+        w_spacing_new = w_spacing * w / width
+        h_spacing_new = h_spacing * h / height
+        self.tif_metadata['PhysicalSizeX'] = w_spacing_new
+        self.tif_metadata['PhysicalSizeY'] = h_spacing_new
+        super().resize(width, height)
 
     def get_resolution(self):
         return float(self.tif_metadata['PhysicalSizeX'])
 
-    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+    def get_spacing(self) -> Tuple[float, float]:
+        w_spacing = self.tif_metadata.get('PhysicalSizeX', 1)
+        h_spacing = self.tif_metadata.get('PhysicalSizeY', 1)
+        return (w_spacing, h_spacing)
+
+    def apply_transform(self, 
+                        registerer: Registerer, 
+                        transformation: Union[RegistrationResult, numpy.ndarray], 
+                        **kwargs: Dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return OMETIFFImage(
             data=transformed_image,
             name=self.name,
             meta_information=self.meta_information.copy(),
             is_ome=self.is_ome,
-            tif_metadata=self.tif_metadata
+            tif_metadata=self.tif_metadata.copy()
         )
 
     def store(self, path: str):
         create_if_not_exists(path)
-        image_fname = 'image.ome.tif' if self.is_ome else 'image.tif'
+        image_fname = 'image.ome.tif'
         image_path = join(path, image_fname)
         self.__to_file(image_path)
         additional_attributes = {
             'name': self.name,
             'meta_information': self.meta_information,
             'is_ome': self.is_ome,
-            'tif_metadata': self.tif_metadata,
             'id': str(self._id)
         }
         with open(join(path, 'additional_attributes.json'), 'w') as f:
             json.dump(additional_attributes, f)
 
     def __to_file(self, path: str):
-        if self.is_ome:
-            write_ome_tif_file(
-                path,
-                self.data,
-                self.tif_metadata
-            )
-        else:
-            write_tif_file(path, self.data)
+        write_to_ometiffile(
+            self.data, path, self.tif_metadata, False
+        )
 
     @staticmethod
     def get_type() -> str:
@@ -120,21 +104,18 @@ class OMETIFFImage(BaseImage):
         with open(aa_path) as f:
             additional_attributes = json.load(f)
         is_ome = additional_attributes['is_ome']
-        image_fname = 'image.ome.tif' if is_ome else 'image.tif'
+        image_fname = 'image.ome.tif'
         image_path = join(path, image_fname)           
-        tif = tifffile.TiffFile(image_path)
-        tif_metadata = get_tif_metadata(tif)
+        data, metadata = read_image(image_path)
         name = additional_attributes['name']
         meta_information = additional_attributes['meta_information']
         _id = uuid.UUID(additional_attributes['id'])
-     
-        data = tif.asarray()
         ometiff_image = cls(
             data=data,
             name=name,
             meta_information=meta_information,
             is_ome=is_ome,
-            tif_metadata=tif_metadata
+            tif_metadata=metadata
         )
         ometiff_image._id=_id
         return ometiff_image
@@ -158,3 +139,10 @@ class OMETIFFImage(BaseImage):
                    meta_information=meta_information,
                    is_ome=is_ome,
                    tif_metadata=tif_metadata)
+
+    @classmethod
+    def read_from_path(cls, 
+                       path: str):
+        data, metadata = read_image(path, False)
+        name = os.path.basename(path)
+        return cls(data=data, name=name, tif_metadata=metadata)

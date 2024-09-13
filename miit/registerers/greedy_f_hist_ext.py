@@ -31,22 +31,11 @@ class GreedyFHistExt(Registerer):
     def register_images(self, 
                         moving_img: numpy.array, 
                         fixed_img: numpy.array, 
-<<<<<<< HEAD
-                        options: Optional[RegistrationOptions] = None ,
-                        **kwargs: Dict) -> GreedyFHistRegistrationResult:
-        moving_img_mask = kwargs.get('moving_img_mask', None)
-        fixed_img_mask = kwargs.get('fixed_img_mask', None)
-        if options is None:
-            options = RegistrationOptions()
-        # options.parse_dict(kwargs)
-=======
                         moving_img_mask: Optional[numpy.array] = None,
                         fixed_img_mask: Optional[numpy.array] = None,
-                        options: Optional[RegistrationOptions] = None
-                        ) -> GreedyFHistRegistrationResult:
+                        options: Optional[RegistrationOptions] = None) -> GreedyFHistRegistrationResult:
         if options is None:
             options = RegistrationOptions()
->>>>>>> master
         reg_result = self.registerer.register(moving_img=moving_img,
                                               fixed_img=fixed_img,
                                               moving_img_mask=moving_img_mask,
@@ -60,12 +49,9 @@ class GreedyFHistExt(Registerer):
                            transformation: GreedyFHistRegistrationResult, 
                            do_reverse_transform: bool = False,
                            **kwargs: Dict) -> numpy.array:
-<<<<<<< HEAD
-        reg_transform = transformation.registration_result.registration_transform if not do_reverse_transform else transformation.registration_result.reverse_registration_transform
+        reg_transform = transformation.registration_result.registration_transforms if not do_reverse_transform else transformation.registration_result.reverse_registration_transforms
         transformed_pointset = self.registerer.transform_pointset(pointset, reg_transform.backward_transform)
-=======
-        transformed_pointset = self.registerer.transform_pointset(pointset, transformation.registration_result.registration_transforms.backward_transform)
->>>>>>> master
+
         # transformation_result = self.registerer.transform_pointset(pointset, transformation.backward_displacement_field, **kwargs)
         return transformed_pointset 
     
@@ -75,12 +61,8 @@ class GreedyFHistExt(Registerer):
                         interpolation_mode: str, 
                         do_reverse_transform: bool = False,
                         **kwargs: Dict) -> numpy.array:
-<<<<<<< HEAD
-        reg_transform = transformation.registration_result.registration_transform if not do_reverse_transform else transformation.registration_result.reverse_registration_transform
+        reg_transform = transformation.registration_result.registration_transforms if not do_reverse_transform else transformation.registration_result.reverse_registration_transforms
         warped_image = self.registerer.transform_image(image, reg_transform.forward_transform, interpolation_mode)
-=======
-        warped_image = self.registerer.transform_image(image, transformation.registration_result.registration_transforms.forward_transform, interpolation_mode)
->>>>>>> master
         return warped_image
 
     @classmethod
