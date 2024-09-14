@@ -53,7 +53,7 @@ class SpatialDataLoader:
     def load_default_loader():
         return SpatialDataLoader()
         
-    
+# TODO: Maybe remove this function    
 def load_spatial_omics_data(config):
 
     if config['data_type'] == 'ScilsExportImzml':

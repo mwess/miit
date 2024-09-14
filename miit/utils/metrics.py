@@ -1,14 +1,15 @@
-import numpy as np
+from typing import Tuple
+
+import numpy, numpy as np
 import pandas
 
-from miit.spatial_data.section import Section
 
-
-def eucl(src, dst):
+def eucl(src: numpy.ndarray, dst: numpy.ndarray) -> float:
     return np.sqrt(np.square(src[:, 0] - dst[:, 0]) + np.square(src[:, 1] - dst[:, 1]))
 
 
-def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame, fixed_df: pandas.core.frame.DataFrame):
+def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame, 
+                            fixed_df: pandas.core.frame.DataFrame) -> pandas.core.frame.DataFrame:
     merged_df = warped_df.merge(fixed_df, on='label', suffixes=('_src', '_dst'))
     merged_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     merged_df.dropna(inplace=True)
@@ -18,20 +19,10 @@ def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame, fixed_df: pa
     return merged_df
 
 
-def compute_tre_sections_(target_section: Section, warped_section: Section):
-    unified_lms = compute_distance_for_lm(warped_section.landmarks.data, target_section.landmarks.data)
-    shape = target_section.reference_image.data.shape
-    image_diagonal = np.sqrt(np.square(shape[0]) + np.square(shape[1]))
-    unified_lms['rtre'] = unified_lms['tre']/image_diagonal
-    mean_rtre = np.mean(unified_lms['rtre'])
-    median_rtre = np.median(unified_lms['rtre'])
-    median_tre = np.median(unified_lms['tre'])
-    mean_tre = np.mean(unified_lms['tre'])
-    return mean_rtre, median_rtre, mean_tre, median_tre
-
-
-def compute_tre(target_section, warped_section, shape):
-    unified_lms = compute_distance_for_lm(warped_section.landmarks.data, target_section.landmarks.data)
+def compute_tre(target_lms: pandas.core.frame.DataFrame, 
+                warped_lms: pandas.core.frame.DataFrame, 
+                shape: Tuple[int, int]) -> Tuple[float, float, float, float]:
+    unified_lms = compute_distance_for_lm(warped_lms, target_lms)
     diag = np.sqrt(np.square(shape[0]) + np.square(shape[1]))
     unified_lms['rtre'] = unified_lms['tre']/diag
     mean_rtre = np.mean(unified_lms['rtre'])

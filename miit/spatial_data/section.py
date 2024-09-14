@@ -98,7 +98,7 @@ def get_table_summary_string(section: 'Section') -> str:
 def groupwise_registration(sections: List['Section'],
                            registerer: Registerer,
                            skip_deformable_registration: bool = False,
-                           **kwarg: Dict):
+                           **kwarg: Dict) -> Tuple[List['Section'], List[RegistrationResult]]:
     """
     Performs a groupwise registration on all supplied sections. A registration between all sections is computed
     and applied to all sections. Per convention, the last section in sections is used as the fixed section.
@@ -129,8 +129,8 @@ def groupwise_registration(sections: List['Section'],
 def register_to_ref_image(target_image: numpy.array, 
                           source_image: numpy.array, 
                           data: Union[BaseImage, BasePointset],
-                          registerer=None,
-                          args=None) -> Tuple[Union[BaseImage, BasePointset], numpy.array]:
+                          registerer: Registerer = None,
+                          **args) -> Tuple[Union[BaseImage, BasePointset], numpy.array]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
@@ -138,8 +138,6 @@ def register_to_ref_image(target_image: numpy.array,
     """
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
-    if args is None:
-        args = {}
     transformation = registerer.register_images(target_image, source_image, **args)
     warped_data = data.apply_transform(registerer, transformation)
     warped_ref_image = DefaultImage(data=source_image).apply_transform(registerer, transformation).data
@@ -194,7 +192,7 @@ class Section:
     def __hash__(self) -> int:
         return self._id
 
-    def copy(self):
+    def copy(self) -> 'Section':
         image = self.reference_image.copy()
         config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
@@ -208,14 +206,14 @@ class Section:
         copied_section._id = self._id
         return copied_section
 
-    def crop(self, xmin, xmax, ymin, ymax):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.reference_image.crop(xmin, xmax, ymin, ymax)
         for annotation in self.annotations:
             annotation.crop(xmin, xmax, ymin, ymax)
         for so_data_ in self.so_data:
             so_data_.crop(xmin, xmax, ymin, ymax)
 
-    def crop_by_mask(self, mask):
+    def crop_by_mask(self, mask: numpy.ndarray):
         xmin, xmax, ymin, ymax = get_boundary_box(mask)
         self.crop(xmin, xmax, ymin, ymax)
 
@@ -264,7 +262,7 @@ class Section:
         transformed_section._id = self._id
         return transformed_section
 
-    def store(self, directory):
+    def store(self, directory: str):
         # TODO: Rewrite that function.
         """
         Should look like this:
@@ -394,53 +392,3 @@ class Section:
                 annotation.flip(axis=axis)
         for so_data_ in self.so_data:
             so_data_.flip(axis=axis)
-
-    # @classmethod
-    # def from_config(cls, config: Dict[str, str]):
-    #     name = config['name']
-    #     image_path = config['image_path']
-    #     image = DefaultImage(data=io.imread(image_path))
-    #     _id = int(config['id'])
-    #     annotations = []
-    #     if 'annotations' in config:
-    #         for path in config['annotations']:
-    #             annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-    #             # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-    #             # TODO: Change preprocessing from Qupath output and remove line below.
-    #             if len(annotation_data.shape) > 2:
-    #                 annotation_data = np.moveaxis(annotation_data, 0, -1)
-    #             annotation = Annotation(data=annotation_data)
-    #             annotations.append(annotation)
-    #     if 'segmentation_mask_path' in config:
-    #         segmenation_mask_path = config['segmentation_mask_path']
-    #         segmenation_mask = Annotation(data=io.imread(segmenation_mask_path), name='tissue_mask')
-    #         annotations.append(segmenation_mask)
-    #     if 'landmarks_path' in config:
-    #         landmarks = Pointset(data=pd.read_csv(config['landmarks_path']), name='landmarks')
-    #         annotations.append(landmarks)
-    #     # molecular_data = None
-    #     if 'named_annotations' in config:
-    #         for na_config in config['named_annotations']:
-    #             path = na_config['annotation_path']
-    #             annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-    #             # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-    #             # TODO: Change preprocessing from Qupath output and remove line below.
-    #             if len(annotation_data.shape) > 2:
-    #                 annotation_data = np.moveaxis(annotation_data, 0, -1)
-    #             label_path = na_config['label_path']
-    #             with open(label_path, 'r') as f:
-    #                 labels = [x.strip() for x in f.readlines()]
-    #             annotation = Annotation(data=annotation_data, labels=labels)
-    #             annotations.append(annotation)                
-    #     so_datas = []
-    #     if 'so_data' in config:
-    #         for so_config in config['so_datas']:
-    #             so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
-    #             so_datas.append(so_data)
-
-    #     obj = cls(image=image,
-    #                name=name,
-    #                annotations=annotations,
-    #                so_data=so_datas,
-    #                config=config)
-    #     obj._id = _id

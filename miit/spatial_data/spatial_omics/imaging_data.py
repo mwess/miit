@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 import uuid
 
-from miit.registerers.base_registerer import Registerer
+from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_types.annotation import Annotation
 
 
@@ -22,7 +22,7 @@ class BaseSpatialOmics(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: Any, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
         pass
 
     @abc.abstractmethod
@@ -31,6 +31,10 @@ class BaseSpatialOmics(abc.ABC):
 
     @abc.abstractmethod
     def resize(self, height: int, width: int):
+        pass
+
+    @abc.abstractmethod
+    def rescale(self, scaling_factor: float):
         pass
 
     @abc.abstractmethod

@@ -37,7 +37,9 @@ from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
 
 
-def to_ion_images(table, imzml, background_value = 0):
+def to_ion_images(table: pandas.core.frame.DataFrame, 
+                  imzml: pyimzml.ImzMLParser.ImzMLParser, 
+                  background_value: int = 0):
     """
     Converts integrated msi data into an image presentation using an `ImzML` object.
 
@@ -100,23 +102,24 @@ def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser,
         f.write(xml_as_str)
 
 
-def simple_baseline(intensities: numpy.array) -> numpy.array:
+def simple_baseline(intensities: numpy.ndarray) -> numpy.ndarray:
     return intensities - np.median(intensities[:100])
 
 
-def find_nearest(array: numpy.array, value: float) -> Tuple[float, int]:
+def find_nearest(array: numpy.ndarray, value: float) -> Tuple[float, int]:
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx], idx
 
 
 def tic_trapz(intensity: float, 
-              intensities: numpy.array, mz: Optional[float] = None) -> numpy.array:
+              intensities: numpy.ndarray, 
+              mz: Optional[float] = None) -> numpy.ndarray:
     return np.array(intensity) / trapezoid(y=intensities, x=mz)
 
 
 def get_metabolite_intensities(
-        msi: ImzmlParserType, 
+        msi: pyimzml.ImzMLParser.ImzMLParser, 
         mz_dict: Dict, 
         spectra_idxs: Set[int]) -> IntensityDict:
     norm_f = tic_trapz
@@ -128,7 +131,6 @@ def get_metabolite_intensities(
     for spectrum_idx in spectra_idxs:
         if spectrum_idx not in intensities_per_spot:
             intensities_per_spot[spectrum_idx] = []
-        collected_intensities = {}
         mzs, intensities = msi.getspectrum(spectrum_idx)
         # Smoothing is still missing
         intensities = baseline_f(intensities)
@@ -142,11 +144,11 @@ def get_metabolite_intensities(
     return intensities_per_spot
 
 
-def get_metabolite_intensities_from_full_spectrum(msi, 
-                                spectra_idxs, 
-                                mz_intervals,
-                                norm_f=None,
-                                baseline_f=None) -> Dict:
+def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser,
+                                                  spectra_idxs: List[int], 
+                                                  mz_intervals: Tuple[float, float, float],
+                                                  norm_f: Optional[callable] = None,
+                                                  baseline_f: Optional[callable] = None) -> Dict:
     """
     Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
     used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
@@ -176,7 +178,7 @@ def get_metabolite_intensities_from_full_spectrum(msi,
     return intensities_per_spot
 
 
-def get_metabolite_intensities_preprocessed(msi: ImzmlParserType,
+def get_metabolite_intensities_preprocessed(msi: pyimzml.ImzMLParser.ImzMLParser,
                                             spectra_idxs: Set[int],
                                             mz_intervals: Optional[List[Dict]] = None) -> IntensityDict:
     """Extracts metabolites from imzml file. Assumes that targets have been preprocessed and selected in SCiLS prior to exporting."""
@@ -201,9 +203,9 @@ def get_metabolite_intensities_preprocessed(msi: ImzmlParserType,
     return intensities
 
 
-def get_metabolite_intensities_targeted(msi: ImzmlParserType,
-                                          spectra_idxs: Set[int],
-                                          mz_labels=None) -> Tuple[IntensityDict, List[str]]:
+def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
+                                        spectra_idxs: Set[int],
+                                        mz_labels=None) -> Tuple[IntensityDict, List[str]]:
     collected_intensities = {}
     for spectrum_idx in spectra_idxs:
         mzs, intensities = msi.getspectrum(spectrum_idx)
@@ -214,9 +216,9 @@ def get_metabolite_intensities_targeted(msi: ImzmlParserType,
     return metabolite_df
 
 
-def convert_to_matrix(msi, 
-                      srd=None, 
-                      target_resolution=1):
+def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
+                      srd: dict = None, 
+                      target_resolution: int = 1):
     """
     Converts msi references from imzml format to matrix format.
     
@@ -267,7 +269,7 @@ def convert_to_matrix(msi,
     return proj_mat, spec_to_ref_map, annotation_mat
 
 
-def compute_mean_spectrum(msi):
+def compute_mean_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser):
     total_intensities = None
     for i in range(len(msi.coordinates)):
         mzs, intensities = msi.getspectrum(i)
@@ -279,7 +281,8 @@ def compute_mean_spectrum(msi):
     return avg_spec
 
 
-def load_metabolites(table_path, imzml_path):
+def load_metabolites(table_path: str, 
+                     imzml_path: str) -> Tuple[dict, pandas.core.frame.DataFrame]:
     # NEDC_peak_table = pd.read_csv('Peaklist_136_NEDC_figshare.txt', sep='\t')
     NEDC_peak_table = pd.read_csv(table_path, sep='\t')
     NEDC_peak_table_IDed = NEDC_peak_table[NEDC_peak_table['ID'].notna()][['m/z', 'ID', 'ID in OPLSDA']].reset_index(drop=True)
@@ -289,7 +292,7 @@ def load_metabolites(table_path, imzml_path):
     return peak_dict, NEDC_peak_table_IDed
 
 
-def get_peaks(msi, rel_percentage=0.00025):
+def get_peaks(msi: pyimzml.ImzMLParser.ImzMLParser, rel_percentage=0.00025):
     mzs = msi.getspectrum(0)[0]
     mean_intensities = compute_mean_spectrum(msi)
     norm_intensities = mean_intensities / trapezoid(y=mean_intensities, x=None)
@@ -318,7 +321,9 @@ def find_ided_peaks(peaks, peak_table, mass_error_mz=2.00000):
     return _ret
 
 
-def get_one_peak_dict_and_interval_list(peaks_id, delta_factor=2, default_interval_delta=0.00025):
+def get_one_peak_dict_and_interval_list(peaks_id: Tuple[int, float, float], 
+                                        delta_factor: int = 2,
+                                        default_interval_delta: float = 0.00025):
     _ret = {}
     _ret_ints = []
     for _idxs, _mzs, _ids in peaks_id:
@@ -339,23 +344,25 @@ def get_one_peak_dict_and_interval_list(peaks_id, delta_factor=2, default_interv
     return _ret, _ret_ints
 
 
-def compute_weighted_average(measurements, weights, background_weight):
+def compute_weighted_average(measurements: Union[pandas.core.frame.DataFrame, numpy.ndarray],
+                             weights: numpy.ndarray, 
+                             background_weight: float) -> pandas.core.frame.DataFrame:
     return (measurements*weights).sum()/(sum(weights) + background_weight)
 
 
-def msi_default_accumulate_spot_weighted_mean(source_keys,
-                                              source_counts,
-                                              measurement_df,
-                                              bck_weight):
+def msi_default_accumulate_spot_weighted_mean(source_keys: numpy.ndarray,
+                                              source_counts: numpy.ndarray,
+                                              measurement_df: pandas.core.frame.DataFrame,
+                                              bck_weight: float) -> pandas.core.frame.DataFrame:
     selected_datas = measurement_df[source_keys].transpose()
     return pd.DataFrame(selected_datas.apply(lambda x: compute_weighted_average(x, source_counts, bck_weight), axis=0)).transpose()
   
 
-def msi_default_spot_accumulation_fun(source_keys, 
-                                      source_counts, 
-                                      measurement_df, 
-                                      bck_weight,
-                                      accumulator_function=None):
+def msi_default_spot_accumulation_fun(source_keys: numpy.ndarray, 
+                                      source_counts: numpy.ndarray, 
+                                      measurement_df: pandas.core.frame.DataFrame, 
+                                      bck_weight: float,
+                                      accumulator_function: Optional[callable] = None) -> pandas.core.frame.DataFrame:
     if accumulator_function is None:
         accumulator_function = lambda r: pd.Series({'mean': r.mean(), 
                                                     'std': r.std(), 
@@ -384,7 +391,7 @@ def msi_default_spot_accumulation_fun(source_keys,
     return unrolled_datas_stats
 
 
-def flatten_to_row(df):
+def flatten_to_row(df: pandas.core.frame.DataFrame) -> pandas.core.frame.DataFrame:
     v = df.unstack().to_frame().sort_index(level=1).T
     v.columns = v.columns.map('_'.join)    
     return v
@@ -393,7 +400,7 @@ def flatten_to_row(df):
 @dataclass
 class Imzml(BaseSpatialOmics):
 
-    image: DefaultImage 
+    image: BaseImage 
     __ref_mat: Annotation = field(init=False, default=None)
     spec_to_ref_map: dict
     ann_mat: Optional[Annotation] = None
@@ -440,7 +447,7 @@ class Imzml(BaseSpatialOmics):
         if not self.ann_mat is None:
             self.ann_mat.crop(x1, x2, y1, y2)
 
-    def get_spec_to_ref_map(self, reverse=False):
+    def get_spec_to_ref_map(self, reverse: bool = False):
         map_ = None
         if reverse:
             map_ = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
@@ -514,7 +521,7 @@ class Imzml(BaseSpatialOmics):
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory):
+    def load(cls, directory: str) -> 'Imzml':
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
@@ -649,7 +656,9 @@ class Imzml(BaseSpatialOmics):
         obj.ref_mat = ref_mat
         return obj
 
-    def convert_mappings_and_unique_ids_back(self, mappings, unique_ids):
+    def convert_mappings_and_unique_ids_back(self, 
+                                             mappings: dict, 
+                                             unique_ids: set) -> Tuple[dict, set]:
         for key in mappings:
             mappings[key] = mappings[key] - 1
         unique_ids = {x - 1 for x in unique_ids}
@@ -659,7 +668,7 @@ class Imzml(BaseSpatialOmics):
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
         return {int(spec_to_ref_map_rev[x]) for x in ref_mat_values}
 
-    def mappings_map_to_msi_pixel_idxs(self, mappings):
+    def mappings_map_to_msi_pixel_idxs(self, mappings: dict) -> dict:
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
         mapped_mappings = {}
         for key in mappings:
@@ -668,7 +677,7 @@ class Imzml(BaseSpatialOmics):
             mapped_mappings[key] = (idx_arr_mapped, mappings[key][1].copy())
         return mapped_mappings
 
-    def spots_background_map_keys_to_msi_pixel_idxs(self, spots_background):
+    def spots_background_map_keys_to_msi_pixel_idxs(self, spots_background: dict) -> dict:
         # TODO: Remove that function again.
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
         return {spec_to_ref_map_rev[x]: spots_background[x] for x in spots_background}

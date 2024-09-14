@@ -13,10 +13,9 @@ import pandas, pandas as pd
 from miit.spatial_data.base_types import Annotation, DefaultImage, Pointset
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
-# from miit.utils.utils import custom_max_voting_filter
 
 
-def merge_dicts(dict1, dict2):
+def merge_dicts(dict1: dict, dict2: dict) -> dict:
     new_dict = {}
     for key in dict1:
         if dict1[key] in dict2:
@@ -38,7 +37,10 @@ def convert_table_to_mat(table: pandas.core.frame.DataFrame,
                                       col)
     
 
-def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
+def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame, 
+                               ref_mat: numpy.ndarray, 
+                               st_table: pandas.core.frame.DataFrame, 
+                               col: Any):
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
     intern_idx_local_idx_dict = {}
     for idx, row in st_table.iterrows():
@@ -49,14 +51,14 @@ def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
     return measurement_mat
 
 
-def get_measurement_dict(df, col1):
+def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any):
     dct = {}
     for idx, row in df.iterrows():
         dct[idx] = row[col1]
     return dct
 
 
-def get_scalefactor(scalefactors, image_scale):
+def get_scalefactor(scalefactors: dict, image_scale: str):
     # 1 corresponds to ogirinal image size.
     scalefactor = 1
     if image_scale == 'lowres':
@@ -66,9 +68,9 @@ def get_scalefactor(scalefactors, image_scale):
     return scalefactor
     
 
-def scale_tissue_positions(tissue_positions,
-                           scalefactors,
-                           image_scale):
+def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
+                           scalefactors: dict,
+                           image_scale: str):
     scale = 1
     if image_scale == 'lowres':
         scale = scalefactors['tissue_lowres_scalef']
@@ -90,7 +92,7 @@ class Visium(BaseSpatialOmics):
     name: str = ''
     skip_ref_mat_creation: bool = False
     config: Optional[dict] = None
-    tissue_mask: Optional[numpy.array] = None
+    tissue_mask: Optional[numpy.ndarray] = None
     background: ClassVar[int] = 0
     
     def __post_init__(self):
@@ -214,7 +216,6 @@ class Visium(BaseSpatialOmics):
         return 'visium'
         
     def pad(self, padding: Tuple[int, int, int, int]):
-        left, right, top, bottom = padding
         self.image.pad(padding)
         self.table.pad(padding)
         self.__ref_mat.pad(padding)
@@ -239,7 +240,7 @@ class Visium(BaseSpatialOmics):
         if self.__ref_mat is not None:
             self.__ref_mat.crop(x1, x2, y1, y2)
 
-    def flip(self, axis: int =0):
+    def flip(self, axis: int = 0):
         self.image.flip(axis=axis)
         self.table.flip(self.image.data.shape, axis=axis)
         if self.__ref_mat is not None:
@@ -285,7 +286,7 @@ class Visium(BaseSpatialOmics):
         transformed_st_data.spec_to_ref_map = self.spec_to_ref_map.copy()
         return transformed_st_data
 
-    def get_spec_to_ref_map(self, reverse=False):
+    def get_spec_to_ref_map(self, reverse: bool = False):
         map_ = None
         if reverse:
             map_ = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
@@ -311,8 +312,8 @@ class Visium(BaseSpatialOmics):
     @classmethod
     def from_spcrng(cls, 
                     directory: str,
-                    image_scale: str ='hires',
-                    fullres_image_path: str =None,
+                    image_scale: str = 'hires',
+                    fullres_image_path: str = None,
                     config: Dict =None):
         """
         Initiates Visium10X from spaceranger output directory.
@@ -341,8 +342,8 @@ class Visium(BaseSpatialOmics):
                           path_to_scalefactors: str,
                           path_to_tissue_positions: str,
                           path_to_image: str,
-                          image_scale: str ='hires',
-                          config: Dict =None):
+                          image_scale: str = 'hires',
+                          config: Dict = None):
         """
         Loads Visium10X object from spaceranger output.
         

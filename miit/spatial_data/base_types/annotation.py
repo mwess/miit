@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 
 
 import cv2
-import numpy as np
+import numpy, numpy as np
 import SimpleITK as sitk
 
 
@@ -107,7 +107,7 @@ class Annotation(BaseImage):
             with open(join(path, 'labels.json'), 'w') as f:
                 json.dump(self.labels, f)            
 
-    def get_by_label(self, label):
+    def get_by_label(self, label: str) -> Optional[numpy.ndarray]:
         if not self.labels:
             return None
         if self.is_multichannel:
@@ -164,7 +164,7 @@ class Annotation(BaseImage):
         return 'annotation'
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> 'Annotation':
         annotation = sitk.GetArrayFromImage(sitk.ReadImage(join(path, 'annotations.nii.gz')))
         labels_path = join(path, 'labels.json')
         if exists(labels_path):

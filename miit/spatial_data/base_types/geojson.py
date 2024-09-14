@@ -128,7 +128,7 @@ class GeoJSONData(BasePointset):
         return 'geojson'
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> 'GeoJSONData':
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
         with open(join(path, 'geojson_data.geojson')) as f:
             data = geojson.load(f)
@@ -140,7 +140,7 @@ class GeoJSONData(BasePointset):
         return gdata
 
     def to_annotation(self,
-                      ref_image: numpy.array,
+                      ref_image: numpy.ndarray,
                       label_fun: Optional[callable] = None) -> 'Annotation':
         """Utility function for converting a geojson object to an 
         annotation. 
@@ -200,7 +200,10 @@ class GeoJSONData(BasePointset):
         annotation = Annotation(data=annotation_mask, labels=labels, name=self.name, is_multichannel=is_multichannel)
         return annotation
 
-    def __warp_geojson_coord_tuple(self, coord: Tuple[float, float], registerer: Registerer, transform) -> Tuple[float, float]:
+    def __warp_geojson_coord_tuple(self, 
+                                   coord: Tuple[float, float], 
+                                   registerer: Registerer, 
+                                   transform: RegistrationResult) -> Tuple[float, float]:
         """Transforms coordinates from geojson data from moving to fixed image space.
 
         Args:

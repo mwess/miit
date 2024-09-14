@@ -14,7 +14,6 @@ from greedyfhist.utils.io import read_image, write_to_ometiffile
 from .default_image import DefaultImage
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
-from miit.utils.tif_utils import get_tif_metadata
 
 
 @dataclass(kw_only=True)
@@ -119,26 +118,6 @@ class OMETIFFImage(DefaultImage):
         )
         ometiff_image._id=_id
         return ometiff_image
-
-    @classmethod
-    def load_from_path(cls, 
-                       path: str, 
-                       name: str = ''):
-        tif = tifffile.TiffFile(path)
-        data = tif.asarray()
-        if path.endswith('ome.tif') or path.endswith('ome.tiff'):
-            is_ome = True
-        else:
-            is_ome = False
-        meta_information = {
-            'path': path
-        }
-        tif_metadata = get_tif_metadata(tif)
-        return cls(data=data,
-                   name=name, 
-                   meta_information=meta_information,
-                   is_ome=is_ome,
-                   tif_metadata=tif_metadata)
 
     @classmethod
     def read_from_path(cls, 

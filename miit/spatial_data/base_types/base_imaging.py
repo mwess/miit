@@ -12,7 +12,7 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 @dataclass(kw_only=True)
 class BaseImage(abc.ABC):
 
-    data: numpy.array
+    data: numpy.ndarray
     interpolation_mode: ClassVar[str]
     name: str = ''
     _id:uuid.UUID = field(init=False)
@@ -99,7 +99,7 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
         pass
 
     @abc.abstractmethod

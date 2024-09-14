@@ -11,6 +11,7 @@ from .ometiff_image import OMETIFFImage
 from .ometiff_annotation import OMETIFFAnnotation
 
 
+# Overwrite this function to include greedyfhists read_image functionality
 def read_image(fpath):
     if fpath.endswith('.tiff'):
         tiff_file = tifffile.TiffFile(fpath)
