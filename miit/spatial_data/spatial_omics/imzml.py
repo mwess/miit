@@ -30,7 +30,6 @@ from miit.spatial_data.base_types import (
     DefaultImage,
     read_image
 )
-from miit.custom_types import ImzmlParserType, IntensityDict
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
@@ -121,7 +120,7 @@ def tic_trapz(intensity: float,
 def get_metabolite_intensities(
         msi: pyimzml.ImzMLParser.ImzMLParser, 
         mz_dict: Dict, 
-        spectra_idxs: Set[int]) -> IntensityDict:
+        spectra_idxs: Set[int]) -> Dict[Union[int, str], List[float]]:
     norm_f = tic_trapz
     intensity_f = np.max
     baseline_f = simple_baseline
@@ -180,7 +179,7 @@ def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzML
 
 def get_metabolite_intensities_preprocessed(msi: pyimzml.ImzMLParser.ImzMLParser,
                                             spectra_idxs: Set[int],
-                                            mz_intervals: Optional[List[Dict]] = None) -> IntensityDict:
+                                            mz_intervals: Optional[List[Dict]] = None) -> Dict[Union[int, str], List[float]]:
     """Extracts metabolites from imzml file. Assumes that targets have been preprocessed and selected in SCiLS prior to exporting."""
     intensity_f = np.max
     intensities = {}
@@ -205,7 +204,7 @@ def get_metabolite_intensities_preprocessed(msi: pyimzml.ImzMLParser.ImzMLParser
 
 def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
                                         spectra_idxs: Set[int],
-                                        mz_labels=None) -> Tuple[IntensityDict, List[str]]:
+                                        mz_labels=None) -> Tuple[Dict[Union[int, str], List[float]], List[str]]:
     collected_intensities = {}
     for spectrum_idx in spectra_idxs:
         mzs, intensities = msi.getspectrum(spectrum_idx)

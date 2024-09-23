@@ -270,8 +270,6 @@ class Visium(BaseSpatialOmics):
              **kwargs: Dict) -> 'Visium':
         image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
         ref_mat_warped = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
-        # TODO: See if we can get around the custom_max_voting_filter
-        # ref_mat_warped = Annotation(data=custom_max_voting_filter(ref_mat_warped.data))
         ref_mat_warped = Annotation(data=ref_mat_warped.data)
         table = self.table.apply_transform(registerer, transformation, **kwargs)
         config = self.config.copy() if self.config is not None else None

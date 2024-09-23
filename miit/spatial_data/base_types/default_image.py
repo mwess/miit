@@ -23,7 +23,7 @@ class DefaultImage(BaseImage):
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data = self.data[xmin:xmax, ymin:ymax]
 
-    def resize(self, width, height):
+    def resize(self, width: int, height: int):
         # Use opencv's resize function here, because it typically works a lot faster and for now
         # we assume that data in Image is always some kind of rgb like image.
         self.data = cv2.resize(self.data, (height, width))
