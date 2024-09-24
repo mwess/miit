@@ -10,7 +10,7 @@ import cv2
 import numpy, numpy as np
 import pandas, pandas as pd
 
-from miit.spatial_data.base_types import Annotation, DefaultImage, Pointset
+from miit.spatial_data.base_types import Annotation, Image, Pointset
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 
@@ -84,7 +84,7 @@ def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
 @dataclass
 class Visium(BaseSpatialOmics):
     
-    image: DefaultImage
+    image: Image
     table: Pointset
     scale_factors: dict
     __ref_mat: Annotation = field(init=False)
@@ -147,7 +147,7 @@ class Visium(BaseSpatialOmics):
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
-        image = DefaultImage.load(attributes['image'])
+        image = Image.load(attributes['image'])
         table = Pointset.load(attributes['table'])
         sf_path = attributes['scale_factors_path']
         with open(sf_path) as f:
@@ -354,7 +354,7 @@ class Visium(BaseSpatialOmics):
         if image_scale not in ['lowres', 'hires', 'fullres']:
             pass
             # Throw exception.
-        image = DefaultImage(data=cv2.imread(path_to_image))
+        image = Image(data=cv2.imread(path_to_image))
         with open(path_to_scalefactors) as f:
             scalefactors = json.load(f)
         tissue_positions_df = pd.read_csv(path_to_tissue_positions, header=None, index_col=0)

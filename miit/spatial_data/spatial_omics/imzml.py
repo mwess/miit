@@ -11,6 +11,7 @@ from typing import (
     Tuple, 
     Set,
     List,
+    Union
 )
 import uuid
 
@@ -27,7 +28,7 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from miit.spatial_data.base_types import (
     Annotation,
     BaseImage,
-    DefaultImage,
+    Image,
     read_image
 )
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
@@ -525,7 +526,7 @@ class Imzml(BaseSpatialOmics):
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
             config = json.load(f)
-        image = DefaultImage.load(attributes['image'])
+        image = Image.load(attributes['image'])
         __ref_mat = Annotation.load(attributes['__ref_mat'])
         with open(attributes['spec_to_ref_map_path']) as f:
             spec_to_ref_map = json.load(f)
@@ -549,7 +550,7 @@ class Imzml(BaseSpatialOmics):
         
     @classmethod
     def load_msi_data(cls, 
-                      image: BaseImage, 
+                      image: Union[BaseImage, numpy.array], 
                       imzml_path: str, 
                       name: str = '',
                       config: Optional[Dict] = None,
@@ -580,6 +581,8 @@ class Imzml(BaseSpatialOmics):
                 reg_img = ann_mat
             else:
                 reg_img = None
+            if isinstance(image, numpy.ndarray):
+                image = Image(data=image)
             _, ref_mat, add_imgs = do_msi_registration(image.data, 
                                                        ref_mat, 
                                                        spec_to_ref_map, 

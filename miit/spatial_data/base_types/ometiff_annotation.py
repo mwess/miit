@@ -105,23 +105,59 @@ class OMETIFFAnnotation(Annotation):
         ometiff_image._id=_id
         return ometiff_image
 
+    # @classmethod
+    # def load_from_path(cls, 
+    #                    path: str, 
+    #                    keep_axis_orientation=False, 
+    #                    is_multichannel=False,
+    #                    labels: Optional[Union[List, Dict]] = None,
+    #                    name: str = ''):
+    #     data, tif_metadata = read_image(path)
+    #     if not keep_axis_orientation and len(data.shape) > 2:
+    #         data = np.moveaxis(data, 0, 2)
+    #     if path.endswith('ome.tif') or path.endswith('ome.tiff'):
+    #         is_ome = True
+    #     else:
+    #         is_ome = False
+    #     meta_information = {
+    #         'path': path
+    #     }
+    #     return cls(data=data,
+    #                name=name, 
+    #                meta_information=meta_information,
+    #                is_ome=is_ome,
+    #                labels=labels,
+    #                keep_axis_orientation=keep_axis_orientation,
+    #                tif_metadata=tif_metadata,
+    #                is_multichannel=is_multichannel)
+    
     @classmethod
     def load_from_path(cls, 
-                       path: str, 
-                       keep_axis_orientation=False, 
-                       is_multichannel=False,
-                       labels: Optional[Union[List, Dict]] = None,
+                       path_to_data: str, 
+                       path_to_labels: Optional[str] = None,
+                       keep_axis_orientation: bool = False, 
+                       is_multichannel: bool = False,
                        name: str = ''):
-        data, tif_metadata = read_image(path)
+        data, tif_metadata = read_image(path_to_data)
         if not keep_axis_orientation and len(data.shape) > 2:
             data = np.moveaxis(data, 0, 2)
-        if path.endswith('ome.tif') or path.endswith('ome.tiff'):
+        if path_to_data.endswith('ome.tif') or path_to_data.endswith('ome.tiff'):
             is_ome = True
         else:
             is_ome = False
         meta_information = {
-            'path': path
+            'path': path_to_data,
         }
+        if path_to_labels is not None:
+            meta_information['labels_path'] = path_to_labels
+            with open(path_to_labels) as f:
+                labels = [x.strip() for x in f.readlines()]
+            if is_multichannel:
+                ids = np.unique(data).astype(int)
+                ids = sorted([x for x in ids if x != 0])
+                labels = {x: y for (x,y) in zip(ids, labels)}
+        else:
+            labels = None
         return cls(data=data,
                    name=name, 
                    meta_information=meta_information,

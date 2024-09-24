@@ -3,7 +3,7 @@ from typing import Any, Dict, Union
 
 from miit.spatial_data.base_types import (
     Annotation,
-    DefaultImage,
+    Image,
     BaseImage,
     BasePointset,
     Pointset,
@@ -29,7 +29,7 @@ class SpatialDataLoader:
         self.class_map = {}
         self.class_map[Imzml.get_type()] = Imzml
         self.class_map[Visium.get_type()] = Visium
-        self.class_map[DefaultImage.get_type()] = DefaultImage
+        self.class_map[Image.get_type()] = Image
         self.class_map[Annotation.get_type()] = Annotation
         self.class_map[Pointset.get_type()] = Pointset
         self.class_map[GeoJSONData.get_type()] = GeoJSONData
