@@ -7,28 +7,14 @@ from typing import Optional
 import numpy, numpy as np
 import pandas, pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from miit.spatial_data.base_types import Annotation, Image, Pointset
+from miit.spatial_data.spatial_omics import Visium, Imzml
 from miit.spatial_data import Section
+from miit.spatial_data.section import register_to_ref_image
+from miit.registerers import ManualAffineRegisterer, get_rotation_matrix_around_center
 
-
-# def load_section(path):
-#     histology_path = join(path, 'hist_image.png')
-#     reference_image = Image.load_from_path(histology_path)
-    
-#     landmarks_path = join(path, 'landmarks.csv')
-#     lms = Pointset.load_from_path(landmarks_path, name='landmarks')
-    
-#     tissue_mask_path = join(path, 'tissue_mask.png')
-#     tissue_mask = Annotation.load_from_path(tissue_mask_path, name='tissue_mask')
-
-#     section = Section(reference_image=reference_image, annotations=[lms, tissue_mask])
-#     tissue_classes_path = join(path, 'tissue_classes.nii.gz')
-#     labels_path = join(path, 'tissue_classes_labels.txt')
-#     if exists(tissue_classes_path):
-#         tissue_classes = Annotation.load_from_path(tissue_classes_path, path_to_labels=labels_path, name='tissue_classes')
-#         section.annotations.append(tissue_classes)
-#     return section
 
 def load_section(directory):
     image_path = glob.glob(join(directory, 'images', '*'))[0]
@@ -44,17 +30,55 @@ def load_section(directory):
     if len(ann_path) > 0:
         annotation_path = [x for x in ann_path if x.endswith('.nii.gz')][0]
         labels_path = [x for x in ann_path if x.endswith('.txt')][0]
+        print(annotation_path, labels_path)
         annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes')
         section.annotations.append(annotation)
     return section
 
-def load_sections(root_dir):
+def load_sections(root_dir, skip_so_data=False):
     sections = OrderedDict()
     sub_dirs = sorted(os.listdir(root_dir), key=lambda x: int(x))
     for sub_dir in sub_dirs:
         sub_path = join(root_dir, sub_dir)
         section = load_section(sub_path)
         sections[sub_dir] = section
+
+    if not skip_so_data:
+        # Imzml
+        msi_pos_paths = glob.glob(join(root_dir, '6', 'imzml', '*'))
+        msi_pos_imzml_path = [x for x in msi_pos_paths if x.endswith('imzML')][0]
+        msi_pos_srd_path = [x for x in msi_pos_paths if x.endswith('srd')][0]
+        msi_pos_ibd_path = [x for x in msi_pos_paths if x.endswith('ibd')][0]
+        msi_pos_section = sections['6']
+        msi_pos = Imzml.load_msi_data(
+            image=msi_pos_section.reference_image,
+            imzml_path=msi_pos_imzml_path,
+            name='msi_pos',
+            srd_path=msi_pos_srd_path,
+            use_srd=True
+        )
+        sections['6'].so_data.append(msi_pos)
+    
+    
+        msi_neg_paths = glob.glob(join(root_dir, '7', 'imzml', '*'))
+        msi_neg_imzml_path = [x for x in msi_neg_paths if x.endswith('imzML')][0]
+        msi_neg_srd_path = [x for x in msi_neg_paths if x.endswith('srd')][0]
+        msi_neg_ibd_path = [x for x in msi_neg_paths if x.endswith('ibd')][0]
+        msi_neg_section = sections['7']
+        msi_neg = Imzml.load_msi_data(
+            image=msi_neg_section.reference_image,
+            imzml_path=msi_neg_imzml_path,
+            name='msi_neg',
+            srd_path=msi_neg_srd_path,
+        )
+        sections['7'].so_data.append(msi_neg)
+    
+    
+        st = Visium.from_spcrng(join(root_dir, '2', 'spatial_transcriptomics'))
+        warped_st_data, registered_st_image = register_to_ref_image(target_image=sections['2'].reference_image.data,
+                                                                    source_image=st.image.data,
+                                                                    data=st)
+        sections['2'].so_data.append(warped_st_data)
     return sections
 
 
@@ -120,3 +144,61 @@ def plot_registration_summary(moving_image: numpy.array,
             axs[2].plot(x_values, y_values, 'k', linestyle="-")
     elif warped_lms is not None:
         axs[2].plot(warped_lms.x, warped_lms.y, 'b.')
+
+
+def make_wrong_integration_section(section: Section):
+    """Rotates all annotations of the section by 180 degress except for the so_data.
+
+    Args:
+        section (_type_): _description_
+    """
+    degree = 180
+    registerer = ManualAffineRegisterer()
+    rotation_matrix = get_rotation_matrix_around_center(section.reference_image.data, degree)
+    warped_section = section.apply_transform(registerer, rotation_matrix)
+    return warped_section
+
+
+def get_measurement_dict(df, col1, col2):
+    dct = {}
+    for _, row in df.iterrows():
+        dct[row[col1]] = row[col2]
+    return dct
+
+def merge_dicts(dict1, dict2):
+    new_dict = {}
+    for key in dict1:
+        if dict1[key] in dict2:
+            new_dict[key] = dict2[dict1[key]]
+    return new_dict
+
+def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
+    local_idx_measurement_dict = get_measurement_dict(measurement_df, 'barcode', col)
+    intern_idx_local_idx_dict = {}
+    for idx, row in st_table.iterrows():
+        intern_idx_local_idx_dict[int(row['int_idx'])] = idx
+    merged_dict = merge_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
+    indexer = np.array([merged_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+    measurement_mat = indexer[(ref_mat - ref_mat.min())]
+    return measurement_mat
+
+def get_measurement_matrix_2(measurement_df, ref_mat, table, col):
+    st_table = table.loc[measurement_df.barcode.to_list()]
+    return get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col)
+
+def get_spot_coloring_img(df, ref_mat, table, col='unified_hp_class', background_color='white'):
+    stroma_color = sns.color_palette()[0]
+    gland_color = sns.color_palette()[1]
+    spot_class_mat = get_measurement_matrix_2(df, ref_mat, table, col)
+    smat = np.zeros((spot_class_mat.shape[0], spot_class_mat.shape[1], 3), dtype=np.float32)
+    if background_color == 'white':
+        smat += 1
+    for i in range(spot_class_mat.shape[0]):
+        for j in range(spot_class_mat.shape[1]):
+            val = spot_class_mat[i,j]
+            if val == 'gland':
+                smat[i,j] = gland_color
+            elif val == 'stroma':
+                smat[i,j] = stroma_color
+    smat = (smat * 255).astype(np.uint8)
+    return smat
