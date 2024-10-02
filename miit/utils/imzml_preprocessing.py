@@ -117,7 +117,7 @@ def preprocess_for_registration(fixed_image: numpy.ndarray,
                                 ref_mat: numpy.ndarray,
                                 additional_image_datas:Optional[List[numpy.array]]=None,
                                 padding: int =100) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, List[numpy.ndarray], dict]:
-    fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image, background_value=0)
+    fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image)
     # Add global padding
     # First do aym padding
     fixed_image_padding = pad_asym(fixed_image_np, process_dict['fix_sym_pad'])
