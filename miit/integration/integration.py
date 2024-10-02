@@ -107,12 +107,12 @@ def integrate_annotations(target_data: BaseSpatialOmics,
     integrated_annotations = []
     annotation_data = annotation.data
     if len(annotation_data.shape) == 2:
-        annotation_data = np.expand_dims(annotation_data, -1)
+        annotation_data = np.expand_dims(annotation_data, 0)
     if annotation.labels is not None:
         labels = annotation.labels
     else:
         # Just use indices
-        n_annotations = annotation_data.shape[2]
+        n_annotations = annotation_data.shape[0]
         labels = list(range(n_annotations))
     integrated_annotations = map_annotations_to_table(target_data.get_spec_to_ref_map(), 
                                                       target_data.ref_mat.data,
@@ -125,14 +125,14 @@ def map_annotations_to_table(spec_to_ref_map: Dict,
                              ref_mat: numpy.ndarray, 
                              annotations: numpy.ndarray, 
                              labels: List[str]) -> pandas.core.frame.DataFrame: 
-    glob_counts = {spec_to_ref_map[x]: np.zeros(annotations.shape[2]) for x in spec_to_ref_map}
+    glob_counts = {spec_to_ref_map[x]: np.zeros(annotations.shape[0]) for x in spec_to_ref_map}
     spot_counts = {spec_to_ref_map[x]: 0 for x in spec_to_ref_map}
     for i in range(ref_mat.shape[0]):
         for j in range(ref_mat.shape[1]):
             val = ref_mat[i,j]
             if val == 0:
                 continue
-            glob_counts[val] += annotations[i, j, :]
+            glob_counts[val] += annotations[:, i, j]
             spot_counts[val] += 1
     for key in glob_counts:
          if spot_counts[key] > 0:

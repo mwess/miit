@@ -64,7 +64,7 @@ class Image(BaseImage):
 
     @staticmethod
     def get_type() -> str:
-        return 'default_image'
+        return 'image'
 
     @classmethod
     def load(cls, path: str):

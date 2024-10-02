@@ -505,16 +505,18 @@ class Imzml(BaseSpatialOmics):
         with open(config_path, 'w') as f:
             json.dump(self.config, f)
         f_dict['config_path'] = config_path
-        self.image.store(directory)
-        f_dict['image'] = join(directory, str(self.image._id))
-        self.__ref_mat.store(directory)
-        f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
+        self.image.store(join(directory, 'image'))
+        # f_dict['image'] = join(directory, str(self.image._id))
+        f_dict['image'] = join(directory, 'image')
+        self.__ref_mat.store(join(directory, 'ref_mat'))
+        # f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
+        f_dict['__ref_mat'] = join(directory, 'ref_mat')
         spec_to_ref_map_path = join(directory, 'spec_to_ref_map.json')
         with open(spec_to_ref_map_path, 'w') as f:
             json.dump(self.spec_to_ref_map, f)
         f_dict['spec_to_ref_map_path'] = spec_to_ref_map_path
         if self.ann_mat is not None:
-            self.ann_mat.store(directory)
+            self.ann_mat.store(join(directory, str(self.ann_mat._id)))
             f_dict['ann_mat'] = join(directory, str(self.ann_mat._id))
         f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:

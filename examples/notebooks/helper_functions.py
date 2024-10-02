@@ -30,7 +30,6 @@ def load_section(directory):
     if len(ann_path) > 0:
         annotation_path = [x for x in ann_path if x.endswith('.nii.gz')][0]
         labels_path = [x for x in ann_path if x.endswith('.txt')][0]
-        print(annotation_path, labels_path)
         annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes')
         section.annotations.append(annotation)
     return section

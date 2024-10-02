@@ -22,6 +22,16 @@ def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame,
 def compute_tre(target_lms: pandas.core.frame.DataFrame, 
                 warped_lms: pandas.core.frame.DataFrame, 
                 shape: Tuple[int, int]) -> Tuple[float, float, float, float]:
+    """Compute target registration errors between two pointsets.
+
+    Args:
+        target_lms (pandas.core.frame.DataFrame): _description_
+        warped_lms (pandas.core.frame.DataFrame): _description_
+        shape (Tuple[int, int]): _description_
+
+    Returns:
+        Tuple[float, float, float, float]: Returns mean_rtre, median_rtre, mean_tre, median_tre
+    """
     unified_lms = compute_distance_for_lm(warped_lms, target_lms)
     diag = np.sqrt(np.square(shape[0]) + np.square(shape[1]))
     unified_lms['rtre'] = unified_lms['tre']/diag
