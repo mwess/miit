@@ -216,3 +216,22 @@ class GeoJSONData(BasePointset):
         ps = np.array([[coord[0], coord[1]]]).astype(float)
         warped_ps = registerer.transform_pointset(ps, transform)
         return (warped_ps[0, 0], warped_ps[0, 1])
+
+    @classmethod
+    def load_from_path(cls, 
+                       path_to_geojson: str,
+                       name: str = '') -> 'GeoJSONData':
+        """Loads GeoJSONData objectom from path.
+
+        Args:
+            path_to_geojson (str): Path to geojson file.
+            name (str, optional): Optional identifier. Defaults to ''.
+
+        Returns:
+            GeoJSONData: Initialized GeoJSONData object.
+        """
+        with open(path_to_geojson) as f:
+            data = geojson.load(f)
+        return cls(data=data, name=name)
+        
+        

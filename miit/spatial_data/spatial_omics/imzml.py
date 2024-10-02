@@ -28,7 +28,7 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from miit.spatial_data.base_types import (
     Annotation,
     BaseImage,
-    DefaultImage,
+    Image,
     read_image
 )
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
@@ -505,16 +505,18 @@ class Imzml(BaseSpatialOmics):
         with open(config_path, 'w') as f:
             json.dump(self.config, f)
         f_dict['config_path'] = config_path
-        self.image.store(directory)
-        f_dict['image'] = join(directory, str(self.image._id))
-        self.__ref_mat.store(directory)
-        f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
+        self.image.store(join(directory, 'image'))
+        # f_dict['image'] = join(directory, str(self.image._id))
+        f_dict['image'] = join(directory, 'image')
+        self.__ref_mat.store(join(directory, 'ref_mat'))
+        # f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
+        f_dict['__ref_mat'] = join(directory, 'ref_mat')
         spec_to_ref_map_path = join(directory, 'spec_to_ref_map.json')
         with open(spec_to_ref_map_path, 'w') as f:
             json.dump(self.spec_to_ref_map, f)
         f_dict['spec_to_ref_map_path'] = spec_to_ref_map_path
         if self.ann_mat is not None:
-            self.ann_mat.store(directory)
+            self.ann_mat.store(join(directory, str(self.ann_mat._id)))
             f_dict['ann_mat'] = join(directory, str(self.ann_mat._id))
         f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:
@@ -526,7 +528,7 @@ class Imzml(BaseSpatialOmics):
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
             config = json.load(f)
-        image = DefaultImage.load(attributes['image'])
+        image = Image.load(attributes['image'])
         __ref_mat = Annotation.load(attributes['__ref_mat'])
         with open(attributes['spec_to_ref_map_path']) as f:
             spec_to_ref_map = json.load(f)
@@ -550,7 +552,7 @@ class Imzml(BaseSpatialOmics):
         
     @classmethod
     def load_msi_data(cls, 
-                      image: BaseImage, 
+                      image: Union[BaseImage, numpy.array], 
                       imzml_path: str, 
                       name: str = '',
                       config: Optional[Dict] = None,
@@ -581,6 +583,8 @@ class Imzml(BaseSpatialOmics):
                 reg_img = ann_mat
             else:
                 reg_img = None
+            if isinstance(image, numpy.ndarray):
+                image = Image(data=image)
             _, ref_mat, add_imgs = do_msi_registration(image.data, 
                                                        ref_mat, 
                                                        spec_to_ref_map, 

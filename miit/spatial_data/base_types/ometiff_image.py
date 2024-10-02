@@ -11,13 +11,13 @@ import numpy
 import tifffile
 
 from greedyfhist.utils.io import read_image, write_to_ometiffile
-from .default_image import DefaultImage
+from .image import Image
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
 
 
 @dataclass(kw_only=True)
-class OMETIFFImage(DefaultImage):
+class OMETIFFImage(Image):
     """
     Class for processing TIFF and OMETIFF images. 
     

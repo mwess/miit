@@ -91,8 +91,6 @@ class Pointset(BasePointset):
     def store(self,
               path: str):
         create_if_not_exists(path)
-        # sub_path = join(path, str(self._id))
-        # create_if_not_exists(sub_path)
         fname = 'pointset.csv'
         fpath = join(path, fname)
         index = True if self.index_col is not None else False
@@ -130,3 +128,34 @@ class Pointset(BasePointset):
                  y_axis=y_axis)
         ps._id = id_
         return ps
+
+    @classmethod
+    def load_from_path(cls, 
+                       path_to_data: str,
+                       x_axis: Any = 'x',
+                       y_axis: Any = 'y',
+                       index_col: Optional[Any] = None,
+                       header: Optional[Any] = 'infer',
+                       name: str = '') -> 'Pointset':
+        """Load a Pointset object.
+
+        Args:
+            path_to_data (str): Path to csv file.
+            x_axis (Any, optional): Index used to access x axis. Defaults to 'x'.
+            y_axis (Any, optional): Index used to access y axis. Defaults to 'y'.
+            index_col (Optional[Any], optional): index_col argument passed on to DataFrame. Defaults to None.
+            header (Optional[Any], optional): header argument passed on to DataFrame. Defaults to 'infer'.
+            name (str, optional): Optional identifier. Defaults to ''.
+
+        Returns:
+            Pointset: Initialized pointset object.
+        """
+        data = pd.read_csv(path_to_data, index_col=index_col, header=header)
+        return cls(
+            data=data,
+            name=name,
+            x_axis=x_axis,
+            y_axis=y_axis,
+            index_col=index_col,
+            header=header
+        )

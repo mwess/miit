@@ -9,7 +9,7 @@ import shutil
 import numpy, numpy as np
 
 from miit.spatial_data.base_types import (
-    DefaultImage,
+    Image,
     BaseImage,
     BasePointset,
 )
@@ -97,8 +97,7 @@ def get_table_summary_string(section: 'Section') -> str:
 
 def groupwise_registration(sections: List['Section'],
                            registerer: Registerer,
-                           skip_deformable_registration: bool = False,
-                           **kwarg: Dict) -> Tuple[List['Section'], List[RegistrationResult]]:
+                           **kwargs: Dict) -> Tuple[List['Section'], List[RegistrationResult]]:
     """
     Performs a groupwise registration on all supplied sections. A registration between all sections is computed
     and applied to all sections. Per convention, the last section in sections is used as the fixed section.
@@ -116,7 +115,7 @@ def groupwise_registration(sections: List['Section'],
         mask = mask_annotation.data if mask_annotation is not None else None
         images_with_mask_list.append((image, mask))
     # Now do groupwise registration.
-    transforms, _ = registerer.groupwise_registration(images_with_mask_list, skip_deformable_registration=skip_deformable_registration)
+    transforms, _ = registerer.groupwise_registration(images_with_mask_list, **kwargs)
     warped_sections = []
     for idx, section in enumerate(sections[:-1]):
         transform = transforms[idx]
@@ -140,7 +139,7 @@ def register_to_ref_image(target_image: numpy.array,
         registerer = OpenCVAffineRegisterer()
     transformation = registerer.register_images(target_image, source_image, **args)
     warped_data = data.apply_transform(registerer, transformation)
-    warped_ref_image = DefaultImage(data=source_image).apply_transform(registerer, transformation).data
+    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation).data
     return warped_data, warped_ref_image
 
 

@@ -20,9 +20,11 @@ from miit.utils.utils import create_if_not_exists
 class Annotation(BaseImage):
     """
     Annotations consists of a spatially resolved map of discrete 
-    classes. Classes can either be scalar of vector valued. It
-    is assumed that each annotation has the shape of H x W x C
-    or H x W.
+    classes. Classes can either be scalar of vector valued. Annotations
+    are either single- or multichannel. Singlechannel annotations are
+    either of shape W x H x C or W x H where each channel is assumed to be
+    binary. Multichannel annotations are of shape W X H where each pixel is an
+    integer value presentation either no class (0) or a class (> 0). 
 
     Image transformations applied to annotations should use a 
     nearest neighbor interpolation to not introduce new classes.
@@ -30,7 +32,7 @@ class Annotation(BaseImage):
 
     interpolation_mode: ClassVar[str] = 'NN'
     labels: Optional[Union[List[str], Dict[str, int]]] = None
-    is_multichannel: bool = True
+    is_multichannel: bool = False
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -108,6 +110,14 @@ class Annotation(BaseImage):
                 json.dump(self.labels, f)            
 
     def get_by_label(self, label: str) -> Optional[numpy.ndarray]:
+        """Returns a mask for the specified label.
+
+        Args:
+            label (str): Label to return.
+
+        Returns:
+            Optional[numpy.ndarray]: Either a binary mask or None.
+        """
         if not self.labels:
             return None
         if self.is_multichannel:
@@ -123,6 +133,11 @@ class Annotation(BaseImage):
                 return None
             
     def convert_to_multichannel(self):
+        """Converts an Annotation object to multichannel. 
+        
+        Note: If a pixel is assigned more than one class in a singlechannel mode,
+        converting to multichannel mode will only preserve on class.
+        """
         if self.is_multichannel:
             return
         if len(self.data.shape) == 2:
@@ -142,6 +157,9 @@ class Annotation(BaseImage):
         self.is_multichannel = True
 
     def convert_to_singlechannel(self):
+        """
+        Converts the Annotation object to a multichannel object.
+        """
         if not self.is_multichannel:
             return
         h, w = self.data.shape
@@ -179,3 +197,32 @@ class Annotation(BaseImage):
         annotation = cls(data=annotation, labels=labels, name=name)
         annotation._id = id_
         return annotation
+
+    @classmethod
+    def load_from_path(cls, 
+                       path_to_data: str, 
+                       path_to_labels: Optional[str] = None,
+                       name: str = '',
+                       is_multichannel=False) -> 'Annotation':
+        """Loads an Annotation object.
+
+        Args:
+            path_to_data (str): Path to spatial data. 
+            path_to_labels (Optional[str], optional): Path to labels file. Labels are a separated by a newline. In None, default labels are derived. Defaults to None.
+            name (str, optional): Optional object identifier. Defaults to ''.
+            is_multichannel (bool, optional): Indicates whether the image is single- or multichannel. Defaults to False.
+
+        Returns:
+            Annotation: Initialized Annotation object.
+        """
+        data = sitk.GetArrayFromImage(sitk.ReadImage(path_to_data))
+        if path_to_labels is not None:
+            with open(path_to_labels) as f:
+                labels = [x.strip() for x in f.readlines()]
+            if is_multichannel:
+                ids = np.unique(data).astype(int)
+                ids = sorted([x for x in ids if x != 0])
+                labels = {x: y for (x,y) in zip(ids, labels)}
+        else:
+            labels = None
+        return cls(data=data, labels=labels, is_multichannel=is_multichannel, name=name)

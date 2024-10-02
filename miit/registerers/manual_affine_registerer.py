@@ -62,5 +62,5 @@ def get_center(img: numpy.array):
 
 def get_rotation_matrix_around_center(img: numpy.array, angle: float):
     w_c, h_c = get_center(img)
-    rot_mat = cv2.getRotationMatrix2D((w_c, h_c), angle, 1)
+    rot_mat = cv2.getRotationMatrix2D((h_c, w_c), angle, 1)
     return rot_mat    
