@@ -24,15 +24,18 @@ def load_section(directory):
 
     reference_image = Image.load_from_path(image_path)
     tissue_mask = Annotation.load_from_path(mask_path, name='tissue_mask')
+    tissue_mask.data = tissue_mask.data / tissue_mask.data.max()
     landmarks = Pointset.load_from_path(lm_path, name='landmarks')
 
     section = Section(reference_image=reference_image, annotations=[tissue_mask, landmarks])
     if len(ann_path) > 0:
         annotation_path = [x for x in ann_path if x.endswith('.nii.gz')][0]
         labels_path = [x for x in ann_path if x.endswith('.txt')][0]
-        annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes')
+        annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes', channel_idx=0)
+        annotation.data = annotation.data/annotation.data.max()
         section.annotations.append(annotation)
     return section
+
 
 def load_sections(root_dir, skip_so_data=False):
     sections = OrderedDict()
@@ -41,6 +44,17 @@ def load_sections(root_dir, skip_so_data=False):
         sub_path = join(root_dir, sub_dir)
         section = load_section(sub_path)
         sections[sub_dir] = section
+
+    gland_mat = sections['6'].get_annotations_by_names('tissue_classes').get_by_label('Normal Glands')
+    stroma_mat = sections['6'].get_annotations_by_names('tissue_classes').get_by_label('Stroma')
+
+    new_stroma_mat = stroma_mat - gland_mat
+    new_stroma_mat[new_stroma_mat < 0] = 0
+
+    # We need to do some manual adjustment on tissue annotations for section 6.
+    annotation = sections['6'].get_annotations_by_names('tissue_classes')
+    stroma_idx = annotation.labels.index('Stroma')
+    annotation.data[:,:,stroma_idx] = new_stroma_mat
 
     if not skip_so_data:
         # Imzml
@@ -164,12 +178,14 @@ def get_measurement_dict(df, col1, col2):
         dct[row[col1]] = row[col2]
     return dct
 
+
 def merge_dicts(dict1, dict2):
     new_dict = {}
     for key in dict1:
         if dict1[key] in dict2:
             new_dict[key] = dict2[dict1[key]]
     return new_dict
+
 
 def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
     local_idx_measurement_dict = get_measurement_dict(measurement_df, 'barcode', col)
@@ -181,9 +197,11 @@ def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
     measurement_mat = indexer[(ref_mat - ref_mat.min())]
     return measurement_mat
 
+
 def get_measurement_matrix_2(measurement_df, ref_mat, table, col):
     st_table = table.loc[measurement_df.barcode.to_list()]
     return get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col)
+
 
 def get_spot_coloring_img(df, ref_mat, table, col='unified_hp_class', background_color='white'):
     stroma_color = sns.color_palette()[0]
@@ -201,3 +219,13 @@ def get_spot_coloring_img(df, ref_mat, table, col='unified_hp_class', background
                 smat[i,j] = stroma_color
     smat = (smat * 255).astype(np.uint8)
     return smat
+
+    
+def min_max_normalize(pd_series):
+    min_ = pd_series.min()
+    max_ = pd_series.max()
+    return (pd_series - min_)/(max_ - min_)
+
+    
+def normalize_z(arr):
+    return (arr - arr.mean())/arr.std()

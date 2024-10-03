@@ -13,7 +13,7 @@ import numpy as np
 import SimpleITK as sitk
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
-from miit.utils.utils import derive_output_path
+from miit.utils.utils import derive_unique_directory
 
 
 def get_max_dim(img: numpy.array):
@@ -53,7 +53,7 @@ class NiftyRegWrapper(Registerer):
                         reg_mode: str = 'rigid',
                         **kwargs: Dict) -> RegistrationResult:
     # Export images
-        tmp_dir = derive_output_path(tmp_dir)
+        tmp_dir = derive_unique_directory(tmp_dir)
         nifty_max_dim_size = 2048
         moving_img_sitk = sitk.GetImageFromArray(moving_img)
         fixed_img_sitk = sitk.GetImageFromArray(fixed_img)
@@ -119,7 +119,7 @@ class NiftyRegWrapper(Registerer):
                         interpolation_mode: str, 
                         tmp_directory: str = 'tmp', 
                         **kwargs: Dict) -> numpy.array:
-        tmp_directory = derive_output_path(tmp_directory)
+        tmp_directory = derive_unique_directory(tmp_directory)
         if tmp_directory != '' and not os.path.exists(tmp_directory):
             os.mkdir(tmp_directory)
         sitk_image = sitk.GetImageFromArray(image)

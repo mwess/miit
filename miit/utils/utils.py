@@ -84,3 +84,24 @@ def derive_output_path(directory: str, fname: str, limit: int = 1000) -> str:
         if not os.path.exists(new_target_path):
             return new_target_path
     return target_path
+
+
+def derive_unique_directory(directory: str, limit: int = 1000) -> str:
+    """Generates a unique output directory. If path is already existing,
+    adds a counter value until a unique path is found.
+
+    Args:
+        directory (str): target directory
+        limit (int, optional): Limit number to prevent endless loops. Defaults to 1000.
+
+    Returns:
+        str: Target path
+    """
+    target_path = directory
+    if not os.path.exists(target_path):
+        return target_path
+    for suffix in range(limit):
+        new_target_path = f'{target_path}_{suffix}'
+        if not os.path.exists(new_target_path):
+            return new_target_path
+    return target_path

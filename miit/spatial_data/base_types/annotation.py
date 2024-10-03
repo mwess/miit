@@ -203,7 +203,8 @@ class Annotation(BaseImage):
                        path_to_data: str, 
                        path_to_labels: Optional[str] = None,
                        name: str = '',
-                       is_multichannel=False) -> 'Annotation':
+                       is_multichannel: bool = False,
+                       channel_idx: int = -1) -> 'Annotation':
         """Loads an Annotation object.
 
         Args:
@@ -211,6 +212,7 @@ class Annotation(BaseImage):
             path_to_labels (Optional[str], optional): Path to labels file. Labels are a separated by a newline. In None, default labels are derived. Defaults to None.
             name (str, optional): Optional object identifier. Defaults to ''.
             is_multichannel (bool, optional): Indicates whether the image is single- or multichannel. Defaults to False.
+            channel_idx (int, optional): Denotes the channel index of the image data. Ignored if annotation has shape W x H. Defaults to -1.
 
         Returns:
             Annotation: Initialized Annotation object.
@@ -225,4 +227,6 @@ class Annotation(BaseImage):
                 labels = {x: y for (x,y) in zip(ids, labels)}
         else:
             labels = None
+        if len(data.shape) > 2 and channel_idx != -1:
+            data = np.moveaxis(data, channel_idx, -1)
         return cls(data=data, labels=labels, is_multichannel=is_multichannel, name=name)
