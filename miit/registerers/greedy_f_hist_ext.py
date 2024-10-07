@@ -24,6 +24,7 @@ class GreedyFHistExt(Registerer):
     """
     Wrapper for GreedyFHist algorithm.
     """
+
     name: ClassVar[str] = 'GreedyFHist'
     registerer: greedyfhist.registration.greedy_f_hist.GreedyFHist
     
@@ -33,8 +34,7 @@ class GreedyFHistExt(Registerer):
                         fixed_img: numpy.array, 
                         moving_img_mask: Optional[numpy.array] = None,
                         fixed_img_mask: Optional[numpy.array] = None,
-                        options: Optional[RegistrationOptions] = None
-                        ) -> GreedyFHistRegistrationResult:
+                        options: Optional[RegistrationOptions] = None) -> GreedyFHistRegistrationResult:
         if options is None:
             options = RegistrationOptions()
         reg_result = self.registerer.register(moving_img=moving_img,
@@ -48,24 +48,30 @@ class GreedyFHistExt(Registerer):
     def transform_pointset(self, 
                            pointset: numpy.array, 
                            transformation: GreedyFHistRegistrationResult, 
+                           do_reverse_transform: bool = False,
                            **kwargs: Dict) -> numpy.array:
-        transformed_pointset = self.registerer.transform_pointset(pointset, transformation.registration_result.registration_transforms.backward_transform)
-        # transformation_result = self.registerer.transform_pointset(pointset, transformation.backward_displacement_field, **kwargs)
+        reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration
+        transformed_pointset = self.registerer.transform_pointset(pointset, reg_transform.backward_transform)
         return transformed_pointset 
     
     def transform_image(self, 
                         image: numpy.array, 
                         transformation: GreedyFHistRegistrationResult, 
                         interpolation_mode: str, 
+                        do_reverse_transform: bool = False,
                         **kwargs: Dict) -> numpy.array:
-        warped_image = self.registerer.transform_image(image, transformation.registration_result.registration_transforms.forward_transform, interpolation_mode)
+        reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration
+        warped_image = self.registerer.transform_image(image, reg_transform.forward_transform, interpolation_mode)
         return warped_image
 
     @classmethod
-    def load_from_config(cls, config: Optional[Dict[str, Any]] = None):
-        if config is None:
-            config = {}
-        registerer = gfh.registration.GreedyFHist.load_from_config(config)
+    def init_registerer(cls, 
+                        path_to_greedy: str = '',
+                        use_docker_container: bool = False,
+                        segmentation_function: Optional[callable] = None):
+        registerer = gfh.registration.GreedyFHist(path_to_greedy=path_to_greedy,
+                                                  use_docker_container=use_docker_container,
+                                                  segmentation_function=segmentation_function)
         return cls(registerer=registerer)
 
     def groupwise_registration(self,
@@ -81,5 +87,3 @@ class GreedyFHistExt(Registerer):
             transform_list.append(GreedyFHistRegistrationResult(transform))
         g_reg = GreedyFHistGroupRegistrationResult(group_reg)
         return transform_list, g_reg
-
-        

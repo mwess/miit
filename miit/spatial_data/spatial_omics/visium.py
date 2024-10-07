@@ -7,19 +7,15 @@ from typing import Any, ClassVar, Dict, Optional, Tuple
 import uuid
 
 import cv2
-import numpy
-import numpy as np
-import pandas
-import pandas as pd
+import numpy, numpy as np
+import pandas, pandas as pd
 
-from miit.custom_types import PdDataframe
+from miit.spatial_data.base_types import Annotation, Image, Pointset
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
-from miit.utils.utils import custom_max_voting_filter
-from miit.spatial_data.image import Annotation, DefaultImage, Pointset
 
 
-def merge_dicts(dict1, dict2):
+def merge_dicts(dict1: dict, dict2: dict) -> dict:
     new_dict = {}
     for key in dict1:
         if dict1[key] in dict2:
@@ -41,7 +37,10 @@ def convert_table_to_mat(table: pandas.core.frame.DataFrame,
                                       col)
     
 
-def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
+def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame, 
+                               ref_mat: numpy.ndarray, 
+                               st_table: pandas.core.frame.DataFrame, 
+                               col: Any):
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
     intern_idx_local_idx_dict = {}
     for idx, row in st_table.iterrows():
@@ -52,14 +51,14 @@ def get_measurement_matrix_sep(measurement_df, ref_mat, st_table, col):
     return measurement_mat
 
 
-def get_measurement_dict(df, col1):
+def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any):
     dct = {}
     for idx, row in df.iterrows():
         dct[idx] = row[col1]
     return dct
 
 
-def get_scalefactor(scalefactors, image_scale):
+def get_scalefactor(scalefactors: dict, image_scale: str):
     # 1 corresponds to ogirinal image size.
     scalefactor = 1
     if image_scale == 'lowres':
@@ -69,9 +68,9 @@ def get_scalefactor(scalefactors, image_scale):
     return scalefactor
     
 
-def scale_tissue_positions(tissue_positions,
-                           scalefactors,
-                           image_scale):
+def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
+                           scalefactors: dict,
+                           image_scale: str):
     scale = 1
     if image_scale == 'lowres':
         scale = scalefactors['tissue_lowres_scalef']
@@ -85,7 +84,7 @@ def scale_tissue_positions(tissue_positions,
 @dataclass
 class Visium(BaseSpatialOmics):
     
-    image: DefaultImage
+    image: Image
     table: Pointset
     scale_factors: dict
     __ref_mat: Annotation = field(init=False)
@@ -93,7 +92,7 @@ class Visium(BaseSpatialOmics):
     name: str = ''
     skip_ref_mat_creation: bool = False
     config: Optional[dict] = None
-    tissue_mask: Optional[numpy.array] = None
+    tissue_mask: Optional[numpy.ndarray] = None
     background: ClassVar[int] = 0
     
     def __post_init__(self):
@@ -119,17 +118,28 @@ class Visium(BaseSpatialOmics):
         if not exists(directory):
             os.mkdir(directory)
         f_dict = {}
-        self.image.store(directory)
-        f_dict['image'] = join(directory, str(self.image._id))
-        self.table.store(directory)
-        f_dict['table'] = join(directory, str(self.table._id))
+        image_path = join(directory, 'image')
+        if not exists(image_path):
+            os.mkdir(image_path)
+        self.image.store(image_path)
+        # f_dict['image'] = join(image_path, str(self.image._id))
+        f_dict['image'] = image_path
+        table_path = join(directory, 'table')
+        if not exists(table_path):
+            os.mkdir(table_path)
+        self.table.store(table_path)
+        # f_dict['table'] = join(table_path, str(self.table._id))
+        f_dict['table'] = table_path 
         scale_factors_path = join(directory, 'scale_factors.json')
         with open(scale_factors_path, 'w') as f:
             json.dump(self.scale_factors, f)
         f_dict['scale_factors_path'] = scale_factors_path
         if self.__ref_mat is not None:
-            self.__ref_mat.store(directory)
-            f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
+            ref_mat_path = join(directory, 'ref_mat')
+            if not exists(ref_mat_path):
+                os.mkdir(ref_mat_path)
+            self.__ref_mat.store(ref_mat_path)
+            f_dict['__ref_mat'] = ref_mat_path 
         spec_to_ref_map_path = join(directory, 'spec_to_ref_mat.json')
         with open(spec_to_ref_map_path, 'w') as f:
             json.dump(self.spec_to_ref_map, f)
@@ -148,7 +158,7 @@ class Visium(BaseSpatialOmics):
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
-        image = DefaultImage.load(attributes['image'])
+        image = Image.load(attributes['image'])
         table = Pointset.load(attributes['table'])
         sf_path = attributes['scale_factors_path']
         with open(sf_path) as f:
@@ -217,7 +227,6 @@ class Visium(BaseSpatialOmics):
         return 'visium'
         
     def pad(self, padding: Tuple[int, int, int, int]):
-        left, right, top, bottom = padding
         self.image.pad(padding)
         self.table.pad(padding)
         self.__ref_mat.pad(padding)
@@ -230,6 +239,11 @@ class Visium(BaseSpatialOmics):
         self.table.resize(height_scale, width_scale)
         self.__ref_mat.resize(height, width) 
 
+    def rescale(self, scaling_factor: float):
+        self.image.rescale(scaling_factor)
+        self.table.rescale(scaling_factor)
+        self.__ref_mat.rescale(scaling_factor)
+
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         self.image.crop(x1, x2, y1, y2)
         self.table.crop(x1, x2, y1, y2)
@@ -237,7 +251,7 @@ class Visium(BaseSpatialOmics):
         if self.__ref_mat is not None:
             self.__ref_mat.crop(x1, x2, y1, y2)
 
-    def flip(self, axis: int =0):
+    def flip(self, axis: int = 0):
         self.image.flip(axis=axis)
         self.table.flip(self.image.data.shape, axis=axis)
         if self.__ref_mat is not None:
@@ -267,8 +281,6 @@ class Visium(BaseSpatialOmics):
              **kwargs: Dict) -> 'Visium':
         image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
         ref_mat_warped = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
-        # TODO: See if we can get around the custom_max_voting_filter
-        # ref_mat_warped = Annotation(data=custom_max_voting_filter(ref_mat_warped.data))
         ref_mat_warped = Annotation(data=ref_mat_warped.data)
         table = self.table.apply_transform(registerer, transformation, **kwargs)
         config = self.config.copy() if self.config is not None else None
@@ -283,7 +295,7 @@ class Visium(BaseSpatialOmics):
         transformed_st_data.spec_to_ref_map = self.spec_to_ref_map.copy()
         return transformed_st_data
 
-    def get_spec_to_ref_map(self, reverse=False):
+    def get_spec_to_ref_map(self, reverse: bool = False):
         map_ = None
         if reverse:
             map_ = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
@@ -309,8 +321,8 @@ class Visium(BaseSpatialOmics):
     @classmethod
     def from_spcrng(cls, 
                     directory: str,
-                    image_scale: str ='hires',
-                    fullres_image_path: str =None,
+                    image_scale: str = 'hires',
+                    fullres_image_path: str = None,
                     config: Dict =None):
         """
         Initiates Visium10X from spaceranger output directory.
@@ -339,8 +351,8 @@ class Visium(BaseSpatialOmics):
                           path_to_scalefactors: str,
                           path_to_tissue_positions: str,
                           path_to_image: str,
-                          image_scale: str ='hires',
-                          config: Dict =None):
+                          image_scale: str = 'hires',
+                          config: Dict = None):
         """
         Loads Visium10X object from spaceranger output.
         
@@ -353,7 +365,7 @@ class Visium(BaseSpatialOmics):
         if image_scale not in ['lowres', 'hires', 'fullres']:
             pass
             # Throw exception.
-        image = DefaultImage(data=cv2.imread(path_to_image))
+        image = Image(data=cv2.imread(path_to_image))
         with open(path_to_scalefactors) as f:
             scalefactors = json.load(f)
         tissue_positions_df = pd.read_csv(path_to_tissue_positions, header=None, index_col=0)
@@ -362,7 +374,7 @@ class Visium(BaseSpatialOmics):
             5: 'y'
         }, inplace=False)[['x', 'y']]
         tissue_positions_df = scale_tissue_positions(tissue_positions_df, scalefactors, image_scale)
-        tissue_positions = Pointset(data=tissue_positions_df)
+        tissue_positions = Pointset(data=tissue_positions_df, index_col=0)
         if config is None:
             config = {}
         config['scalefactors'] = path_to_scalefactors

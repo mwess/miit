@@ -1,10 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple, Optional
 
-import numpy
-import numpy as np
-import skimage
-import skimage as ski
+import numpy, numpy as np
+import skimage, skimage as ski
 import itk
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
@@ -14,42 +12,6 @@ def affine_transform(points: numpy.array,
                      transform: numpy.array) -> numpy.array:
     trans_points = (transform @ np.hstack((points, np.ones((points.shape[0], 1)))).T).T
     return trans_points[:, 0:2]
-
-
-def load_default_bspline_parameters():
-    return load_elastix_parameters_from_file('miit/registerers/bspline_parameters.txt')
-
-
-def load_elastix_parameters_from_file(fpath):
-    parameter_object = itk.ParameterObject.New()
-    parameter_object.AddParameterFile(fpath)
-    return parameter_object
-
-
-def parse_transformix_pointset(result_pointset) -> numpy.array:
-    parsed_results_points = []
-    for i in range(result_pointset.shape[0]):
-        output_point_str = ' '.join(list(result_pointset[i])).split(';')
-        output_point_str = [x for x in output_point_str if 'OutputPoint' in x][0]
-        idx1 = output_point_str.find('[') + 1
-        idx2 = output_point_str.find(']')
-        output_point_str = output_point_str[idx1:idx2].strip().split()
-        x = float(output_point_str[0])
-        y = float(output_point_str[1])
-        parsed_results_points.append(np.array([x, y]))
-    return np.array(parsed_results_points)
-    
-
-def write_pointset_to_file(path: str,
-                           pointset: numpy.array):
-    n_points = pointset.shape[0]
-    with open(path, 'w') as f:
-        f.write('point\n')
-        f.write(f'{n_points}')
-        for idx in range(n_points):
-            x = pointset[idx, 0]
-            y = pointset[idx, 1]
-            f.write(f'\n{x}\t{y}')
 
 
 @dataclass
