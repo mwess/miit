@@ -5,10 +5,8 @@ import os
 from os.path import join
 from typing import Any, Dict, Tuple, Union
 import uuid
-import xml.etree.ElementTree as ET
 
 import numpy
-import tifffile
 
 from greedyfhist.utils.io import read_image, write_to_ometiffile
 from .image import Image

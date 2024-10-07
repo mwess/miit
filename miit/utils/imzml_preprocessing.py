@@ -1,7 +1,7 @@
 
 from typing import Optional, List, Tuple, Dict
 from miit.registerers.base_registerer import Registerer
-from miit.registerers.nifity_reg import NiftyRegWrapper
+from miit.registerers.nifty_reg import NiftyRegWrapper
 
 import cv2
 import numpy, numpy as np

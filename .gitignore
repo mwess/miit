@@ -30,3 +30,4 @@ secret_scripts/
 secret_examples/
 examples/data/tmp_store
 examples/data/notebooks/temp_data/
+examples/notebooks/temp_data/

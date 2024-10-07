@@ -1,5 +1,4 @@
 import json
-import os
 import uuid
 from dataclasses import dataclass, field
 from os.path import join
@@ -36,7 +35,6 @@ class Pointset(BasePointset):
         if isinstance(coordinates_transformed, np.ndarray):
             temp_df = pd.DataFrame(coordinates_transformed, columns=[self.x_axis, self.y_axis])
             coordinates_transformed = temp_df
-        # coordinates_transformed = transform_result.final_transform.pointcloud
         warped_pc = warped_pc.assign(x=coordinates_transformed[self.x_axis].values, y=coordinates_transformed[self.y_axis].values)
         return Pointset(data=warped_pc,
                         name=self.name,
@@ -110,7 +108,6 @@ class Pointset(BasePointset):
     @classmethod
     def load(cls,
              path: str):
-        # id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
         with open(join(path, 'attributes.json')) as f:
             attributes = json.load(f)
         header = attributes['header']

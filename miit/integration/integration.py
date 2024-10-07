@@ -14,17 +14,16 @@ def compute_reference_matrix_mappings(ref_mat1: numpy.ndarray,
                                       ref_mat2: numpy.ndarray, 
                                       background1: int, 
                                       background2: int) -> Tuple[Dict[int, Tuple[numpy.ndarray, numpy.ndarray]], Dict[int, int]]:
-    """
-    Computes the composition of any pixel in ref_mat1 by ref_mat2. 
-    
-    ref_mat1: source ref_mat. 
-    ref_mat2: target ref_mat.
-    background1: value of background pixel in ref_mat1.
-    background2: value of background pixel in ref_mat2.
-    
-    returns:
-        px_composition: Mapping of each pixel in ref_mat1 to ref_mat2. 
-        bck_masses: Mapping containing the amount of background pixel in each mapping.
+    """Computes the composition of any pixel in ref_mat1 by ref_mat2. 
+
+    Args:
+        ref_mat1 (numpy.ndarray): 
+        ref_mat2 (numpy.ndarray): 
+        background1 (int): 
+        background2 (int): 
+
+    Returns:
+        Tuple[Dict[int, Tuple[numpy.ndarray, numpy.ndarray]], Dict[int, int]]: 1. Mapping of each pixel in ref_mat1 to ref_mat2. 2. Mapping containing the amount of background pixel in each mapping.
     """
     px_composition = {}
     bck_masses = {}
@@ -99,10 +98,17 @@ def map_mapping_index_to_table_index(mapped_data: pandas.core.frame.DataFrame,
     return mapped_data
 
 
-def integrate_annotations(target_data: BaseSpatialOmics, 
-                          annotation: Annotation) -> pandas.core.frame.DataFrame:
-    """
-    Integrates spatial omics data on a provided annotation.
+def transform_annotations_to_table(target_data: BaseSpatialOmics, 
+                                   annotation: Annotation) -> pandas.core.frame.DataFrame:
+    """Transforms annotations onto the spatial layout provided in spatial omics data.
+    Note: At the moment only implemented for images in singlechannel mode (i.e. is_multichannel == False).
+
+    Args:
+        target_data (BaseSpatialOmics): Target spatial omics layout.
+        annotation (Annotation): Source annotation.
+
+    Returns:
+        pandas.core.frame.DataFrame: Integrated annotations.
     """
     integrated_annotations = []
     annotation_data = annotation.data

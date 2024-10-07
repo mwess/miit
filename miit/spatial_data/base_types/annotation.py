@@ -9,6 +9,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 import cv2
 import numpy, numpy as np
 import SimpleITK as sitk
+import matplotlib.pyplot as plt
 
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
@@ -109,7 +110,23 @@ class Annotation(BaseImage):
             with open(join(path, 'labels.json'), 'w') as f:
                 json.dump(self.labels, f)            
 
-    def get_by_label(self, label: str) -> Optional[numpy.ndarray]:
+    def get_by_labels(self, 
+                      labels: Union[List[str], str]) -> Optional[numpy.array]:
+        if isinstance(labels, str):
+            labels = [labels]
+        if len(labels) == 0:
+            return None
+        mats = []
+        for label in labels:
+            mat = self.__get_by_label(label)
+            if mat is None:
+                return None
+            mats.append(mat)
+        if len(mats) == 1:
+            return mats[0]
+        return np.dstack(mats)
+    
+    def __get_by_label(self, label: str) -> Optional[numpy.ndarray]:
         """Returns a mask for the specified label.
 
         Args:
@@ -158,7 +175,10 @@ class Annotation(BaseImage):
 
     def convert_to_singlechannel(self):
         """
-        Converts the Annotation object to a multichannel object.
+        Converts the Annotation object to a multichannel Annotation object.
+
+        Note: A multichannel annotation object saves more memory, but every pixel can contain only 1 annotations. If the singlechannel annotation
+        object has overlapping annotations, only one of those annotations will be kept.
         """
         if not self.is_multichannel:
             return
@@ -176,6 +196,84 @@ class Annotation(BaseImage):
 
     def get_resolution(self) -> Optional[float]:
         return self.meta_information.get('resolution', None)
+    
+    def plot_annotation(self, 
+                        grid_layout: Union[str, Tuple[int, int]]=None,
+                        image_scale: int = 6,
+                        plot_labels: bool = True,
+                        axis_off: bool = True,
+                        reference_image: Optional[numpy.array] = None):
+        """Utility function for plotting an annotation.
+
+        Args:
+            grid_layout (Union[str, Tuple[int, int]], optional): Describes the layout of the grid. If None or 'square', 
+                arranges subplots in a square shape. If the 'sqaure' option is used, empty rows will be ommitted. Otherwise 
+                uses the grid specified as a tuple. Defaults to None.
+            image_scale (int, optional): Image scale in plot. Defaults to 6.
+            plot_labels (bool, optional): If True, plots labels. Defaults to True.
+            axis_off (bool, optional): Removes axis description. Defaults to True.
+            reference_image (Optional[numpy.array], optional): Optional reference image to add. If not None, will be the first image in the plot.
+                 Defaults to None.
+
+        Raises:
+            Exception: Exception if an unknown argument for the grid_layout is supplied.
+        """
+        if isinstance(grid_layout, str) or grid_layout is None:
+            if grid_layout == 'square' or grid_layout is None:
+                n_images = len(self.labels)
+                if reference_image is not None:
+                    n_images += 1
+                n_images_sqrt = int(np.ceil(np.sqrt(n_images)))
+                n_rows, n_cols = n_images_sqrt, n_images_sqrt
+                if (n_rows - 1) * n_cols >= n_images:
+                    n_rows -= 1
+            else:
+                raise Exception(f'String argument {grid_layout} unknown.')
+        elif isinstance(grid_layout, tuple):
+            n_rows, n_cols = grid_layout
+        else:
+            raise Exception(f'Could not parse grid_layout argument.')
+        fig, axs = plt.subplots(n_rows, n_cols, figsize=(image_scale * n_cols, image_scale * n_rows), squeeze=False)
+        if axis_off:
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    axs[i,j].axis('off')
+        if reference_image is not None:
+            axs[0, 0].imshow(reference_image)
+            if plot_labels:
+                axs[0, 0].set_title('Reference Image')
+        if self.is_multichannel == False:
+            idx = 0
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    if i == 0 and j == 0 and reference_image is not None:
+                        continue
+                    axs[i,j].imshow(self.data[:,:,idx])
+                    if plot_labels:
+                        axs[i,j].set_title(self.labels[idx])
+                    idx += 1
+                    if idx == self.data.shape[2]:
+                        return
+        else:
+            idx = 0
+            # TODO: Clean this code up.
+            label_keys = list(self.labels.keys())
+            for i in range(n_rows):
+                for j in range(n_cols):
+                    if i == 0 and j == 0 and reference_image is not None:
+                        continue
+                    d_idx = self.labels.get(label_keys[idx], None)
+                    if d_idx is None:
+                        return
+                    data_slice = (self.data == d_idx).astype(self.data.dtype)
+                    axs[i,j].imshow(data_slice)
+                    if plot_labels:
+                        axs[i,j].set_title(label_keys[idx])
+                    idx += 1
+                    if len(label_keys) == idx:
+                        return
+
+
 
     @staticmethod
     def get_type() -> str:

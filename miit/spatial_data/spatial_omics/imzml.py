@@ -37,16 +37,22 @@ from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml_preprocessing import do_msi_registration
 
 
+# TODO: Fix that function.
 def to_ion_images(table: pandas.core.frame.DataFrame, 
-                  imzml: pyimzml.ImzMLParser.ImzMLParser, 
+                  imzml: 'Imzml', 
                   background_value: int = 0):
-    """
-    Converts integrated msi data into an image presentation using an `ImzML` object.
+    """_summary_
 
-    Experimental function at the moment.
+    Args:
+        table (pandas.core.frame.DataFrame): Table mapping each msi a pixel to a vector of analytes. Should have the shape Analytes X Pixel.
+        imzml (Imzml): Imzml, defines the topology of the ion images.
+        background_value (int, optional): Defaults to 0.
+
+    Returns:
+        Annotation: Ion images.
     """
-    n_ints = table.shape[1]
-    ref_to_spec_map = imzml.get_spec_to_ref_map(reverse=True)
+    n_ints = table.shape[0]
+    rev_ref_to_spec_map = imzml.get_spec_to_ref_map(reverse=True)
     ref_mat = imzml.ref_mat.data
     ion_cube = np.zeros((ref_mat.shape[0], ref_mat.shape[1], n_ints))
     for i in range(ref_mat.shape[0]):
@@ -55,18 +61,28 @@ def to_ion_images(table: pandas.core.frame.DataFrame,
             if background_value == val:
                 ion_cube[i,j,:] = 0
             else:
-                imzml_idx = ref_to_spec_map[val]
-                ints = table.loc[imzml_idx].to_numpy()
+                imzml_idx = rev_ref_to_spec_map[val]
+                ints = table.loc[:, imzml_idx].to_numpy()
                 ion_cube[i,j] = ints
-    return ion_cube
+    ion_cube_annotation = Annotation(data=ion_cube, 
+                                     labels=table.index.to_list())
+    return ion_cube_annotation
 
 
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
                  output_path: str,
                  integrated_data: pandas.core.frame.DataFrame) -> None:
-    """Exports integrated msi data into the imzML format. Most of the data is written using
+    """Exports integrated msi data into the imzML format. Most of the work is done by
     `pyimzml`'s `ImzMLWriter`. However some information such as pixel size is not provided, which
-    we add by manually adding the information to the imzML file."""
+    we add by manually writing the information to the imzML file.
+
+    
+    Args:
+        template_msi (pyimzml.ImzMLParser.ImzMLParser): Template msi. Defines target topology.
+        output_path (str): 
+        integrated_data (pandas.core.frame.DataFrame): DataFrame containing integrated msi data.
+    """
+
     mzs = integrated_data.columns.to_numpy()
     if mzs.dtype != np.float64:
         mzs = mzs.astype(np.float64)
@@ -125,7 +141,6 @@ def get_metabolite_intensities(
     norm_f = tic_trapz
     intensity_f = np.max
     baseline_f = simple_baseline
-    smooth_f = None
     
     intensities_per_spot = {}
     for spectrum_idx in spectra_idxs:
@@ -218,20 +233,18 @@ def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
 
 def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
                       srd: dict = None, 
-                      target_resolution: int = 1):
-    """
-    Converts msi references from imzml format to matrix format.
-    
-    msi: Imzml object,
-    srd: Annotation format exported by SCiLS. Will be scaled with the msi-pixel references.
-    target_resolution: Target resolution of each msi pixel in um. Default parameter 1 means that each pixel is 
-                        scaled to a resolution of 1 msi-pixel per um.
-    returns:
-        proj_mat: reference matrix.
-        spec_to_ref_map: mapping of indices of msi file to references matrix.
-        annotation_mat: If supplied, srd in scaled matrix form. 
-    
-    
+                      target_resolution: int = 1) -> Union[numpy.array, dict, Optional[numpy.array]]:
+    """Computes reference matrix from msi scaled to target_resolution. Will also convert a srd annotation to
+    a binary annotation matrix, if provided. 
+
+    Args:
+        msi (pyimzml.ImzMLParser.ImzMLParser): Source imzml.
+        srd (dict, optional): Additional srd annotation (from SCiLS). Defaults to None.
+        target_resolution (int, optional): Target resolution to which. Defaults to 1.
+
+
+    Returns:
+        Union[numpy.array, dict, Optional[numpy.array]]: Reference matrix, mapping of msi pixels to reference matrix, If supplied, srd in matrix form.
     """
     scale_x = msi.imzmldict['pixel size x']/target_resolution
     scale_y = msi.imzmldict['pixel size y']/target_resolution
@@ -506,10 +519,8 @@ class Imzml(BaseSpatialOmics):
             json.dump(self.config, f)
         f_dict['config_path'] = config_path
         self.image.store(join(directory, 'image'))
-        # f_dict['image'] = join(directory, str(self.image._id))
         f_dict['image'] = join(directory, 'image')
         self.__ref_mat.store(join(directory, 'ref_mat'))
-        # f_dict['__ref_mat'] = join(directory, str(self.__ref_mat._id))
         f_dict['__ref_mat'] = join(directory, 'ref_mat')
         spec_to_ref_map_path = join(directory, 'spec_to_ref_map.json')
         with open(spec_to_ref_map_path, 'w') as f:
@@ -668,8 +679,11 @@ class Imzml(BaseSpatialOmics):
         unique_ids = {x - 1 for x in unique_ids}
         return mappings, unique_ids
 
-    def set_map_to_msi_pixel_idxs(self, ref_mat_values: Set) -> Set:
+    def set_map_to_msi_pixel_idxs(self, ref_mat_values: Optional[Set] = None) -> Set:
+        # Invert map
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
+        if ref_mat_values is None:
+            ref_mat_values = spec_to_ref_map_rev.keys()
         return {int(spec_to_ref_map_rev[x]) for x in ref_mat_values}
 
     def mappings_map_to_msi_pixel_idxs(self, mappings: dict) -> dict:

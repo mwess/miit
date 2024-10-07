@@ -139,7 +139,6 @@ class Visium(BaseSpatialOmics):
             if not exists(ref_mat_path):
                 os.mkdir(ref_mat_path)
             self.__ref_mat.store(ref_mat_path)
-            # f_dict['__ref_mat'] = join(ref_mat_path, str(self.__ref_mat._id))
             f_dict['__ref_mat'] = ref_mat_path 
         spec_to_ref_map_path = join(directory, 'spec_to_ref_mat.json')
         with open(spec_to_ref_map_path, 'w') as f:
