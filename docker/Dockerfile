@@ -1,6 +1,7 @@
 FROM mwess89/greedyfhist:0.0.2
 
-RUN pip install --user git+https://github.com/mwess/miit@v0.0.2
+# RUN pip install --user git+https://github.com/mwess/miit@v0.0.2
+RUN pip install git+https://github.com/mwess/miit@v0.0.2
 
 RUN pip install jupyterlab
 
