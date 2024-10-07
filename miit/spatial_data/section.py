@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import glob
 import json
 import os
 from os.path import join, exists
@@ -7,17 +6,18 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import uuid
 import shutil
 
-import pandas as pd
-import numpy
-import numpy as np
-import SimpleITK as sitk
-from skimage import io
+import numpy, numpy as np
 
+from miit.spatial_data.base_types import (
+    Image,
+    BaseImage,
+    BasePointset,
+)
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.spatial_data.loaders import load_spatial_omics_data, SpatialDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
-from miit.spatial_data.image import BaseImage, DefaultImage, Annotation, Pointset, GeoJSONData
+from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
@@ -97,8 +97,7 @@ def get_table_summary_string(section: 'Section') -> str:
 
 def groupwise_registration(sections: List['Section'],
                            registerer: Registerer,
-                           skip_deformable_registration: bool = False,
-                           **kwarg: Dict):
+                           **kwargs: Dict) -> Tuple[List['Section'], List[RegistrationResult]]:
     """
     Performs a groupwise registration on all supplied sections. A registration between all sections is computed
     and applied to all sections. Per convention, the last section in sections is used as the fixed section.
@@ -116,7 +115,7 @@ def groupwise_registration(sections: List['Section'],
         mask = mask_annotation.data if mask_annotation is not None else None
         images_with_mask_list.append((image, mask))
     # Now do groupwise registration.
-    transforms, _ = registerer.groupwise_registration(images_with_mask_list, skip_deformable_registration=skip_deformable_registration)
+    transforms, _ = registerer.groupwise_registration(images_with_mask_list, **kwargs)
     warped_sections = []
     for idx, section in enumerate(sections[:-1]):
         transform = transforms[idx]
@@ -128,9 +127,9 @@ def groupwise_registration(sections: List['Section'],
 
 def register_to_ref_image(target_image: numpy.array, 
                           source_image: numpy.array, 
-                          data: Union[BaseImage, Pointset],
-                          registerer=None,
-                          args=None) -> Tuple[Union[BaseImage, Pointset], numpy.array]:
+                          data: Union[BaseImage, BasePointset],
+                          registerer: Registerer = None,
+                          **args) -> Tuple[Union[BaseImage, BasePointset], numpy.array]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
@@ -138,11 +137,9 @@ def register_to_ref_image(target_image: numpy.array,
     """
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
-    if args is None:
-        args = {}
     transformation = registerer.register_images(target_image, source_image, **args)
-    warped_data = data.warp(registerer, transformation)
-    warped_ref_image = DefaultImage(data=source_image).warp(registerer, transformation).data
+    warped_data = data.apply_transform(registerer, transformation)
+    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation).data
     return warped_data, warped_ref_image
 
 
@@ -161,7 +158,7 @@ class Section:
     Attributes
     ----------
     
-    reference_image: DefaultImage
+    reference_image: BaseImage
         Used for registration with other sections. In some cases 
         used for spatial transformations on coordinate data.
         
@@ -174,17 +171,17 @@ class Section:
     so_data: List[BaseMolecularImaging] = field(default_factory=lambda: [])
         Contains additional more complex spatial omics types (e.g. MSI, ST).
         
-    annotations: List[Union[Annotation, Pointset, GeoJson]] = field(default_factory=lambda: [])
+    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
         List of additional annotations. 
     
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
-    reference_image: Optional[DefaultImage] = None
+    reference_image: Optional[BaseImage] = None
     name: Optional[str] = None
     _id: uuid.UUID = field(init=False)
     so_data: List[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: List[Union[DefaultImage, Annotation, Pointset, GeoJSONData]] = field(default_factory=lambda: [])
+    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
     meta_information: Optional[Dict[Any, Any]] = None
 
 
@@ -194,7 +191,7 @@ class Section:
     def __hash__(self) -> int:
         return self._id
 
-    def copy(self):
+    def copy(self) -> 'Section':
         image = self.reference_image.copy()
         config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
@@ -208,14 +205,14 @@ class Section:
         copied_section._id = self._id
         return copied_section
 
-    def crop(self, xmin, xmax, ymin, ymax):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.reference_image.crop(xmin, xmax, ymin, ymax)
         for annotation in self.annotations:
             annotation.crop(xmin, xmax, ymin, ymax)
         for so_data_ in self.so_data:
             so_data_.crop(xmin, xmax, ymin, ymax)
 
-    def crop_by_mask(self, mask):
+    def crop_by_mask(self, mask: numpy.ndarray):
         xmin, xmax, ymin, ymax = get_boundary_box(mask)
         self.crop(xmin, xmax, ymin, ymax)
 
@@ -226,12 +223,18 @@ class Section:
         for so_data_ in self.so_data:
             so_data_.pad(padding)
 
-    def resize(self, height: int, width: int):
-        self.reference_image.resize(height, width)
+    def resize(self, width: int, height: int):
+        w, h = self.reference_image.data[:2]
+        ws = w // width
+        hs = h // height
+        self.reference_image.resize(width, height)
         for annotation in self.annotations:
-            annotation.resize(height, width)
+            if isinstance(annotation, BasePointset):
+                annotation.resize(ws, hs)
+            else:
+                annotation.resize(width, height)
         for so_data_ in self.so_data:
-            so_data_.resize(height, width)
+            so_data_.resize(width, height)
 
     def apply_transform(self, 
              registerer: Registerer, 
@@ -239,14 +242,14 @@ class Section:
              **kwargs: Dict) -> 'Section':
         """Applies transformation to all spatially resolved data in the section object.
         """
-        image_transformed = self.reference_image.warp(registerer, transformation, **kwargs)
+        image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
         annotations_transformed = []
         for annotation in self.annotations:
-            annotation_transformed = annotation.warp(registerer, transformation, **kwargs)
+            annotation_transformed = annotation.apply_transform(registerer, transformation, **kwargs)
             annotations_transformed.append(annotation_transformed)
         so_data_transformed_list = []
         for so_data_ in self.so_data:
-            so_data_transformed = so_data_.warp(registerer, transformation, **kwargs)
+            so_data_transformed = so_data_.apply_transform(registerer, transformation, **kwargs)
             so_data_transformed_list.append(so_data_transformed)
         
         config = self.meta_information.copy() if self.meta_information is not None else None
@@ -258,7 +261,7 @@ class Section:
         transformed_section._id = self._id
         return transformed_section
 
-    def store(self, directory):
+    def store(self, directory: str):
         # TODO: Rewrite that function.
         """
         Should look like this:
@@ -272,7 +275,7 @@ class Section:
         f_dict = {}
         f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        self.reference_image.store(directory)
+        self.reference_image.store(join(directory, str(self.reference_image._id)))
         f_dict['reference_image'] = {
             'id': str(self.reference_image._id),
             'type': self.reference_image.get_type()
@@ -283,7 +286,7 @@ class Section:
             f_dict['meta_information_path'] = 'meta_information.json' 
         annotation_ids = []
         for annotation in self.annotations:
-            annotation.store(directory)
+            annotation.store(join(directory, str(annotation._id)))
             annotation_ids.append(
                 {
                     'id': str(annotation._id),
@@ -301,7 +304,6 @@ class Section:
             )
         f_dict['so_datas'] = so_data_ids
             
-        print(f_dict)
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
@@ -383,59 +385,9 @@ class Section:
         """
         self.reference_image.flip(axis=axis)
         for annotation in self.annotations:
-            if isinstance(annotation, Pointset):
+            if isinstance(annotation, BasePointset):
                 annotation.flip(self.reference_image.data.shape[:2], axis=axis)
             else:
                 annotation.flip(axis=axis)
         for so_data_ in self.so_data:
             so_data_.flip(axis=axis)
-
-    @classmethod
-    def from_config(cls, config: Dict[str, str]):
-        name = config['name']
-        image_path = config['image_path']
-        image = DefaultImage(data=io.imread(image_path))
-        _id = int(config['id'])
-        annotations = []
-        if 'annotations' in config:
-            for path in config['annotations']:
-                annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-                # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-                # TODO: Change preprocessing from Qupath output and remove line below.
-                if len(annotation_data.shape) > 2:
-                    annotation_data = np.moveaxis(annotation_data, 0, -1)
-                annotation = Annotation(data=annotation_data)
-                annotations.append(annotation)
-        if 'segmentation_mask_path' in config:
-            segmenation_mask_path = config['segmentation_mask_path']
-            segmenation_mask = Annotation(data=io.imread(segmenation_mask_path), name='tissue_mask')
-            annotations.append(segmenation_mask)
-        if 'landmarks_path' in config:
-            landmarks = Pointset(data=pd.read_csv(config['landmarks_path']), name='landmarks')
-            annotations.append(landmarks)
-        # molecular_data = None
-        if 'named_annotations' in config:
-            for na_config in config['named_annotations']:
-                path = na_config['annotation_path']
-                annotation_data = sitk.GetArrayFromImage(sitk.ReadImage(path))
-                # Currently axis need to be swaped due to the way that QuPath exports annotations. (Could also fix this in preprocessing of Annotations.)
-                # TODO: Change preprocessing from Qupath output and remove line below.
-                if len(annotation_data.shape) > 2:
-                    annotation_data = np.moveaxis(annotation_data, 0, -1)
-                label_path = na_config['label_path']
-                with open(label_path, 'r') as f:
-                    labels = [x.strip() for x in f.readlines()]
-                annotation = Annotation(data=annotation_data, labels=labels)
-                annotations.append(annotation)                
-        so_datas = []
-        if 'so_data' in config:
-            for so_config in config['so_datas']:
-                so_data = load_spatial_omics_data(so_config['molecular_imaging_data'])
-                so_datas.append(so_data)
-
-        obj = cls(image=image,
-                   name=name,
-                   annotations=annotations,
-                   so_data=so_datas,
-                   config=config)
-        obj._id = _id

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from miit.spatial_data.image import DefaultImage
+from miit.spatial_data.base_types import BaseImage
 from miit.spatial_data.section import Section
 
 def plot_registration_summary(moving: Section, fixed: Section, warped: Section, save_path: str, with_landmarks: bool=True):
@@ -56,7 +56,7 @@ def plot_with_landmarks(section: Section):
         y1 = row['y']
         plt.plot(x1, y1, 'b.')
 
-def plot_sections_with_landmark_distance(image: DefaultImage, unified_lms):
+def plot_sections_with_landmark_distance(image: BaseImage, unified_lms):
     plt.imshow(image.data/255.)
     plt.title('Warped Image')
     plt.axis('off')

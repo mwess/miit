@@ -1,0 +1,19 @@
+Empty
+Stroma
+Normal Glands
+ISUP1
+ISUP2
+ISUP3
+ISUP4
+ISUP5
+ISUPY
+ISUPX
+Lymphocytes
+Lymphocyte_enriched_stroma
+PNI
+PIN
+Tissue
+Vessel
+Stone
+Uncertain
+Lumen

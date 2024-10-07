@@ -1,12 +1,13 @@
-import numpy
-import numpy as np
+from typing import Dict, Tuple, Union
+
+import numpy, numpy as np
 import pandas as pd
 
 
 def get_mappings(ref_mat1: numpy.array, 
                  ref_mat2: numpy.array, 
                  background1: float, 
-                 background2: float):
+                 background2: float) -> Union[Dict, set]:
     mappings = compute_reference_matrix_mappings(ref_mat1, ref_mat2, background1)
     # Also get unique ids.
     unique_vals = set()
@@ -20,7 +21,7 @@ def get_mappings(ref_mat1: numpy.array,
 
 def compute_reference_matrix_mappings(ref_mat1: numpy.array, 
                                       ref_mat2: numpy.array, 
-                                      background1: float):
+                                      background1: float) -> Dict[int, Tuple[numpy.ndarray, numpy.ndarray]]:
     spots = {}
     for i in range(ref_mat1.shape[0]):
         for j in range(ref_mat1.shape[1]):

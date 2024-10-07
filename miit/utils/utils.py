@@ -1,41 +1,31 @@
-# from dataclasses import Protocol
-
-import math
 import os
-from typing import TypeVar, Dict, List, Tuple
+from os.path import join
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
-import numpy
+import numpy, numpy as np
 
-# T = TypeVar('T')
-
-# class IsCopyable(Protocol[T]):
-    
-#     def copy(self: T) -> T:
-#         ...
         
-def run_fun_if_not_none(fun, obj=None):
+def run_fun_if_not_none(fun: callable, obj: Optional[Any]=None) -> Optional[Any]:
     if obj is None:
         return None
     return fun(obj)
 
 
-# def copy_if_not_none(obj: IsCopyable):
-def copy_if_not_none(obj):
+def copy_if_not_none(obj: Optional[Any]) -> Optional[Any]:
     fun = lambda x: x.copy()
     return run_fun_if_not_none(fun, obj)
 
 
 def create_if_not_exists(directory: str):
-    if not os.path.exists(directory):
-        os.mkdir(directory)
+    Path(directory).mkdir(parents=True, exist_ok=True)
 
 
 # Filters
 def custom_max_voting_filter(img: numpy.array,
                              radius: int = 3,
                              background_value: int = 0,
-                             target_dtype=np.int32):
+                             target_dtype=np.int32) -> numpy.ndarray:
     filtered_image = np.zeros(img.shape, dtype=target_dtype)
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
@@ -71,10 +61,47 @@ def filter_node_ids(config: Dict, id_list: List) -> Dict:
 
 def get_half_pad_size(value_string: str, max_len: int) -> Tuple[int, int]:
     diff = max_len - len(value_string)
-    if diff % 2 == 0:
-        l_pad = diff / 2
-        r_pad = diff / 2
-    else:
-        l_pad = math.floor(diff / 2)
-        r_pad = math.ceil(diff / 2)
     return 1, diff - 1
+
+
+def derive_output_path(directory: str, fname: str, limit: int = 1000) -> str:
+    """Generates a unique output path. If path is already existing,
+    adds a counter value until a unique path is found.
+
+    Args:
+        directory (str): target directory
+        fname (str): target filename
+        limit (int, optional): Limit number to prevent endless loops. Defaults to 1000.
+
+    Returns:
+        str: Target path
+    """
+    target_path = join(directory, fname)
+    if not os.path.exists(target_path):
+        return target_path
+    for suffix in range(limit):
+        new_target_path = f'{target_path}_{suffix}'
+        if not os.path.exists(new_target_path):
+            return new_target_path
+    return target_path
+
+
+def derive_unique_directory(directory: str, limit: int = 1000) -> str:
+    """Generates a unique output directory. If path is already existing,
+    adds a counter value until a unique path is found.
+
+    Args:
+        directory (str): target directory
+        limit (int, optional): Limit number to prevent endless loops. Defaults to 1000.
+
+    Returns:
+        str: Target path
+    """
+    target_path = directory
+    if not os.path.exists(target_path):
+        return target_path
+    for suffix in range(limit):
+        new_target_path = f'{target_path}_{suffix}'
+        if not os.path.exists(new_target_path):
+            return new_target_path
+    return target_path

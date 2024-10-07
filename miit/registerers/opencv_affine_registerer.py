@@ -54,8 +54,18 @@ class OpenCVAffineRegisterer(Registerer):
             matching_method=matching_method
             )
         
-    def register_(self, moving_img, target_img, rigid=True, rotation=False, warn_angle_deg=1, min_match_count=10,
-                      flann_index_kdtree = 0, flann_trees=5, flann_checks=50, matching_method=cv2.RANSAC, verbose=False):
+    def register_(self, 
+                  moving_img: numpy.array, 
+                  target_img: numpy.array, 
+                  rigid: bool = True, 
+                  rotation: bool = False, 
+                  warn_angle_deg: int = 1, 
+                  min_match_count: int = 10,
+                  flann_index_kdtree: int = 0, 
+                  flann_trees: int = 5, 
+                  flann_checks: int = 50, 
+                  matching_method: int = cv2.RANSAC, 
+                  verbose: bool = False):
         """
         co-registers two images and returns the moving image warped to fit target_img and the respective transform matrix
         Script is very close to OpenCV2 image co-registration tutorial:
@@ -123,21 +133,18 @@ class OpenCVAffineRegisterer(Registerer):
 
         return OpenCVAffineTransformation(transformation_matrix, height, width)        
 
-    def transform_pointset(self, pointset: numpy.array, transformation: Any, **kwargs: Dict) -> numpy.array:
+    def transform_pointset(self, pointset: numpy.array, transformation: OpenCVAffineTransformation, **kwargs: Dict) -> numpy.array:
         transformed_pointset = (transformation.transformation_matrix @ np.hstack((pointset, np.ones((pointset.shape[0], 1)))).T).T
         pointset_df = pd.DataFrame(transformed_pointset[:,:2]).rename(columns={0:'x', 1:'y'})
         return pointset_df
 
-    def transform_image(self, image: numpy.array, transformation: Any, interpolation_mode: str, **kwargs: Dict) -> numpy.array:
+    def transform_image(self, image: numpy.array, transformation: OpenCVAffineTransformation, interpolation_mode: str, **kwargs: Dict) -> numpy.array:
         if interpolation_mode == 'NN':
             order = 0
         else:
             order = 1
         tform = transform.AffineTransform(transformation.transformation_matrix)
         transformed_image = transform.warp(image, tform.inverse, output_shape=(transformation.height, transformation.width), order=order, cval=0)
-        # transformed_img = cv2.warpPerspective(image, 
-        #                                       transformation.transformation_matrix, 
-        #                                       (transformation.width, transformation.height))
         return transformed_image
 
     @classmethod

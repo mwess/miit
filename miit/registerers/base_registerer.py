@@ -39,9 +39,3 @@ class Registerer(abc.ABC):
                         transformation: 'RegistrationResult', 
                         interpolation_mode: str, **kwargs: Dict) -> numpy.array:
         pass
-
-    @classmethod
-    @abc.abstractmethod
-    def load_from_config(cls, config: Dict[str, Any]) -> 'Registerer':
-        pass
-

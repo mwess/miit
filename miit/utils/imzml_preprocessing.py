@@ -1,27 +1,24 @@
 
 from typing import Optional, List, Tuple, Dict
 from miit.registerers.base_registerer import Registerer
-from miit.registerers.nifity_reg import NiftyRegWrapper
+from miit.registerers.nifty_reg import NiftyRegWrapper
 
 import cv2
-import numpy
-import numpy as np
-import SimpleITK as sitk
-
-from greedyfhist.segmentation.segmenation import load_yolo_segmentation
-
-
-import numpy as np
+import numpy, numpy as np
+import SimpleITK, SimpleITK as sitk
 from sklearn.decomposition import PCA
+import pyimzml
+
+from greedyfhist.segmentation import load_yolo_segmentation
 
 
-def do_msi_registration(histology_image: numpy.array, 
-                        ref_mat: numpy.array, 
+def do_msi_registration(histology_image: numpy.ndarray, 
+                        ref_mat: numpy.ndarray, 
                         spec_to_ref_map: Dict, 
-                        msi, 
-                        reg_img:numpy.array=None, 
+                        msi: pyimzml.ImzMLParser.ImzMLParser, 
+                        reg_img:Optional[numpy.ndarray]=None, 
                         additional_images:Optional[List[numpy.array]]=None,
-                        registerer: Optional[Registerer] = None):
+                        registerer: Optional[Registerer] = None) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray]]:
     if additional_images is None:
         additional_images = []
     if reg_img is None:
@@ -32,7 +29,6 @@ def do_msi_registration(histology_image: numpy.array,
      proc_add_imgs,
      padding_dict
     ) = preprocess_for_registration(histology_image, reg_img, ref_mat, additional_image_datas=additional_images)
-
     if registerer is None:
         registerer = NiftyRegWrapper.load_from_config({})
     registration_result = registerer.register_images(moving_image, fixed_image)
@@ -60,20 +56,26 @@ def post_registration_transforms(warped_images: List[numpy.array], processing_di
     return unpadded_images
 
 
-def remove_padding(image, padding: Tuple[int, int, int, int]):
+def remove_padding(image: numpy.ndarray, 
+                   padding: Tuple[int, int, int, int]) -> numpy.ndarray:
     left, right, top, bottom = padding
     bottom_idx = -bottom if bottom != 0 else image.shape[0]
     right_idx = -right if right != 0 else image.shape[1]
     return image[top:bottom_idx, left:right_idx]
 
 
-def resize_image_simple_sitk(image, res, out_type=np.float32):
+def resize_image_simple_sitk(image: numpy.ndarray, 
+                             res: Tuple[int, int], 
+                             out_type=np.float32) -> SimpleITK.SimpleITK.Image:
     img_np = sitk.GetArrayFromImage(image)
     new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=cv2.INTER_NEAREST)
-    return sitk.GetImageFromArray(new_img_np.astype(np.float32))
+    return sitk.GetImageFromArray(new_img_np.astype(out_type))
 
 
-def get_pca_img(msi, ref_mat, spec_to_ref_map, mz_threshold=None):
+def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser, 
+                ref_mat: numpy.ndarray, 
+                spec_to_ref_map: dict, 
+                mz_threshold: Optional[float]=None) -> numpy.ndarray:
     # Collect all spectra
     msi_data = []
     for idx, _ in enumerate(msi.coordinates):
@@ -100,7 +102,7 @@ def get_pca_img(msi, ref_mat, spec_to_ref_map, mz_threshold=None):
     return pca_mz_mat
 
     
-def pad_asym(image, padding: Tuple[int, int, int, int], constant_values: int = 0):
+def pad_asym(image: numpy.ndarray, padding: Tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
         left, right, top, bottom = padding
         if len(image.shape) == 2:
             image = np.pad(image, ((top, bottom), (left, right)), constant_values=constant_values)
@@ -110,12 +112,12 @@ def pad_asym(image, padding: Tuple[int, int, int, int], constant_values: int = 0
         return image
 
 
-def preprocess_for_registration(fixed_image, 
-                                moving_image, 
-                                ref_mat,
+def preprocess_for_registration(fixed_image: numpy.ndarray, 
+                                moving_image: numpy.ndarray, 
+                                ref_mat: numpy.ndarray,
                                 additional_image_datas:Optional[List[numpy.array]]=None,
-                                padding=100):
-    fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image, background_value=0)
+                                padding: int =100) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, List[numpy.ndarray], dict]:
+    fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image)
     # Add global padding
     # First do aym padding
     fixed_image_padding = pad_asym(fixed_image_np, process_dict['fix_sym_pad'])
@@ -137,7 +139,8 @@ def preprocess_for_registration(fixed_image,
     return fixed_image_padding, moving_image_padding, ref_mat_padding, padded_additional_image_datas, process_dict
 
 
-def preprocess_histology(hist_img, moving_img, background_value=0, background_cutoff=215):
+def preprocess_histology(hist_img: numpy.ndarray, 
+                         moving_img: numpy.ndarray) -> Tuple[numpy.ndarray, dict]:
     """
     Preprocessing steps: Remove background noise, pad to optimally match the shape of the moving image.
     """
@@ -151,19 +154,19 @@ def preprocess_histology(hist_img, moving_img, background_value=0, background_cu
     fix_pad, mov_pad = get_symmetric_padding(hist_gray, moving_img)
     image_dict['mov_sym_pad'] = mov_pad
     image_dict['fix_sym_pad'] = fix_pad
-    # hist_gray, padding = pad_to_image(hist_gray, moving_img)
-    # image_dict['padding'] = padding
     return hist_gray, image_dict
 
 
-def get_symmetric_padding(img1: numpy.array, img2: numpy.array):
+def get_symmetric_padding(img1: numpy.array, 
+                          img2: numpy.array) -> Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]]:
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
     padding_img1 = get_padding_params(img1, max_size)
     padding_img2 = get_padding_params(img2, max_size)
     return padding_img1, padding_img2
 
 
-def get_padding_params(img: numpy.array, shape: int):
+def get_padding_params(img: numpy.array, 
+                       shape: int) -> Tuple[int, int, int, int]:
     pad_x = shape - img.shape[0]
     pad_x_l = pad_x // 2
     pad_x_u = pad_x // 2
@@ -177,7 +180,7 @@ def get_padding_params(img: numpy.array, shape: int):
     return pad_y_l, pad_y_u, pad_x_l, pad_x_u
 
 
-def pad_to_image(source, target, background_value=0):
+def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value: int =0) -> numpy.ndarray:
     # Assumes that 
     x_diff = target.shape[0] - source.shape[0]
     y_diff = target.shape[1] - source.shape[1]
