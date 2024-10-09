@@ -61,14 +61,6 @@ def post_registration_transforms(warped_images: List[numpy.array], processing_di
     return unpadded_images
 
 
-# def remove_padding(image: numpy.ndarray, 
-#                    padding: Tuple[int, int, int, int]) -> numpy.ndarray:
-#     left, right, top, bottom = padding
-#     bottom_idx = -bottom if bottom != 0 else image.shape[0]
-#     right_idx = -right if right != 0 else image.shape[1]
-#     return image[top:bottom_idx, left:right_idx]
-
-
 def resize_image_simple_sitk(image: numpy.ndarray, 
                              res: Tuple[int, int], 
                              out_type=np.float32) -> SimpleITK.SimpleITK.Image:
@@ -106,16 +98,6 @@ def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser,
     pca_mz_mat = indexer[(ref_mat - ref_mat.min())]
     return pca_mz_mat
 
-    
-# def pad_asym(image: numpy.ndarray, padding: Tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
-#         left, right, top, bottom = padding
-#         if len(image.shape) == 2:
-#             image = np.pad(image, ((top, bottom), (left, right)), constant_values=constant_values)
-#         else:
-#             # Assume 3 dimensions
-#             image = np.pad(image, ((top, bottom), (left, right), (0, 0)), constant_values=constant_values)
-#         return image
-
 
 def preprocess_for_registration(fixed_image: numpy.ndarray, 
                                 moving_image: numpy.ndarray, 
@@ -124,7 +106,7 @@ def preprocess_for_registration(fixed_image: numpy.ndarray,
                                 padding: int =100) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, List[numpy.ndarray], dict]:
     fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image)
     # Add global padding
-    # First do aym padding
+    # First do asym padding
     fixed_image_padding = pad_asym(fixed_image_np, process_dict['fix_sym_pad'])
     fixed_image_padding = np.pad(fixed_image_padding, ((padding, padding),(padding, padding)))
     moving_image_padding = pad_asym(moving_image, process_dict['mov_sym_pad'])
@@ -162,32 +144,6 @@ def preprocess_histology(hist_img: numpy.ndarray,
     return hist_gray, image_dict
 
 
-# def get_symmetric_padding(img1: numpy.array, 
-#                           img2: numpy.array) -> Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]]:
-#     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
-#     padding_img1 = get_padding_params(img1, max_size)
-#     padding_img2 = get_padding_params(img2, max_size)
-#     return padding_img1, padding_img2
-
-
-# def get_padding_params(img: numpy.array, 
-#                        shape: int) -> Tuple[int, int, int, int]:
-#     pad_x = shape - img.shape[0]
-#     pad_x_l = pad_x // 2
-#     pad_x_u = pad_x // 2
-#     if pad_x % 2 != 0:
-#         pad_x_u += 1
-#     pad_y = shape - img.shape[1]
-#     pad_y_l = pad_y // 2
-#     pad_y_u = pad_y // 2
-#     if pad_y % 2 != 0:
-#         pad_y_u += 1
-#     return pad_y_l, pad_y_u, pad_x_l, pad_x_u
-
-
-
-    
-
 def get_mode(msi, use_auto=False):
     if use_auto:
         return 'auto'
@@ -196,6 +152,7 @@ def get_mode(msi, use_auto=False):
         return 'continuous'
     else:
         return 'processed'
+
 
 def get_spec_type(msi, default_spec_type = 'centroid'):
     rpg = msi.metadata.referenceable_param_groups['spectrum']
@@ -206,6 +163,7 @@ def get_spec_type(msi, default_spec_type = 'centroid'):
         return 'centroid'
     else:
         return 'profile'
+
 
 def get_scan_direction(msi, default_scan_direction='top_down'):
 
@@ -225,6 +183,7 @@ def get_scan_direction(msi, default_scan_direction='top_down'):
                 return scan_directions[accession_number]
     return default_scan_direction
 
+
 def get_line_scan_direction(msi, default_scan_direction='line_left_right'):
 
     # We take the first key.
@@ -243,6 +202,7 @@ def get_line_scan_direction(msi, default_scan_direction='line_left_right'):
                 return line_scan_directions[accession_number]
     return default_scan_direction
 
+
 def get_scan_pattern(msi, default_scan_pattern='one_way'):
 
     # We take the first key.
@@ -260,6 +220,7 @@ def get_scan_pattern(msi, default_scan_pattern='one_way'):
                 return scan_patterns[accession_number]
     return default_scan_pattern 
     
+
 def get_scan_type(msi, default_scan_type='horizontal_line'):
     key = list(msi.metadata.scan_settings.keys())[0]
     scan_settings_params = msi.metadata.scan_settings[key]
