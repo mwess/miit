@@ -59,10 +59,5 @@ class BaseSpatialOmics(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def from_config(cls, config: Dict[str, str]):
-        pass
-
-    @classmethod
-    @abc.abstractmethod
     def load(cls, directory: str):
         pass

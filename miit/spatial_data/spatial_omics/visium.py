@@ -304,21 +304,6 @@ class Visium(BaseSpatialOmics):
         return map_
 
     @classmethod
-    def from_config(cls, config: Dict[str, str]) -> 'Visium':
-        load_type = config['load_type']
-        if load_type == 'spcrng_directory':
-            spcrng_dir = config['spcrng_directory']
-            image_scale = config['image_scale']
-            if image_scale == 'fullres':
-                image_path = config['path_to_fullres_image']
-            else:
-                image_path = None
-            return Visium.from_spcrng(spcrng_dir, 
-                                         image_scale, 
-                                         image_path,
-                                         config)
-
-    @classmethod
     def from_spcrng(cls, 
                     directory: str,
                     image_scale: str = 'hires',

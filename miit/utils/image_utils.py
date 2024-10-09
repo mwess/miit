@@ -1,8 +1,24 @@
 from typing import Any, Dict, List, Tuple
 
+import cv2
 import numpy, numpy as np
 
-from miit.spatial_data.section import Section
+
+def remove_padding(image: numpy.ndarray, 
+                   padding: Tuple[int, int, int, int]) -> numpy.ndarray:
+    """Removes padding from image.
+
+    Args:
+        image (numpy.ndarray): _description_
+        padding (Tuple[int, int, int, int]): 
+
+    Returns:
+        numpy.ndarray: _description_
+    """
+    left, right, top, bottom = padding
+    bottom_idx = -bottom if bottom != 0 else image.shape[0]
+    right_idx = -right if right != 0 else image.shape[1]
+    return image[top:bottom_idx, left:right_idx]
 
 
 def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]]:
@@ -10,6 +26,26 @@ def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> Tuple[Tuple[i
     padding_img1 = get_padding_params(img1, max_size)
     padding_img2 = get_padding_params(img2, max_size)
     return padding_img1, padding_img2
+
+
+def pad_asym(image: numpy.ndarray, padding: Tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
+    """Applies padding to image.
+
+    Args:
+        image (numpy.ndarray): _description_
+        padding (Tuple[int, int, int, int]): padding is organized as top, bottom, left, right
+        constant_values (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        numpy.ndarray: _description_
+    """
+    left, right, top, bottom = padding
+    if len(image.shape) == 2:
+        image = np.pad(image, ((top, bottom), (left, right)), constant_values=constant_values)
+    else:
+        # Assume 3 dimensions
+        image = np.pad(image, ((top, bottom), (left, right), (0, 0)), constant_values=constant_values)
+    return image
 
 
 def get_padding_params(img: numpy.array, shape: int) -> Tuple[int, int, int, int]:
@@ -26,25 +62,6 @@ def get_padding_params(img: numpy.array, shape: int) -> Tuple[int, int, int, int
     return pad_y_l, pad_y_u, pad_x_l, pad_x_u
 
 
-def get_symmetric_padding_for_sections(sections: List[Section]) -> Dict[Any, Tuple[int, int, int, int]]:
-    paddings = {}
-    max_size = get_max_size_from_sections(sections)
-    for section in sections:
-        paddings[section._id] = get_padding_params(section.reference_image.data, max_size)
-    return paddings
-
-
-def get_section_max_size(section: Section) -> int:
-    return max(section.reference_image.data.shape[0], section.reference_image.data.shape[1])
-
-
-def get_max_size_from_sections(sections: List[Section]) -> int:
-    max_size = -1
-    for section in sections:
-        max_size = max(max_size, get_section_max_size(section))
-    return max_size
-
-
 def apply_mask(image: numpy.array, mask: numpy.array) -> numpy.array:
     if len(image.shape) == 3:
         mask = np.moveaxis(np.expand_dims(mask, 0), 0, -1)
@@ -55,3 +72,34 @@ def write_affine_to_file(mat: numpy.ndarray, path: str):
     with open(path, 'w') as f:
         output_str = f"""{mat[0,0]} {mat[0,1]} {mat[0,2]}\n{mat[1,0]} {mat[1,1]} {mat[1,2]}\n0.0 0.0 1.0"""
         f.write(output_str)
+
+
+def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value: int = 0) -> numpy.ndarray:
+    """
+
+    Args:
+        source (numpy.ndarray): _description_
+        target (numpy.ndarray): _description_
+        background_value (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        numpy.ndarray: _description_
+    """
+    # Assumes that 
+    x_diff = target.shape[0] - source.shape[0]
+    y_diff = target.shape[1] - source.shape[1]
+    pad_x_left = x_diff // 2
+    pad_x_right = pad_x_left
+    if x_diff % 2 == 1:  
+        pad_x_right += 1        
+    pad_y_left = y_diff // 2
+    pad_y_right = pad_y_left
+    if y_diff % 2 == 1:
+        pad_y_right += 1
+    padding = {
+        'pad_y_right': pad_y_right,
+        'pad_y_left': pad_y_left,
+        'pad_x_left': pad_x_left,
+        'pad_x_right': pad_x_right
+    }
+    return cv2.copyMakeBorder(source, pad_x_right, pad_x_left, pad_y_left, pad_y_right, cv2.BORDER_CONSTANT, background_value), padding
