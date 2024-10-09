@@ -71,21 +71,31 @@ def get_mappings(ref_mat1: numpy.ndarray,
 def accumulate_counts(mappings: Dict[int, Tuple[numpy.ndarray, numpy.ndarray]], 
                       measurement_df: pandas.core.frame.DataFrame, 
                       background_counts: Dict[int, int],
-                      spot_accumulator_fun=None):
+                      spot_accumulator_fun=None) -> pandas.core.frame.DataFrame:
+    """Accumulated counts for each key using an accumulator_function.
+
+    Args:
+        mappings (Dict[int, Tuple[numpy.ndarray, numpy.ndarray]]): _description_
+        measurement_df (pandas.core.frame.DataFrame): _description_
+        background_counts (Dict[int, int]): _description_
+        spot_accumulator_fun (_type_, optional): Function used to accumulate each single set of values. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     spot_wise_accumulated_data = []
     for target_key in mappings:
         source_keys, source_counts = mappings[target_key]
         source_background = background_counts[target_key]
         accumulated_intensities = spot_accumulator_fun(source_keys, source_counts, measurement_df, source_background)
         spot_wise_accumulated_data.append((accumulated_intensities, target_key))
-    # return spot_wise_accumulated_data
     final_df = pd.concat([col for (col, _) in spot_wise_accumulated_data], axis=0, ignore_index=True)
     final_df.rename(index={x[0]: x[1] for x in zip(range(len(spot_wise_accumulated_data)), [key for (_, key) in spot_wise_accumulated_data])}, inplace=True)
     return final_df
 
 
 def get_number_of_background_pixels(df: pandas.core.frame.DataFrame, 
-                                    background_value: int = -1):
+                                    background_value: int = -1) -> int:
     if background_value not in df.index:
         return 0
     return df.loc[background_value].shape[0]
