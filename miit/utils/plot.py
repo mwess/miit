@@ -4,6 +4,8 @@ import numpy as np
 from miit.spatial_data.base_types import BaseImage
 from miit.spatial_data.section import Section
 
+
+# TODO: I think thise whole file can be removed.
 def plot_registration_summary(moving: Section, fixed: Section, warped: Section, save_path: str, with_landmarks: bool=True):
     fig, axs = plt.subplots(1, 3, figsize=(24, 8))
     img = moving.reference_image.data.astype(int)

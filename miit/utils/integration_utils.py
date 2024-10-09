@@ -1,8 +1,6 @@
 from typing import Dict, Tuple, Union
 
 import numpy, numpy as np
-import pandas as pd
-
 
 def get_mappings(ref_mat1: numpy.array, 
                  ref_mat2: numpy.array, 

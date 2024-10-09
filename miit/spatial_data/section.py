@@ -324,6 +324,15 @@ class Section:
             
     @classmethod
     def load(cls, directory: str, loader: Optional[SpatialDataLoader] = None):
+        """Loads a Section object from directory. 
+
+        Args:
+            directory (str): _description_
+            loader (Optional[SpatialDataLoader], optional): data loader. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         if not exists(directory):
             # TODO: Throw custom error message
             pass

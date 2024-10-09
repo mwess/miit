@@ -34,10 +34,24 @@ from miit.spatial_data.base_types import (
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 from miit.utils.utils import copy_if_not_none
-from miit.utils.imzml_preprocessing import do_msi_registration
+from miit.utils.imzml import (
+    do_msi_registration,
+    get_mode,
+    get_scan_direction,
+    get_scan_pattern,
+    get_scan_type,
+    get_line_scan_direction
+)
 
 
-# TODO: Fix that function.
+def merge_dicts(dict1: dict, dict2: dict) -> dict:
+    new_dict = {}
+    for key in dict1:
+        if dict1[key] in dict2:
+            new_dict[key] = dict2[dict1[key]]
+    return new_dict
+
+
 def to_ion_images(table: pandas.core.frame.DataFrame, 
                   imzml: 'Imzml', 
                   background_value: int = 0):
@@ -52,22 +66,85 @@ def to_ion_images(table: pandas.core.frame.DataFrame,
         Annotation: Ion images.
     """
     n_ints = table.shape[0]
-    rev_ref_to_spec_map = imzml.get_spec_to_ref_map(reverse=True)
     ref_mat = imzml.ref_mat.data
     ion_cube = np.zeros((ref_mat.shape[0], ref_mat.shape[1], n_ints))
-    for i in range(ref_mat.shape[0]):
-        for j in range(ref_mat.shape[1]):
-            val = ref_mat[i,j]
-            if background_value == val:
-                ion_cube[i,j,:] = 0
-            else:
-                imzml_idx = rev_ref_to_spec_map[val]
-                ints = table.loc[:, imzml_idx].to_numpy()
-                ion_cube[i,j] = ints
-    ion_cube_annotation = Annotation(data=ion_cube, 
+    
+    local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
+    rev_spec_to_ref_map = imzml.get_spec_to_ref_map(reverse=True)
+    merged_dict = merge_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
+    merged_dict[background_value] = np.zeros(n_ints)
+    indexer = np.array([merged_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+    ion_cube = indexer[(ref_mat - ref_mat.min())]
+    ion_cube_annotation = Annotation(data=ion_cube,
                                      labels=table.index.to_list())
     return ion_cube_annotation
 
+
+def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
+                 output_path: str,
+                 integrated_data: pandas.core.frame.DataFrame) -> None:
+    """Exports integrated msi data into the imzML format. Most of the work is done by
+    `pyimzml`'s `ImzMLWriter`. However some information such as pixel size is not provided, which
+    we add by manually writing the information to the imzML file.
+
+    
+    Args:
+        template_msi (pyimzml.ImzMLParser.ImzMLParser): Template msi. Defines target topology.
+        output_path (str): 
+        integrated_data (pandas.core.frame.DataFrame): DataFrame containing integrated msi data.
+    """
+
+    mzs = integrated_data.columns.to_numpy()
+    if mzs.dtype != np.float64:
+        mzs = mzs.astype(np.float64)
+    mode = get_mode(template_msi)
+    scan_direction = get_scan_direction(template_msi)
+    line_scan_direction = get_line_scan_direction(template_msi)
+    scan_pattern = get_scan_pattern(template_msi)
+    scan_type = get_scan_type(template_msi)
+
+    if mzs.dtype != np.float64:
+        mzs = mzs.astype(np.float64)
+
+    with ImzMLWriter(output_path, 
+                     mz_dtype=np.float64, 
+                     intensity_dtype=np.float32, 
+                     mode=mode,
+                     scan_direction=scan_direction,
+                     line_scan_direction=line_scan_direction,
+                     scan_pattern=scan_pattern,
+                     scan_type=scan_type,
+                     polarity='negative') as writer:
+        for i, (x, y, z) in enumerate(template_msi.coordinates):
+            if i not in integrated_data.index:
+                continue
+            intensities = integrated_data.loc[i].to_numpy()
+            if intensities.dtype != np.float32:
+                intensities = intensities.astype(np.float32)
+            writer.addSpectrum(mzs, intensities, (x, y, z))
+    # Now we add additional parameters that imzml skipped.
+    scan_settings_params = [
+        ("max dimension x", "IMS:1000044", template_msi.imzmldict['max dimension x']),
+        ("max dimension y", "IMS:1000045", template_msi.imzmldict['max dimension y']),
+        ("pixel size x", "IMS:1000046", template_msi.imzmldict['pixel size x']),
+        ("pixel size y", "IMS:1000047", template_msi.imzmldict['pixel size y']),
+    ]
+    # scan_settings_params = []
+    sl = "{http://psi.hupo.org/ms/mzml}"
+    elem_iterator = etree.parse(output_path)
+    root = elem_iterator.getroot()
+    scan_settings_list_elem = root.find('%sscanSettingsList' % sl)
+    first_scan_setting = scan_settings_list_elem.find('./%sscanSettings' %sl)
+    first_cv_param_elem = first_scan_setting.findall('./')[0]
+    for (name, accession, value) in scan_settings_params:
+        template_cv_param_elem = deepcopy(first_cv_param_elem)
+        template_cv_param_elem.attrib['accession'] = accession
+        template_cv_param_elem.attrib['value'] = str(value)
+        template_cv_param_elem.attrib['name'] = name
+        first_scan_setting.append(template_cv_param_elem)
+    xml_as_str = etree.tostring(root, pretty_print=True)
+    with open(output_path, 'wb') as f:
+        f.write(xml_as_str)
 
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
                  output_path: str,
@@ -694,8 +771,3 @@ class Imzml(BaseSpatialOmics):
             idx_arr_mapped = np.array([int(spec_to_ref_map_rev[x]) for x in idx_arr])
             mapped_mappings[key] = (idx_arr_mapped, mappings[key][1].copy())
         return mapped_mappings
-
-    def spots_background_map_keys_to_msi_pixel_idxs(self, spots_background: dict) -> dict:
-        # TODO: Remove that function again.
-        spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
-        return {spec_to_ref_map_rev[x]: spots_background[x] for x in spots_background}

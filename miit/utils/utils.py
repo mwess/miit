@@ -26,6 +26,17 @@ def custom_max_voting_filter(img: numpy.array,
                              radius: int = 3,
                              background_value: int = 0,
                              target_dtype=np.int32) -> numpy.ndarray:
+    """Sets all values in radius to the most occuring value.
+
+    Args:
+        img (numpy.array): _description_
+        radius (int, optional): _description_. Defaults to 3.
+        background_value (int, optional): _description_. Defaults to 0.
+        target_dtype (_type_, optional): _description_. Defaults to np.int32.
+
+    Returns:
+        numpy.ndarray: _description_
+    """
     filtered_image = np.zeros(img.shape, dtype=target_dtype)
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
