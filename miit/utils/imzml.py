@@ -17,6 +17,7 @@ from .image_utils import (
 )
 
 
+# TODO: Remove that function
 def do_msi_registration(histology_image: numpy.ndarray, 
                         ref_mat: numpy.ndarray, 
                         spec_to_ref_map: Dict, 
@@ -51,7 +52,7 @@ def do_msi_registration(histology_image: numpy.ndarray,
     
 
 
-
+# TODO: Remove that function
 def post_registration_transforms(warped_images: List[numpy.array], processing_dict: Dict) -> List[numpy.array]:
     global_padding = processing_dict['global_padding']
     unpadded_images = []
@@ -63,15 +64,6 @@ def post_registration_transforms(warped_images: List[numpy.array], processing_di
     return unpadded_images
 
 
-def resize_image_simple_sitk(image: numpy.ndarray, 
-                             res: Tuple[int, int], 
-                             out_type=np.float32) -> SimpleITK.SimpleITK.Image:
-    img_np = sitk.GetArrayFromImage(image)
-    new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=cv2.INTER_NEAREST)
-    return sitk.GetImageFromArray(new_img_np.astype(out_type))
-
-
-# Can be removed now
 def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser, 
                 ref_mat: numpy.ndarray, 
                 spec_to_ref_map: dict, 
@@ -102,6 +94,7 @@ def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser,
     return pca_mz_mat
 
 
+# TODO: Remove that function
 def preprocess_for_registration(fixed_image: numpy.ndarray, 
                                 moving_image: numpy.ndarray, 
                                 ref_mat: numpy.ndarray,
@@ -142,8 +135,6 @@ def preprocess_histology(hist_img: numpy.ndarray,
         hist_img_mask = segmentation_fun(hist_img)
     hist_gray = cv2.cvtColor(hist_img, cv2.COLOR_RGB2GRAY)
     image_dict = {}
-    # image_dict = {'segmentation_mask': hist_img_mask}
-    # image_dict['gray'] = hist_gray
     hist_gray = hist_gray * hist_img_mask
     fix_pad, mov_pad = get_symmetric_padding(hist_gray, msi_img)
     image_dict['mov_sym_pad'] = mov_pad

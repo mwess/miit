@@ -57,34 +57,7 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
     return new_dict
 
 
-# TODO: Should this be a method.
-def to_ion_images(table: pandas.core.frame.DataFrame, 
-                  imzml: 'Imzml', 
-                  background_value: int = 0):
-    """Produces ion images for the given table. Table columns should refer to the indices used to index msi spectra by pyimzml.
 
-    Args:
-        table (pandas.core.frame.DataFrame): Table mapping each msi a pixel to a vector of analytes. 
-            Should have the shape Analytes X Pixel. Table indices are used as labels.
-        imzml (Imzml): Imzml, defines the topology of the ion images.
-        background_value (int, optional): Defaults to 0.
-
-    Returns:
-        Annotation: Ion images.
-    """
-    n_ints = table.shape[0]
-    ref_mat = imzml.ref_mat.data
-    ion_cube = np.zeros((ref_mat.shape[0], ref_mat.shape[1], n_ints))
-    
-    local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
-    rev_spec_to_ref_map = imzml.get_spec_to_ref_map(reverse=True)
-    merged_dict = merge_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
-    merged_dict[background_value] = np.zeros(n_ints)
-    indexer = np.array([merged_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
-    ion_cube = indexer[(ref_mat - ref_mat.min())]
-    ion_cube_annotation = Annotation(data=ion_cube,
-                                     labels=table.index.to_list())
-    return ion_cube_annotation
 
 
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
@@ -789,9 +762,11 @@ class Imzml(BaseSpatialOmics):
         ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
         return Image(data=ion_image)
     
-
     def extract_ion_image_by_idx(self,
-                                 index: int) -> Image:        
+                                 index: int) -> Image:   
+        """Extracts ion image by indexing the intensity array. Useful when data has been preprocessed and only contains a few ions.
+        
+        """     
         spec_to_intensity = {}
         for idx, (_, _, _) in enumerate(self.msi.coordinates):
             _, intensities = self.msi.getspectrum(idx)
@@ -803,3 +778,30 @@ class Imzml(BaseSpatialOmics):
         indexer = np.array([merged_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
         ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
         return Image(data=ion_image)
+
+    def to_ion_images(self,
+                      table: pandas.core.frame.DataFrame, 
+                      background_value: int = 0):
+        """Produces ion images for the given table. Table columns should refer to the indices used to index msi spectra by pyimzml.
+
+        Args:
+            table (pandas.core.frame.DataFrame): Table mapping each msi a pixel to a vector of analytes. 
+                Should have the shape Analytes X Pixel. Table indices are used as labels.
+            background_value (int, optional): Defaults to 0.
+
+        Returns:
+            Annotation: Ion images.
+        """
+        n_ints = table.shape[0]
+        ref_mat = self.ref_mat.data
+        ion_cube = np.zeros((ref_mat.shape[0], ref_mat.shape[1], n_ints))
+        
+        local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
+        rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
+        merged_dict = merge_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
+        merged_dict[background_value] = np.zeros(n_ints)
+        indexer = np.array([merged_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        ion_cube = indexer[(ref_mat - ref_mat.min())]
+        ion_cube_annotation = Annotation(data=ion_cube,
+                                        labels=table.index.to_list())
+        return ion_cube_annotation

@@ -10,14 +10,14 @@ from miit.utils.imzml import preprocess_histology
 
 
 @dataclass
-class MSItoHistMetaRegistererResult:
+class MSItoHistMetaRegistererResult(RegistrationResult):
 
     reg_result: RegistrationResult
     processing_dict: dict
 
 
 @dataclass
-class MSItoHistMetaRegisterer:
+class MSItoHistMetaRegisterer(Registerer):
     """Registerer for MSI data with Histology. 
 
     """
@@ -26,21 +26,28 @@ class MSItoHistMetaRegisterer:
     registerer: Optional[Registerer] = None
 
     def __post_init__(self):
+        if self.registerer is not None:
+            if isinstance(self.registerer, MSItoHistMetaRegisterer):
+                raise Exception("MSItoHistMetaRegisterer cannot use itself as registerer.")
         if self.registerer is None:
             self.registerer = NiftyRegWrapper.load_from_config()
 
 
-    def register(self, 
-                 histology_image: numpy.ndarray, 
-                 msi_image: numpy.ndarray,
-                 histology_image_mask: Optional[numpy.ndarray] = None,
-                 msi_image_mask: Optional[numpy.ndarray] = None,
+    def register_images(self, 
+                 moving_img: numpy.ndarray,
+                 fixed_img: numpy.ndarray, 
+                 moving_img_mask: Optional[numpy.ndarray] = None,
+                 fixed_img_mask: Optional[numpy.ndarray] = None,
                  use_histology_as_fixed: bool = True,
                  registerer_args: Optional[dict] = None, 
                  **kwargs: Dict) -> RegistrationResult:
         # Preprocessing steps
         # 1. Add computed padding from process dict
         # 2. add padding
+        msi_image = moving_img
+        histology_image = fixed_img
+        msi_image_mask = moving_img_mask
+        histology_image_mask = fixed_img_mask
         if registerer_args is None:
             registerer_args = {}
         (fixed_image, 
@@ -50,6 +57,8 @@ class MSItoHistMetaRegisterer:
                                         msi_image, 
                                         histology_image_mask,
                                         msi_image_mask)            
+        if not use_histology_as_fixed:
+            moving_image, fixed_image = fixed_image, moving_image
         registration_result = self.registerer.register_images(moving_image, fixed_image, **registerer_args)
         msi_to_hist_meta_registerer_result = MSItoHistMetaRegistererResult(
             reg_result=registration_result,
