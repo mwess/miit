@@ -3,8 +3,10 @@ from dataclasses import dataclass, field
 import json
 import os
 from os.path import join, exists
+from pathlib import Path
 from typing import (
     Any, 
+    Callable,
     ClassVar, 
     Dict, 
     Optional, 
@@ -20,7 +22,7 @@ import pandas, pandas as pd
 import numpy, numpy as np
 from scipy.integrate import trapezoid
 from scipy.signal import find_peaks
-
+from sklearn.decomposition import PCA
 import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
@@ -29,7 +31,9 @@ from miit.spatial_data.base_types import (
     Annotation,
     BaseImage,
     Image,
-    read_image
+    read_image,
+    BasePointset,
+    SpatialBaseDataLoader
 )
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
@@ -52,13 +56,15 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
     return new_dict
 
 
+# TODO: Should this be a method.
 def to_ion_images(table: pandas.core.frame.DataFrame, 
                   imzml: 'Imzml', 
                   background_value: int = 0):
-    """_summary_
+    """Produces ion images for the given table. Table columns should refer to the indices used to index msi spectra by pyimzml.
 
     Args:
-        table (pandas.core.frame.DataFrame): Table mapping each msi a pixel to a vector of analytes. Should have the shape Analytes X Pixel.
+        table (pandas.core.frame.DataFrame): Table mapping each msi a pixel to a vector of analytes. 
+            Should have the shape Analytes X Pixel. Table indices are used as labels.
         imzml (Imzml): Imzml, defines the topology of the ion images.
         background_value (int, optional): Defaults to 0.
 
@@ -259,7 +265,38 @@ def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
     metabolite_df = pd.DataFrame(collected_intensities, index=mz_labels)
     return metabolite_df
 
+def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
+                                    target_resolution: int = 1) -> Union[numpy.array, dict, Optional[numpy.array]]:
+    """Computes reference matrix from msi scaled to target_resolution.
 
+    Args:
+        msi (pyimzml.ImzMLParser.ImzMLParser): Source imzml.
+        target_resolution (int, optional): Target resolution to which. Defaults to 1.
+
+
+    Returns:
+        Union[Annotation, dict]: Reference matrix, mapping of msi pixels to reference matrix.
+    """
+    scale_x = msi.imzmldict['pixel size x']/target_resolution
+    scale_y = msi.imzmldict['pixel size y']/target_resolution
+    max_x = int(msi.imzmldict['max dimension x']/target_resolution)
+    max_y = int(msi.imzmldict['max dimension y']/target_resolution)
+    ref_mat = np.zeros((max_y, max_x), dtype=int)
+    spec_to_ref_map = {}
+    ref_map_to_spec = {}
+    for idx, (x,y,_) in enumerate(msi.coordinates):
+        x_s = int((x-1)*scale_x)
+        x_e = int(x_s + scale_x)
+        y_s = int((y-1)*scale_y)
+        y_e = int(y_s + scale_y)
+        ref_mat[y_s:y_e,x_s:x_e] = idx + 1
+        spec_to_ref_map[idx] = idx + 1
+        ref_map_to_spec[idx + 1] = idx
+    ann = Annotation(data=ref_mat, labels=ref_map_to_spec)
+    return ann, spec_to_ref_map
+
+
+# TODO: Remove
 def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
                       srd: dict = None, 
                       target_resolution: int = 1) -> Union[numpy.array, dict, Optional[numpy.array]]:
@@ -439,19 +476,21 @@ def flatten_to_row(df: pandas.core.frame.DataFrame) -> pandas.core.frame.DataFra
     return v
 
 
+# TODO: Use ref_mat labels instead of spec_to_ref_map, but everything needs to be reverted then.
 @dataclass
 class Imzml(BaseSpatialOmics):
 
-    image: BaseImage 
     __ref_mat: Annotation = field(init=False, default=None)
     spec_to_ref_map: dict
-    ann_mat: Optional[Annotation] = None
+    additional_spatial_data: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
     background: ClassVar[int] = 0
     config: Optional[dict] = None
     name: str = ''
+    msi: Optional[pyimzml.ImzMLParser.ImzMLParser] = None
 
     def __post_init__(self):
         self._id = uuid.uuid1()
+        self.msi = ImzMLParser(self.config['imzml'])
 
     @property
     def ref_mat(self):
@@ -466,28 +505,30 @@ class Imzml(BaseSpatialOmics):
         return 'Imzml'
 
     def pad(self, padding: Tuple[int, int, int, int]):
-        self.image.pad(padding)
         self.__ref_mat.pad(padding, constant_values=self.background)
-        if self.ann_mat is not None:
-            self.ann_mat.pad(padding, constant_values=0)
+        for spatial_data in self.additional_spatial_data:
+            spatial_data.pad(padding)
 
     def resize(self, height: int, width: int):
-        self.image.resize(height, width)
+        w, h = self.__ref_mat.data[:2]
+        ws = w // width
+        hs = h // height        
         self.__ref_mat.resize(height, width)
-        if self.ann_mat is not None:
-            self.ann_mat.resize(height, width)
+        for spatial_data in self.additional_spatial_data:
+            if isinstance(spatial_data, BasePointset):
+                spatial_data.resize(ws, hs)
+            else:
+                spatial_data.resize(width, height)
 
     def rescale(self, scaling_factor: float):
-        self.image.rescale(scaling_factor)
         self.__ref_mat.rescale(scaling_factor)
-        if self.ann_mat is not None:
-            self.ann_mat.rescale(scaling_factor)
+        for spatial_data in self.additional_spatial_data:
+            spatial_data.rescale(scaling_factor)
 
     def crop(self, x1: int, x2: int, y1: int, y2: int):
-        self.image.crop(x1, x2, y1, y2)
         self.__ref_mat.crop(x1, x2, y1, y2)
-        if not self.ann_mat is None:
-            self.ann_mat.crop(x1, x2, y1, y2)
+        for spatial_data in self.additional_spatial_data:
+            spatial_data.crop(x1, x2, y1, y2)
 
     def get_spec_to_ref_map(self, reverse: bool = False):
         map_ = None
@@ -499,13 +540,11 @@ class Imzml(BaseSpatialOmics):
 
     def copy(self):
         ref_mat = self.__ref_mat.copy()
-        ann_mat = copy_if_not_none(self.__ref_mat)
         spec_to_ref_map = self.spec_to_ref_map.copy()
         obj = Imzml(
             config=self.config.copy(),
-            image=self.image.copy(),
             spec_to_ref_map=spec_to_ref_map,
-            ann_mat=ann_mat,
+            additional_spatial_data=self.additional_spatial_data.copy()
         )
         obj.ref_mat = ref_mat
         return obj
@@ -514,82 +553,110 @@ class Imzml(BaseSpatialOmics):
              registerer: Registerer, 
              transformation: Any, 
              **kwargs: Dict) -> 'Imzml':
-        image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
         ref_mat_transformed = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
-        if self.ann_mat is not None:
-            ann_mat_transformed = self.ann_mat.apply_transform(registerer, transformation, **kwargs)
-        else:
-            ann_mat_transformed = None
+        transformed_spatial_datas = []
+        for spatial_data in self.additional_spatial_data:
+            transformed_spatial_data = spatial_data.apply_transform(registerer, transformation, **kwargs)
+            transformed_spatial_datas.append(transformed_spatial_data)
         config = self.config.copy() if self.config is not None else None
         scils_export_imzml_transformed = Imzml(
             config=config,
-            image=image_transformed, 
             spec_to_ref_map=self.spec_to_ref_map,
-            ann_mat=ann_mat_transformed,
+            additional_spatial_data=transformed_spatial_datas,
             name=self.name)
         scils_export_imzml_transformed.ref_mat = ref_mat_transformed
         return scils_export_imzml_transformed
 
     def flip(self, axis: int = 0):
-        self.image.flip(axis=axis)
+        w, h = self.__ref_mat.shape[:2]
         self.__ref_mat.flip(axis=axis)
-        if self.ann_mat is not None:
-            self.ann_mat.flip(axis=axis)
+        for spatial_data in self.additional_spatial_data:
+            if isinstance(spatial_data, BasePointset):
+                spatial_data.flip((w, h), axis=axis)
+            else:
+                spatial_data.flip(axis=axis)
 
+    #TODO:  Not working correctly. 
     def store(self, directory: str):
-        if not exists(directory):
-            os.mkdir(directory)
-        directory = join(directory, str(self._id))
-        if not exists(directory):
-            os.mkdir(directory)
+        Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
         config_path = join(directory, 'config.json')
         with open(config_path, 'w') as f:
             json.dump(self.config, f)
         f_dict['config_path'] = config_path
-        self.image.store(join(directory, 'image'))
-        f_dict['image'] = join(directory, 'image')
         self.__ref_mat.store(join(directory, 'ref_mat'))
         f_dict['__ref_mat'] = join(directory, 'ref_mat')
         spec_to_ref_map_path = join(directory, 'spec_to_ref_map.json')
         with open(spec_to_ref_map_path, 'w') as f:
             json.dump(self.spec_to_ref_map, f)
         f_dict['spec_to_ref_map_path'] = spec_to_ref_map_path
-        if self.ann_mat is not None:
-            self.ann_mat.store(join(directory, str(self.ann_mat._id)))
-            f_dict['ann_mat'] = join(directory, str(self.ann_mat._id))
+        sd_ids = []
+        for spatial_data in self.additional_spatial_data:
+            spatial_data.store(join(directory, str(spatial_data._id)))
+            sd_ids.append(
+                {
+                    'id': str(spatial_data._id),
+                    'type': spatial_data.get_type()
+                }
+            )
+        f_dict['additional_spatial_data'] = sd_ids
+        f_dict['id'] = str(self._id)
+
         f_dict['name'] = self.name
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory: str) -> 'Imzml':
+    def load(cls, 
+             directory: str,
+             spatial_base_data_loader: Optional[SpatialBaseDataLoader] = None) -> 'Imzml':
+        if spatial_base_data_loader is None:
+            spatial_base_data_loader = SpatialBaseDataLoader.load_default_loader()
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
             config = json.load(f)
-        image = Image.load(attributes['image'])
         __ref_mat = Annotation.load(attributes['__ref_mat'])
         with open(attributes['spec_to_ref_map_path']) as f:
             spec_to_ref_map = json.load(f)
-        ann_mat_path = attributes.get('ann_mat', None)
-        if ann_mat_path is not None:
-            ann_mat = Annotation.load(ann_mat_path)
-        else:
-            ann_mat = None
+            # Clean dictionary values to int
+            spec_to_ref_map = {int(x): int(spec_to_ref_map[x]) for x in spec_to_ref_map}
+        additional_spatial_data = []
+        for spatial_data_dict in attributes['additional_spatial_data']:
+            sub_dir = spatial_data_dict['id']
+            spatial_data = spatial_base_data_loader.load(spatial_data_dict['type'], join(directory, sub_dir))
+            additional_spatial_data.append(spatial_data)            
         name = attributes.get('name', '')
         obj = cls(
             config=config,
-            image=image,
+            additional_spatial_data=additional_spatial_data,
             spec_to_ref_map=spec_to_ref_map,
-            ann_mat=ann_mat,
             name=name
         ) 
         obj.ref_mat = __ref_mat
-        id_ = uuid.UUID(os.path.basename(directory.strip('/')))
+        id_ = uuid.UUID(attributes['id'])
         obj._id = id_
         return obj
         
+    @classmethod
+    def init_msi_data(cls,
+                      imzml_path: str,
+                      config: Optional[Dict] = None,
+                      target_resolution: Optional[int] = 1,
+                      name: str = ''):
+        if config is None:
+            config = {}
+        msi = ImzMLParser(imzml_path)
+        ref_mat, spec_to_ref_map = convert_msi_to_reference_matrix(msi, target_resolution)
+        obj = cls(
+            config=config,
+            spec_to_ref_map=spec_to_ref_map,
+            name=name
+        )
+        obj.ref_mat = ref_mat
+        return obj
+    
+    # TODO: Remove when done.
     @classmethod
     def load_msi_data(cls, 
                       image: Union[BaseImage, numpy.array], 
@@ -642,15 +709,16 @@ class Imzml(BaseSpatialOmics):
             ann_mat = None
         obj = cls(
             config=config,
-            image=image,
+            # image=image,
             spec_to_ref_map=spec_to_ref_map,
-            ann_mat=ann_mat,
+            additional_spatial_data=[ann_mat],
             name=name
         )
         obj.ref_mat = ref_mat
         return obj
             
     
+    # TODO: Remove function
     @classmethod
     def from_config(cls, config):
         # TODO: Maybe add resolution to config
@@ -723,3 +791,81 @@ class Imzml(BaseSpatialOmics):
             idx_arr_mapped = np.array([int(spec_to_ref_map_rev[x]) for x in idx_arr])
             mapped_mappings[key] = (idx_arr_mapped, mappings[key][1].copy())
         return mapped_mappings
+    
+    def get_pca_img(self,
+                    int_threshold: Optional[float]=None) -> numpy.ndarray:
+        """Compute the PCA image representation of the msi data.
+
+        Args:
+            int_threshold (Optional[float], optional): Intensity threshold. Defaults to None.
+
+        Returns:
+            numpy.ndarray: PCA image presentation
+        """
+        # Collect all spectra
+        msi_data = []
+        for idx, _ in enumerate(self.msi.coordinates):
+            _, ints = self.msi.getspectrum(idx)
+            msi_data.append(ints)
+
+        msi_mat = np.array(msi_data)
+        if int_threshold is not None:
+            msi_mat[msi_mat <= int_threshold] = 0   
+
+        # Compute PCA space
+        pca = PCA(n_components=1)
+        pca.fit(msi_mat)
+        reduced_mz = pca.transform(msi_mat)
+        reduced_mz = reduced_mz.squeeze()
+
+        # Map PCA values to image space
+        map_mz_dict = {}
+        for idx, val in enumerate(reduced_mz):
+            ref_idx = self.spec_to_ref_map[idx]
+            map_mz_dict[ref_idx] = val
+        indexer = np.array([map_mz_dict.get(i, 0) for i in range(self.ref_mat.min(), self.ref_mat.max() + 1)])
+        pca_mz_mat = indexer[(self.ref_mat - self.ref_mat.min())]
+        return pca_mz_mat
+    
+    def extract_ion_image(self, 
+                          mz_value: float, 
+                          tol: float = 0.1, 
+                          reduce_func: Callable = sum) -> Image:
+        """Returns an ion image for the given mz_value. Reimplentation of `getionimage` from pyimzml.
+
+        Args:
+            mz_value (float): m/z value to extract.
+            tol (float, optional): tolerance to extract mz_value. Defaults to 0.1.
+            reduce_func (Callable, optional): Function to accumulate intensities that fall into [mz_value - tol, mz_value + tol]. Defaults to sum.
+
+        Returns:
+            numpy.ndarray: Computed ion image.
+        """
+        spec_to_intensity = {}
+        for idx, (_, _, _) in enumerate(self.msi.coordinates):
+            mzs, intensities = self.msi.getspectrum(idx)
+            ints_ = intensities[np.logical_and((mz_value - tol) < mzs, (mz_value + tol) > mzs)]
+            val = reduce_func(ints_)
+            spec_to_intensity[idx] = val
+        # local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
+        rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
+        merged_dict = merge_dicts(rev_spec_to_ref_map, spec_to_intensity)
+        merged_dict[self.background] = 0
+        indexer = np.array([merged_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
+        ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
+        return Image(data=ion_image)
+    
+
+    def extract_ion_image_by_idx(self,
+                                 index: int) -> Image:        
+        spec_to_intensity = {}
+        for idx, (_, _, _) in enumerate(self.msi.coordinates):
+            _, intensities = self.msi.getspectrum(idx)
+            spec_to_intensity[idx] = intensities[index]
+        # local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
+        rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
+        merged_dict = merge_dicts(rev_spec_to_ref_map, spec_to_intensity)
+        merged_dict[self.background] = 0
+        indexer = np.array([merged_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
+        ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
+        return Image(data=ion_image)
