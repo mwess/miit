@@ -823,8 +823,8 @@ class Imzml(BaseSpatialOmics):
         for idx, val in enumerate(reduced_mz):
             ref_idx = self.spec_to_ref_map[idx]
             map_mz_dict[ref_idx] = val
-        indexer = np.array([map_mz_dict.get(i, 0) for i in range(self.ref_mat.min(), self.ref_mat.max() + 1)])
-        pca_mz_mat = indexer[(self.ref_mat - self.ref_mat.min())]
+        indexer = np.array([map_mz_dict.get(i, 0) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
+        pca_mz_mat = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
         return pca_mz_mat
     
     def extract_ion_image(self, 
