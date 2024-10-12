@@ -20,9 +20,12 @@ def get_max_dim(img: numpy.array):
     return x if x > y else y    
 
 
-def resize_image_simple_sitk(image, res, out_type=np.float32):
+def resize_image_simple_sitk(image: numpy.ndarray, 
+                             res: Tuple[int, int], 
+                             out_type: type = np.float32,
+                             interpolation: int = cv2.INTER_NEAREST):
     img_np = sitk.GetArrayFromImage(image)
-    new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=cv2.INTER_NEAREST)
+    new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=interpolation)
     return sitk.GetImageFromArray(new_img_np.astype(np.float32))
 
 
@@ -31,6 +34,7 @@ class NiftiRegRegistrationResult(RegistrationResult):
     rigid_transform: str
     downscaling_factor: float 
     target_size: Tuple[int, int]
+    orig_target_size: Tuple[int, int]
     cmdln_returns: List[Any]
 
 
@@ -58,6 +62,7 @@ class NiftyRegWrapper(Registerer):
         fixed_img_sitk = sitk.GetImageFromArray(fixed_img)
         max_dim_moving = get_max_dim(moving_img)
         max_dim_fixed = get_max_dim(fixed_img)
+        src_fixed_img_shape = fixed_img.shape[:2]
         max_dim = max_dim_moving if max_dim_moving > max_dim_fixed else max_dim_fixed
         if max_dim <= nifty_max_dim_size:
             downscaling_factor = 1
@@ -88,18 +93,13 @@ class NiftyRegWrapper(Registerer):
         sitk.WriteImage(moving_img_sitk, moving_full_path)
     
         # Perform registrations
-        cmd_aladin_rig = f"""'{self.path_to_nifty_reg_aladin}' -ref '{fixed_path}' -flo '{moving_path}' -res '{warped_rig_image_path}' -aff '{rigid_transform_path}' -rigOnly"""
+        cmd_aladin_rig = f"""'{self.path_to_nifty_reg_aladin}' -ref '{fixed_path}' -flo '{moving_path}' -res '{warped_rig_image_path}' -aff '{rigid_transform_path}' -rigOnly -speeeeed"""
         ret_aladin_rig = subprocess.run(shlex.split(cmd_aladin_rig), capture_output=True)
-        # cmd_aladin_rig = ['aladin', '-ref', f'{fixed_path}', '-flo', f'{moving_path}', '-res', f'{warped_rig_image_path}', '-aff', f'{rigid_transform_path}', '-rigOnly']
-        # ret_aladin_rig = nifity_reg.main(args=cmd_aladin_rig)
         if len(ret_aladin_rig.stderr) != 0:
             print('Error during rigid registration:')
             print(ret_aladin_rig.stderr.decode('utf-8'))
         cmd_returns.append(ret_aladin_rig)    
-        # Load resampled 
-        warped_rig_image = sitk.ReadImage(warped_rig_image_path)
-        target_img_size = sitk.GetArrayFromImage(moving_img_sitk).shape
-        warped_rig_image = resize_image_simple_sitk(warped_rig_image, target_img_size)
+        # Load resampled => Not necessary any more.
         with open(rigid_transform_path) as f:
             rigid_transform = f.readlines()
             rigid_transform = [x.strip() for x in rigid_transform]
@@ -109,6 +109,7 @@ class NiftyRegWrapper(Registerer):
             rigid_transform=rigid_transform, 
             downscaling_factor=downscaling_factor,
             target_size=fixed_img_shape,
+            orig_target_size=src_fixed_img_shape,
             cmdln_returns=cmd_returns)
         return registration_result
     
@@ -117,7 +118,9 @@ class NiftyRegWrapper(Registerer):
                         transformation: RegistrationResult, 
                         interpolation_mode: str, 
                         tmp_directory: str = 'tmp', 
+                        keep_src_dtype: bool = True,
                         **kwargs: Dict) -> numpy.array:
+        src_dtype = image.dtype
         tmp_directory = derive_unique_directory(tmp_directory)
         if tmp_directory != '' and not os.path.exists(tmp_directory):
             os.mkdir(tmp_directory)
@@ -147,17 +150,38 @@ class NiftyRegWrapper(Registerer):
             print('Error during warping:')
             print(ret_resample.stderr.decode('utf-8'))
         warped_image = sitk.ReadImage(output_path)
-        if downscaling_factor > 1:
-            target_img_size = image.shape
-            warped_image = resize_image_simple_sitk(warped_image, target_img_size)
+        # if downscaling_factor > 1:
+        #     warped_image = resize_image_simple_sitk(warped_image, transformation.target_size, interpolation=interpolation)
+        warped_image = resize_image_simple_sitk(warped_image, transformation.orig_target_size, interpolation=interpolation)
+
         if os.path.exists(tmp_directory):
             shutil.rmtree(tmp_directory)
-        return sitk.GetArrayFromImage(warped_image)
+        warped_image = sitk.GetArrayFromImage(warped_image)
+        if keep_src_dtype:
+            warped_image = warped_image.astype(src_dtype)
+        return warped_image
     
     def transform_pointset(self, pointset: numpy.array, transformation: RegistrationResult, **kwargs: Dict) -> numpy.array:
-        # TODO: Implement that.
-        pass
-    
+        # Check for off-by-one errors.
+        m = string_mat_to_mat(transformation.rigid_transform)
+        transform = sitk.AffineTransform(2)
+        transform.SetMatrix((m[0, 0], m[0, 1], m[1, 0], m[1, 1]))
+        transform.SetTranslation((m[0, 3], m[1, 3]))
+        downscaling_factor = transformation.downscaling_factor
+        if downscaling_factor > 1:
+            pointset = pointset/downscaling_factor
+        pointset -= 0.5
+        warped_points = []
+        for i in range(pointset.shape[0]):
+            point = (pointset[i,0], pointset[i,1])
+            warped_point = transform.TransformPoint(point)
+            warped_points.append(warped_point)
+        warped_pointset = np.array(warped_points)
+        if downscaling_factor > 1:
+            warped_pointset = warped_pointset * downscaling_factor
+        return warped_pointset
+
+
     @classmethod
     def load_from_config(cls, config: Optional[Dict[str, Any]] = None) -> Registerer:
         # We dont use the interface of the niftyreg package directly to better control output to the console.
@@ -168,3 +192,19 @@ class NiftyRegWrapper(Registerer):
         return cls(path_to_nifty_reg_aladin=path_to_nifty_reg_aladin,
                   path_to_nifty_reg_f3d=path_to_nifty_reg_f3d,
                   path_to_nifty_reg_resample=path_to_nifty_reg_resample)
+    
+    @classmethod
+    def init_registerer(cls, nifty_directory: Optional[str] = None) -> Registerer:
+        if nifty_directory is None:
+            nifty_directory = str(niftyreg.bin_path)
+        path_to_nifty_reg_aladin = join(nifty_directory, 'reg_aladin')
+        path_to_nifty_reg_f3d = join(nifty_directory, 'reg_f3d')
+        path_to_nifty_reg_resample = join(nifty_directory, 'reg_resample')
+        return cls(path_to_nifty_reg_aladin=path_to_nifty_reg_aladin,
+                  path_to_nifty_reg_f3d=path_to_nifty_reg_f3d,
+                  path_to_nifty_reg_resample=path_to_nifty_reg_resample)            
+    
+
+def string_mat_to_mat(str_mat):
+    mat = [[float(y) for y in x.split()] for x in str_mat]
+    return np.array(mat)

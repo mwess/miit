@@ -50,6 +50,8 @@ def do_msi_registration(histology_image: numpy.ndarray,
     return unpadded_warped_img, unpadded_ref_mat, unpadded_add_imgs
     
 
+
+
 def post_registration_transforms(warped_images: List[numpy.array], processing_dict: Dict) -> List[numpy.array]:
     global_padding = processing_dict['global_padding']
     unpadded_images = []
@@ -69,6 +71,7 @@ def resize_image_simple_sitk(image: numpy.ndarray,
     return sitk.GetImageFromArray(new_img_np.astype(out_type))
 
 
+# Can be removed now
 def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser, 
                 ref_mat: numpy.ndarray, 
                 spec_to_ref_map: dict, 
@@ -126,19 +129,23 @@ def preprocess_for_registration(fixed_image: numpy.ndarray,
     return fixed_image_padding, moving_image_padding, ref_mat_padding, padded_additional_image_datas, process_dict
 
 
+
 def preprocess_histology(hist_img: numpy.ndarray, 
-                         moving_img: numpy.ndarray) -> Tuple[numpy.ndarray, dict]:
+                         msi_img: numpy.ndarray,
+                         hist_img_mask: Optional[numpy.ndarray] = None) -> Tuple[numpy.ndarray, dict]:
     """
     Preprocessing steps: Remove background noise, pad to optimally match the shape of the moving image.
     """
     # Remove noise
-    segmentation_fun = load_yolo_segmentation()
-    mask = segmentation_fun(hist_img)
+    if hist_img_mask is None:
+        segmentation_fun = load_yolo_segmentation()
+        hist_img_mask = segmentation_fun(hist_img)
     hist_gray = cv2.cvtColor(hist_img, cv2.COLOR_RGB2GRAY)
-    image_dict = {'segmentation_mask': mask}
-    image_dict['gray'] = hist_gray
-    hist_gray = hist_gray * mask
-    fix_pad, mov_pad = get_symmetric_padding(hist_gray, moving_img)
+    image_dict = {}
+    # image_dict = {'segmentation_mask': hist_img_mask}
+    # image_dict['gray'] = hist_gray
+    hist_gray = hist_gray * hist_img_mask
+    fix_pad, mov_pad = get_symmetric_padding(hist_gray, msi_img)
     image_dict['mov_sym_pad'] = mov_pad
     image_dict['fix_sym_pad'] = fix_pad
     return hist_gray, image_dict

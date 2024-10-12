@@ -44,7 +44,8 @@ from miit.utils.imzml import (
     get_scan_direction,
     get_scan_pattern,
     get_scan_type,
-    get_line_scan_direction
+    get_line_scan_direction,
+    get_pca_img
 )
 
 
@@ -576,7 +577,6 @@ class Imzml(BaseSpatialOmics):
             else:
                 spatial_data.flip(axis=axis)
 
-    #TODO:  Not working correctly. 
     def store(self, directory: str):
         Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
@@ -646,6 +646,8 @@ class Imzml(BaseSpatialOmics):
                       name: str = ''):
         if config is None:
             config = {}
+        if 'imzml' not in config:
+            config['imzml'] = imzml_path
         msi = ImzMLParser(imzml_path)
         ref_mat, spec_to_ref_map = convert_msi_to_reference_matrix(msi, target_resolution)
         obj = cls(
@@ -717,57 +719,6 @@ class Imzml(BaseSpatialOmics):
         obj.ref_mat = ref_mat
         return obj
             
-    
-    # TODO: Remove function
-    @classmethod
-    def from_config(cls, config):
-        # TODO: Maybe add resolution to config
-        imzml_path = config['imzml']
-        image_path = config['image']
-        image = read_image(image_path)
-        resolution = config.get('resolution', 1)
-        msi = ImzMLParser(imzml_path)
-        srd_path = config.get('srd', None)
-        if srd_path is not None:
-            with open(srd_path, 'rb') as f:
-                srd = json.load(f)
-        else:
-            srd = None
-        ref_mat, spec_to_ref_map, ann_mat = convert_to_matrix(msi, srd, target_resolution=resolution)
-        do_pre_registration = config.get('preregistration', True)
-        if do_pre_registration:
-            if ann_mat is not None:
-                additional_images = [ann_mat]
-            else:
-                additional_images = []
-            use_srd_ann = config.get('use_srd_ann', False)
-            if use_srd_ann:
-                reg_img = ann_mat
-            else:
-                reg_img = None
-            _, ref_mat, add_imgs = do_msi_registration(image.data, 
-                                                       ref_mat, 
-                                                       spec_to_ref_map, 
-                                                       msi, 
-                                                       reg_img=reg_img,
-                                                       additional_images=additional_images)
-            if ann_mat is not None:
-                ann_mat = add_imgs[0]
-        ref_mat = ref_mat.astype(int)
-        ref_mat = Annotation(data=ref_mat)
-        if ann_mat is not None:
-            ann_mat = Annotation(data=ann_mat)
-        else:
-            ann_mat = None
-        obj = cls(
-            config=config,
-            image=image,
-            spec_to_ref_map=spec_to_ref_map,
-            ann_mat=ann_mat
-        )
-        obj.ref_mat = ref_mat
-        return obj
-
     def convert_mappings_and_unique_ids_back(self, 
                                              mappings: dict, 
                                              unique_ids: set) -> Tuple[dict, set]:
@@ -800,32 +751,15 @@ class Imzml(BaseSpatialOmics):
             int_threshold (Optional[float], optional): Intensity threshold. Defaults to None.
 
         Returns:
-            numpy.ndarray: PCA image presentation
+            Image: PCA image presentation
         """
-        # Collect all spectra
-        msi_data = []
-        for idx, _ in enumerate(self.msi.coordinates):
-            _, ints = self.msi.getspectrum(idx)
-            msi_data.append(ints)
+        return Image(data=get_pca_img(
+            self.msi,
+            self.ref_mat.data,
+            self.spec_to_ref_map,
+            int_threshold
+        ))
 
-        msi_mat = np.array(msi_data)
-        if int_threshold is not None:
-            msi_mat[msi_mat <= int_threshold] = 0   
-
-        # Compute PCA space
-        pca = PCA(n_components=1)
-        pca.fit(msi_mat)
-        reduced_mz = pca.transform(msi_mat)
-        reduced_mz = reduced_mz.squeeze()
-
-        # Map PCA values to image space
-        map_mz_dict = {}
-        for idx, val in enumerate(reduced_mz):
-            ref_idx = self.spec_to_ref_map[idx]
-            map_mz_dict[ref_idx] = val
-        indexer = np.array([map_mz_dict.get(i, 0) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
-        pca_mz_mat = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
-        return pca_mz_mat
     
     def extract_ion_image(self, 
                           mz_value: float, 
