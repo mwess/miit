@@ -14,6 +14,18 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
 
 
+def get_default_metadata() -> dict:
+    metadata = {
+        'PhysicalSizeX': 1,
+        'PhysicalSizeXUnit': 'px',
+        'PhysicalSizeY': 1,
+        'PhysicalSizeYUnit': 'px',
+        'Interleaved': 'true',
+        'channels': [],
+        'tiff_data': []
+    }
+    return metadata
+
 @dataclass(kw_only=True)
 class OMETIFFImage(Image):
     """
@@ -118,8 +130,12 @@ class OMETIFFImage(Image):
         return ometiff_image
 
     @classmethod
-    def read_from_path(cls, 
-                       path: str):
+    def load_from_path(cls, 
+                       path: str,
+                       name: str = ''):
         data, metadata = read_image(path, False)
-        name = os.path.basename(path)
+        if not metadata:
+            metadata = get_default_metadata()
+        if not name:
+            name = os.path.basename(path)
         return cls(data=data, name=name, tif_metadata=metadata)

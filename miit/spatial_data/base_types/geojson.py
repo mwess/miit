@@ -18,13 +18,6 @@ from miit.spatial_data.base_types.base_imaging import BasePointset
 from miit.utils.utils import create_if_not_exists
 
 
-def convert_linestring_to_polygon(geom):
-    coords = np.array(list(geom.coords))
-    if not geom.is_closed:
-        coords = np.vstack((coords, coords[0, :]))
-    return shapely.Polygon(coords)
-
-
 @dataclass(kw_only=True)
 class GeoJSONData(BasePointset):
 
@@ -102,7 +95,7 @@ class GeoJSONData(BasePointset):
                 feature_new = geojson.utils.map_tuples(lambda coords: [coords[0], coords[1] + 2 * (center_y - coords[1])], feature)
                 features_new.append(feature_new)
         else:
-            pass
+            raise Exception(f"Cannot work with axis argument: {axis}")
         if 'features' in self.data:
             self.data['features'] = features_new
         else:
@@ -139,67 +132,6 @@ class GeoJSONData(BasePointset):
         gdata._id = id_
         return gdata
 
-    def to_annotation(self,
-                      ref_image: numpy.ndarray,
-                      label_fun: Optional[callable] = None) -> 'Annotation':
-        """Utility function for converting a geojson object to an 
-        annotation. 
-
-        Args:
-            ref_image (numpy.array):
-                Defines the shape of the result annotation.
-
-            label_fun (callable):
-                Optional function for extracting label names from feature objects. 
-                If not supplied, the labels of the annotation are taken from 'id',
-                otherwise 'label_fun' is called.
-        """
-        labels = []
-        masks = []
-        geojson_data = self.data
-        for feature in geojson_data['features']:
-            # If no name can be found, ignore for now.
-            # if 'classification' not in feature['properties'] and 'name' not in feature['properties']:
-            #     continue
-            # Do not support cellcounts at the moment.
-            # TODO: Add support for cells.
-            if feature['properties']['objectType'] != 'annotation':
-                continue
-            geom = shapely.from_geojson(str(feature))
-            if geom.is_empty:
-                print(f"""Feature of type {feature['geometry']['type']} is empty.""")
-                continue
-            if geom.geom_type == 'LineString':
-                geom = convert_linestring_to_polygon(geom)
-            if geom.geom_type == 'MultiPolygon':
-                shape = (ref_image.shape[1], ref_image.shape[0])
-                # print(f'Multipolygon: {shape}')
-                mask = np.zeros(shape, dtype=np.uint8)
-                for geom_ in geom.geoms:
-                    ext_coords = np.array(list(geom_.exterior.coords))
-                    mask_ = skimage.draw.polygon2mask(shape, ext_coords)
-                    mask[mask_] = 1
-                # print(f'Multipolygon mask: {mask.shape}')
-            else:
-                ext_coords = np.array(list(geom.exterior.coords))
-                shape = (ref_image.shape[1], ref_image.shape[0])
-                # print(f'Polygon: {shape}')
-                mask = skimage.draw.polygon2mask(shape, ext_coords)
-                # print(f'Polygon mask: {mask.shape}')
-            mask = mask.transpose().astype(np.uint8)
-            masks.append(mask)
-            if label_fun is None:
-                labels.append(feature['id'])
-            else:
-                labels.append(label_fun(feature))
-        annotation_mask = np.dstack(masks)
-        if len(annotation_mask.shape) > 2:
-            is_multichannel = False
-        else:
-            is_multichannel = True
-        annotation = Annotation(data=annotation_mask, labels=labels, name=self.name, is_multichannel=is_multichannel)
-        return annotation
-
     def __warp_geojson_coord_tuple(self, 
                                    coord: Tuple[float, float], 
                                    registerer: Registerer, 
@@ -233,5 +165,3 @@ class GeoJSONData(BasePointset):
         with open(path_to_geojson) as f:
             data = geojson.load(f)
         return cls(data=data, name=name)
-        
-        
