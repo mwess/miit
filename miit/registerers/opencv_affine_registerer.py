@@ -29,8 +29,8 @@ class OpenCVAffineRegisterer(Registerer):
     
     # TODO: What is the datatype of the return registration
     def register_images(self, 
-                        fixed_img: numpy.array, 
                         moving_img: numpy.array, 
+                        fixed_img: numpy.array, 
                         rigid: bool = True,
                         rotation: bool = False,
                         warn_angle_deg: float = 1,

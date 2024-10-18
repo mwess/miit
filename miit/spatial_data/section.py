@@ -12,15 +12,16 @@ from miit.spatial_data.base_types import (
     Image,
     BaseImage,
     BasePointset,
+    SpatialBaseDataLoader
 )
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
-from miit.spatial_data.loaders import load_spatial_omics_data, SpatialDataLoader
+from miit.spatial_data.spatial_omics import BaseSpatialOmics, SpatialOmicsDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
+# TODO: Refactor this out.
 def get_boundary_box(image: numpy.array, background_value: float = 0) -> Tuple[int, int, int, int]:
     if len(image.shape) != 2:
         raise Exception(f'Bounding box requires a 2 dimensional array, but has: {len(image.shape)}')
@@ -129,7 +130,7 @@ def register_to_ref_image(target_image: numpy.array,
                           source_image: numpy.array, 
                           data: Union[BaseImage, BasePointset],
                           registerer: Registerer = None,
-                          **args) -> Tuple[Union[BaseImage, BasePointset], numpy.array]:
+                          **args) -> Tuple[Union[BaseImage, BasePointset], Image]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
@@ -137,9 +138,9 @@ def register_to_ref_image(target_image: numpy.array,
     """
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
-    transformation = registerer.register_images(target_image, source_image, **args)
+    transformation = registerer.register_images(source_image, target_image, **args)
     warped_data = data.apply_transform(registerer, transformation)
-    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation).data
+    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
     return warped_data, warped_ref_image
 
 
@@ -236,6 +237,9 @@ class Section:
         for so_data_ in self.so_data:
             so_data_.resize(width, height)
 
+    def rescale(self, scaling_factor: float):
+        pass
+
     def apply_transform(self, 
              registerer: Registerer, 
              transformation: RegistrationResult, 
@@ -296,7 +300,8 @@ class Section:
         f_dict['annotations'] = annotation_ids
         so_data_ids = []
         for so_data in self.so_data:
-            so_data.store(directory)
+            so_dir = join(directory, str(so_data._id))
+            so_data.store(so_dir)
             so_data_ids.append({
                 'id': str(so_data._id),
                 'type': so_data.get_type()
@@ -323,26 +328,31 @@ class Section:
         print(get_table_summary_string(self))
             
     @classmethod
-    def load(cls, directory: str, loader: Optional[SpatialDataLoader] = None):
+    def load(cls, directory: str, 
+             base_type_loader: Optional[SpatialBaseDataLoader] = None,
+             so_type_loader: Optional[SpatialOmicsDataLoader] = None) -> 'Section':
         """Loads a Section object from directory. 
 
         Args:
-            directory (str): _description_
-            loader (Optional[SpatialDataLoader], optional): data loader. Defaults to None.
+            directory (str): Source directory.
+            base_type_loader (Optional[SpatialBaseDataLoader], optional): Data loader for base imaging types. Defaults to None.
+            so_type_loader (Optional[SpatialOmicsDataLoader], optional): Data loader for spatial omics data types. Defaults to None.
 
         Returns:
-            _type_: _description_
+            Section: _description_
         """
         if not exists(directory):
             # TODO: Throw custom error message
             pass
-        if loader is None:
-            loader = SpatialDataLoader.load_default_loader()
+        if base_type_loader is None:
+            base_type_loader = SpatialBaseDataLoader.load_default_loader()
+        if so_type_loader is None:
+            so_type_loader = SpatialOmicsDataLoader.load_default_loader()
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         ref_image_dict = attributes['reference_image']
         ref_image_path = join(directory, ref_image_dict['id'])
-        reference_image = loader.load(ref_image_dict['type'], ref_image_path)
+        reference_image = base_type_loader.load(ref_image_dict['type'], ref_image_path)
         if 'meta_information_path' in attributes:
             meta_information_path = join(directory, attributes['meta_information_path'])
             with open(meta_information_path) as f:
@@ -352,12 +362,12 @@ class Section:
         annotations = []
         for annotation_dict in attributes['annotations']:
             sub_dir = annotation_dict['id']
-            annotation = loader.load(annotation_dict['type'], join(directory, sub_dir))
+            annotation = base_type_loader.load(annotation_dict['type'], join(directory, sub_dir))
             annotations.append(annotation)
         so_datas = []
         for so_dict in attributes['so_datas']:
             sub_dir = so_dict['id']
-            so_data = loader.load(so_dict['type'],
+            so_data = so_type_loader.load(so_dict['type'],
                                   join(directory, sub_dir))
             so_datas.append(so_data)
         obj = cls(

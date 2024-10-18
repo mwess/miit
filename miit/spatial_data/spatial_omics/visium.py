@@ -3,6 +3,7 @@ import json
 import math
 import os
 from os.path import join, exists
+from pathlib import Path
 from typing import Any, ClassVar, Dict, Optional, Tuple
 import uuid
 
@@ -111,12 +112,8 @@ class Visium(BaseSpatialOmics):
     def ref_mat(self, ref_mat: Annotation):
         self.__ref_mat = ref_mat
 
-    def store(self, root_directory: str):
-        if not exists(root_directory):
-            os.mkdir(root_directory)
-        directory = join(root_directory, str(self._id))
-        if not exists(directory):
-            os.mkdir(directory)
+    def store(self, directory: str):
+        Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
         image_path = join(directory, 'image')
         if not exists(image_path):
@@ -150,6 +147,7 @@ class Visium(BaseSpatialOmics):
                 json.dump(self.config, f)
             f_dict['config_path'] = config_path
         f_dict['name'] = self.name
+        f_dict['id'] = str(self._id)
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
@@ -179,7 +177,7 @@ class Visium(BaseSpatialOmics):
                 config = json.load(f)
         else:
             config = None
-        id_ = uuid.UUID(os.path.basename(directory.rstrip('/')))
+        id_ = uuid.UUID(attributes['id'])
         name = attributes['name']
         obj = cls(
             image=image,

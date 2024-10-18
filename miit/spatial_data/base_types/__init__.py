@@ -9,6 +9,7 @@ from .geojson import GeoJSONData
 from .pointset import Pointset
 from .ometiff_image import OMETIFFImage
 from .ometiff_annotation import OMETIFFAnnotation
+from .base_type_loader import SpatialBaseDataLoader
 
 
 # Overwrite this function to include greedyfhists read_image functionality
