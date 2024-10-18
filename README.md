@@ -8,7 +8,7 @@ MIIT (pronounce: `meet`) is a Python framework for integratig spatially resolved
 MIIT can be installed using pip:
 
 ```
-pip install --user git+https://github.com/mwess/miit@v0.0.2
+pip install --user git+https://github.com/mwess/miit@v0.0.2-rc2
 ```
 
 ## Usage
@@ -25,13 +25,13 @@ MIIT is also available as a docker image. It comes along with GreedyFHist's exte
 The docker image can be loaded as follows:
 
 ```
-docker pull mwess89/miit:0.0.2
+docker pull mwess89/miit:0.0.2-rc2
 ```
 
 It should then be available to run as follows:
 
 ```
-docker run -it -p 8888:8888 mwess89/miit:0.0.2
+docker run -it -p 8888:8888 mwess89/miit:0.0.2-rc2
 ```
 
 ### Building docker image locally
@@ -56,7 +56,7 @@ MIIT can be used fully in a docker environment and external directories can be e
 ```
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/home/maxi/applications/miit,dst=/external_directory \
-mwess89/miit:0.0.2
+mwess89/miit:0.0.2-rc2
 ```
 
 This example mounts the local directory `/home/maxi/applications/miit` to the path 
