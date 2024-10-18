@@ -630,67 +630,6 @@ class Imzml(BaseSpatialOmics):
         )
         obj.ref_mat = ref_mat
         return obj
-    
-    # TODO: Remove when done.
-    @classmethod
-    def load_msi_data(cls, 
-                      image: Union[BaseImage, numpy.array], 
-                      imzml_path: str, 
-                      name: str = '',
-                      config: Optional[Dict] = None,
-                      srd_path: Optional[str] = None,
-                      use_srd: bool = False,
-                      enable_msi_registration: bool = True,
-                      registerer: Optional[Registerer] = None,
-                      ref_image_resolution: Optional[int] = 1):
-        msi = ImzMLParser(imzml_path)
-        if config is None:
-            config = {}
-        if 'imzml' not in config:
-            config['imzml'] = imzml_path
-        if srd_path is not None:
-            if 'srd' not in config:
-                config['srd'] = srd_path
-            with open(srd_path, 'rb') as f:
-                srd = json.load(f)
-        else:
-            srd = None
-        ref_mat, spec_to_ref_map, ann_mat = convert_to_matrix(msi, srd, target_resolution=ref_image_resolution)
-        if enable_msi_registration:
-            if ann_mat is not None:
-                additional_images = [ann_mat]
-            else:
-                additional_images = []
-            if use_srd:
-                reg_img = ann_mat
-            else:
-                reg_img = None
-            if isinstance(image, numpy.ndarray):
-                image = Image(data=image)
-            _, ref_mat, add_imgs = do_msi_registration(image.data, 
-                                                       ref_mat, 
-                                                       spec_to_ref_map, 
-                                                       msi, 
-                                                       reg_img=reg_img,
-                                                       additional_images=additional_images,
-                                                       registerer=registerer)
-            if ann_mat is not None:
-                ann_mat = add_imgs[0]
-        ref_mat = ref_mat.astype(int)
-        ref_mat = Annotation(data=ref_mat)
-        if ann_mat is not None:
-            ann_mat = Annotation(data=ann_mat)
-        else:
-            ann_mat = None
-        obj = cls(
-            config=config,
-            # image=image,
-            spec_to_ref_map=spec_to_ref_map,
-            additional_spatial_data=[ann_mat],
-            name=name
-        )
-        obj.ref_mat = ref_mat
-        return obj
             
     def convert_mappings_and_unique_ids_back(self, 
                                              mappings: dict, 

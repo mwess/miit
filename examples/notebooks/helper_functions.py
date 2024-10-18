@@ -15,6 +15,7 @@ from miit.spatial_data.spatial_omics import Visium, Imzml
 from miit.spatial_data import Section
 from miit.spatial_data.section import register_to_ref_image
 from miit.registerers import ManualAffineRegisterer, get_rotation_matrix_around_center
+from miit.registerers.other.msi_to_hist_meta_registerer import MSItoHistMetaRegisterer
 
 
 pos_to_stain_type = {
@@ -30,6 +31,9 @@ pos_to_stain_type = {
 }
 
 def load_section(directory, section_number=None):
+    """
+    Load section from test data.
+    """
 
     # Identify paths
     image_path = glob.glob(join(directory, 'images', '*'))[0]
@@ -92,8 +96,6 @@ def load_sections(root_dir, skip_so_data=False):
     pos_ann.data = data
 
 
-
-
     if not skip_so_data:
         # Imzml
         msi_pos_paths = glob.glob(join(root_dir, '6', 'imzml', '*'))
@@ -101,14 +103,11 @@ def load_sections(root_dir, skip_so_data=False):
         msi_pos_srd_path = [x for x in msi_pos_paths if x.endswith('srd')][0]
         msi_pos_ibd_path = [x for x in msi_pos_paths if x.endswith('ibd')][0]
         msi_pos_section = sections['6']
-        msi_pos = Imzml.load_msi_data(
-            image=msi_pos_section.reference_image,
-            imzml_path=msi_pos_imzml_path,
-            name='msi_pos',
-            srd_path=msi_pos_srd_path,
-            use_srd=True
-        )
-        sections['6'].so_data.append(msi_pos)
+        
+        msi_pos = Imzml.init_msi_data(msi_pos_imzml_path, name='msi_pos', target_resolution=1)
+        msi_pos_pca = msi_pos.get_pca_img()
+        warped_msi_pos, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer())
+        sections['6'].so_data.append(warped_msi_pos)
     
     
         msi_neg_paths = glob.glob(join(root_dir, '7', 'imzml', '*'))
@@ -116,14 +115,11 @@ def load_sections(root_dir, skip_so_data=False):
         msi_neg_srd_path = [x for x in msi_neg_paths if x.endswith('srd')][0]
         msi_neg_ibd_path = [x for x in msi_neg_paths if x.endswith('ibd')][0]
         msi_neg_section = sections['7']
-        msi_neg = Imzml.load_msi_data(
-            image=msi_neg_section.reference_image,
-            imzml_path=msi_neg_imzml_path,
-            name='msi_neg',
-            srd_path=msi_neg_srd_path,
-        )
-        sections['7'].so_data.append(msi_neg)
-    
+
+        msi_neg = Imzml.init_msi_data(msi_neg_imzml_path, name='msi_neg', target_resolution=1)
+        msi_neg_pca = msi_neg.get_pca_img()
+        warped_msi_neg, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer())
+        sections['7'].so_data.append(warped_msi_neg)    
     
         st = Visium.from_spcrng(join(root_dir, '2', 'spatial_transcriptomics'))
         warped_st_data, registered_st_image = register_to_ref_image(target_image=sections['2'].reference_image.data,

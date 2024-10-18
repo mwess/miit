@@ -7,7 +7,7 @@ import cv2
 import numpy, numpy as np
 import SimpleITK, SimpleITK as sitk
 from sklearn.decomposition import PCA
-import pyimzml
+import pyimzml, pyimzml.ImzMLParser
 from greedyfhist.segmentation import load_yolo_segmentation
 
 from .image_utils import (
