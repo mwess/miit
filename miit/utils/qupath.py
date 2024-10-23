@@ -1,10 +1,11 @@
-from typing import Optional
+from typing import Optional, Union
 
+import geojson
 import numpy, numpy as np
 import shapely
 import skimage
 
-from miit.spatial_data.base_types import Annotation
+from miit.spatial_data.base_types import Annotation, GeoJSONData
 
 
 def convert_linestring_to_polygon(geom):
@@ -15,7 +16,7 @@ def convert_linestring_to_polygon(geom):
 
 
 # TODO: Split function up. Add function for extracting a single feature.
-def to_annotation(geojson_data,
+def to_annotation(geojson_data: Union[GeoJSONData, geojson.feature.FeatureCollection],
                   ref_image: numpy.ndarray,
                   label_fun: Optional[callable] = None,
                   name: str = '') -> Annotation:
@@ -23,6 +24,8 @@ def to_annotation(geojson_data,
     annotation. 
 
     Args:
+        geojson_data (Union[GeoJSONData, geojson.feature.FeatureCollection]):
+            Data source.
         ref_image (numpy.array):
             Defines the shape of the result annotation.
 
@@ -36,6 +39,8 @@ def to_annotation(geojson_data,
     """
     labels = []
     masks = []
+    if isinstance(geojson_data, GeoJSONData):
+        geojson_data = geojson_data.data
     for feature in geojson_data['features']:
         # If no name can be found, ignore for now.
         # if 'classification' not in feature['properties'] and 'name' not in feature['properties']:

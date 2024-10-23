@@ -202,7 +202,7 @@ class Annotation(BaseImage):
                         image_scale: int = 6,
                         plot_labels: bool = True,
                         axis_off: bool = True,
-                        reference_image: Optional[numpy.array] = None):
+                        reference_image: Optional[Union[numpy.array, BaseImage]] = None):
         """Utility function for plotting an annotation.
 
         Args:
@@ -239,6 +239,8 @@ class Annotation(BaseImage):
                 for j in range(n_cols):
                     axs[i,j].axis('off')
         if reference_image is not None:
+            if isinstance(reference_image, BaseImage):
+                reference_image = reference_image.data
             axs[0, 0].imshow(reference_image)
             if plot_labels:
                 axs[0, 0].set_title('Reference Image')
