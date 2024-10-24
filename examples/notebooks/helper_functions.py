@@ -57,11 +57,13 @@ def load_section(directory, section_number=None):
 
     section = Section(reference_image=reference_image, annotations=[tissue_mask, landmarks])
     if len(ann_path) > 0:
-        annotation_path = [x for x in ann_path if x.endswith('.nii.gz')][0]
-        labels_path = [x for x in ann_path if x.endswith('.txt')][0]
-        annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes', channel_idx=0)
-        annotation.data = annotation.data/annotation.data.max()
-        section.annotations.append(annotation)
+        annotation_paths = [x for x in ann_path if x.endswith('.nii.gz')]
+        if len(annotation_paths) > 0:
+            annotation_path = annotation_paths[0]
+            labels_path = [x for x in ann_path if x.endswith('.txt')][0]
+            annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes', channel_idx=0)
+            annotation.data = annotation.data/annotation.data.max()
+            section.annotations.append(annotation)
     return section
 
 

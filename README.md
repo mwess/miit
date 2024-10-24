@@ -93,6 +93,8 @@ mwess89/miit:0.0.2-rc2
 Important: The `ROOT_DIR` variable in the notebooks needs to be set to `/external_directory`.
 
 
+After starting the docker environment has started and the jupyterlab has been opened, the example notebooks can found in `miit/examples/notebooks`.
+
 
 ### Local (non-docker) environment
 
