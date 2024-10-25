@@ -51,9 +51,6 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
     return new_dict
 
 
-
-
-
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
                  output_path: str,
                  integrated_data: pandas.core.frame.DataFrame) -> None:

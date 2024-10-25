@@ -14,8 +14,6 @@ from miit.utils.utils import create_if_not_exists
 @dataclass(kw_only=True)
 class OMETIFFAnnotation(Annotation):
     
-    # interpolation_mode: ClassVar[str] = 'NN'
-    # labels: Optional[Union[List[str], Dict[str, int]]] = None
     keep_axis_orientation: bool = False
     is_ome: bool = True
     tif_metadata: dict | None = None
