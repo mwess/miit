@@ -1,5 +1,4 @@
 
-from typing import Optional, List, Tuple, Dict
 from miit.registerers.base_registerer import Registerer
 from miit.registerers.nifty_reg import NiftyRegWrapper
 
@@ -20,11 +19,11 @@ from .image_utils import (
 # TODO: Remove that function
 def do_msi_registration(histology_image: numpy.ndarray, 
                         ref_mat: numpy.ndarray, 
-                        spec_to_ref_map: Dict, 
+                        spec_to_ref_map: dict, 
                         msi: pyimzml.ImzMLParser.ImzMLParser, 
-                        reg_img:Optional[numpy.ndarray]=None, 
-                        additional_images:Optional[List[numpy.array]]=None,
-                        registerer: Optional[Registerer] = None) -> Tuple[numpy.ndarray, numpy.ndarray, List[numpy.ndarray]]:
+                        reg_img: numpy.ndarray | None = None, 
+                        additional_images: list[numpy.array] | None = None,
+                        registerer: Registerer | None = None) -> tuple[numpy.ndarray, numpy.ndarray, list[numpy.ndarray]]:
     if additional_images is None:
         additional_images = []
     if reg_img is None:
@@ -53,7 +52,7 @@ def do_msi_registration(histology_image: numpy.ndarray,
 
 
 # TODO: Remove that function
-def post_registration_transforms(warped_images: List[numpy.array], processing_dict: Dict) -> List[numpy.array]:
+def post_registration_transforms(warped_images: list[numpy.array], processing_dict: dict) -> list[numpy.array]:
     global_padding = processing_dict['global_padding']
     unpadded_images = []
     for warped_image_np in warped_images:
@@ -67,7 +66,7 @@ def post_registration_transforms(warped_images: List[numpy.array], processing_di
 def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser, 
                 ref_mat: numpy.ndarray, 
                 spec_to_ref_map: dict, 
-                mz_threshold: Optional[float]=None) -> numpy.ndarray:
+                mz_threshold: float | None = None) -> numpy.ndarray:
     # Collect all spectra
     msi_data = []
     for idx, _ in enumerate(msi.coordinates):
@@ -98,8 +97,8 @@ def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser,
 def preprocess_for_registration(fixed_image: numpy.ndarray, 
                                 moving_image: numpy.ndarray, 
                                 ref_mat: numpy.ndarray,
-                                additional_image_datas:Optional[List[numpy.array]]=None,
-                                padding: int =100) -> Tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, List[numpy.ndarray], dict]:
+                                additional_image_datas: list[numpy.array] | None = None,
+                                padding: int = 100) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, list[numpy.ndarray], dict]:
     fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image)
     # Add global padding
     # First do asym padding
@@ -125,7 +124,7 @@ def preprocess_for_registration(fixed_image: numpy.ndarray,
 
 def preprocess_histology(hist_img: numpy.ndarray, 
                          msi_img: numpy.ndarray,
-                         hist_img_mask: Optional[numpy.ndarray] = None) -> Tuple[numpy.ndarray, dict]:
+                         hist_img_mask: numpy.ndarray | None = None) -> tuple[numpy.ndarray, dict]:
     """
     Preprocessing steps: Remove background noise, pad to optimally match the shape of the moving image.
     """
@@ -142,7 +141,7 @@ def preprocess_histology(hist_img: numpy.ndarray,
     return hist_gray, image_dict
 
 
-def get_mode(msi, use_auto=False):
+def get_mode(msi, use_auto=False) -> str:
     if use_auto:
         return 'auto'
     is_continuous = msi.metadata.file_description.param_by_name['continuous']
@@ -152,7 +151,7 @@ def get_mode(msi, use_auto=False):
         return 'processed'
 
 
-def get_spec_type(msi, default_spec_type = 'centroid'):
+def get_spec_type(msi, default_spec_type = 'centroid') -> str:
     rpg = msi.metadata.referenceable_param_groups['spectrum']
     if rpg is None:
         return default_spec_type
@@ -163,7 +162,7 @@ def get_spec_type(msi, default_spec_type = 'centroid'):
         return 'profile'
 
 
-def get_scan_direction(msi, default_scan_direction='top_down'):
+def get_scan_direction(msi, default_scan_direction='top_down') -> str:
 
     # We take the first key.
     key = list(msi.metadata.scan_settings.keys())[0]
@@ -182,7 +181,7 @@ def get_scan_direction(msi, default_scan_direction='top_down'):
     return default_scan_direction
 
 
-def get_line_scan_direction(msi, default_scan_direction='line_left_right'):
+def get_line_scan_direction(msi, default_scan_direction='line_left_right') -> str:
 
     # We take the first key.
     key = list(msi.metadata.scan_settings.keys())[0]
@@ -201,7 +200,7 @@ def get_line_scan_direction(msi, default_scan_direction='line_left_right'):
     return default_scan_direction
 
 
-def get_scan_pattern(msi, default_scan_pattern='one_way'):
+def get_scan_pattern(msi, default_scan_pattern='one_way') -> str:
 
     # We take the first key.
     key = list(msi.metadata.scan_settings.keys())[0]
@@ -219,7 +218,7 @@ def get_scan_pattern(msi, default_scan_pattern='one_way'):
     return default_scan_pattern 
     
 
-def get_scan_type(msi, default_scan_type='horizontal_line'):
+def get_scan_type(msi, default_scan_type='horizontal_line') -> str:
     key = list(msi.metadata.scan_settings.keys())[0]
     scan_settings_params = msi.metadata.scan_settings[key]
     scan_types = {

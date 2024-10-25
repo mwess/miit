@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import json
 import os
 from os.path import join
-from typing import Any, Dict, Tuple, Union
+from typing import Any
 import uuid
 
 import numpy
@@ -49,7 +49,7 @@ class OMETIFFImage(Image):
     """
     # interpolation_mode: ClassVar[str] = 'LINEAR'
     is_ome: bool = True
-    tif_metadata: Dict = field(default_factory=lambda: defaultdict(dict))
+    tif_metadata: dict = field(default_factory=lambda: defaultdict(dict))
     
     def resize(self, width: int, height: int):
         # Use opencv's resize function here, because it typically works a lot faster and for now
@@ -66,15 +66,15 @@ class OMETIFFImage(Image):
     def get_resolution(self):
         return float(self.tif_metadata['PhysicalSizeX'])
 
-    def get_spacing(self) -> Tuple[float, float]:
+    def get_spacing(self) -> tuple[float, float]:
         w_spacing = self.tif_metadata.get('PhysicalSizeX', 1)
         h_spacing = self.tif_metadata.get('PhysicalSizeY', 1)
         return (w_spacing, h_spacing)
 
     def apply_transform(self, 
                         registerer: Registerer, 
-                        transformation: Union[RegistrationResult, numpy.ndarray], 
-                        **kwargs: Dict) -> Any:
+                        transformation: RegistrationResult | numpy.ndarray, 
+                        **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return OMETIFFImage(
             data=transformed_image,
@@ -108,7 +108,7 @@ class OMETIFFImage(Image):
         return 'ometiff_image'       
 
     @classmethod
-    def load(cls, path: str):
+    def load(cls, path: str) -> 'OMETIFFImage':
         aa_path = join(path, 'additional_attributes.json') 
         with open(aa_path) as f:
             additional_attributes = json.load(f)
@@ -132,7 +132,7 @@ class OMETIFFImage(Image):
     @classmethod
     def load_from_path(cls, 
                        path: str,
-                       name: str = ''):
+                       name: str = '') -> 'OMETIFFImage':
         data, metadata = read_image(path, False)
         if not metadata:
             metadata = get_default_metadata()

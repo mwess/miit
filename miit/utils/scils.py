@@ -1,9 +1,7 @@
 """
     Utility functions for SCiLS formats
 """
-
 import json
-from typing import List, Tuple
 
 import numpy as np
 import pyimzml

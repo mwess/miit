@@ -3,7 +3,7 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from os.path import join
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 import geojson
@@ -29,7 +29,7 @@ class GeoJSONData(BasePointset):
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         geometries = self.data['features'] if 'features' in self.data else self.data
         warped_geometries = []
         for _, geometry in enumerate(geometries):
@@ -69,7 +69,7 @@ class GeoJSONData(BasePointset):
     def rescale(self, scaling_factor: float):
         self.resize(scaling_factor, scaling_factor)
 
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         left, right, top, bottom = padding
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
@@ -81,7 +81,7 @@ class GeoJSONData(BasePointset):
         else:
             self.data = features_new
 
-    def flip(self, ref_img_shape: Tuple[int, int], axis: int = 0):
+    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         if axis == 0:
@@ -133,9 +133,9 @@ class GeoJSONData(BasePointset):
         return gdata
 
     def __warp_geojson_coord_tuple(self, 
-                                   coord: Tuple[float, float], 
+                                   coord: tuple[float, float], 
                                    registerer: Registerer, 
-                                   transform: RegistrationResult) -> Tuple[float, float]:
+                                   transform: RegistrationResult) -> tuple[float, float]:
         """Transforms coordinates from geojson data from moving to fixed image space.
 
         Args:

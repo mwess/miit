@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Union
+from typing import Any
 
 from miit.spatial_data.spatial_omics.imzml import Imzml
 from miit.spatial_data.spatial_omics.visium import Visium
@@ -13,7 +13,7 @@ class SpatialDataLoaderException(Exception):
 @dataclass
 class SpatialOmicsDataLoader:
     
-    class_map: Dict = field(init=False)
+    class_map: dict = field(init=False)
     
     def __post_init__(self):
         self.class_map = {}
@@ -23,7 +23,7 @@ class SpatialOmicsDataLoader:
     def load(self, 
              data_type: Any, 
              path: str,
-             **kwargs: Dict):
+             **kwargs: dict):
         if data_type not in self.class_map:
             raise SpatialDataLoaderException(f'data_type {data_type} not found in loader.')
         return self.class_map[data_type].load(path, **kwargs)

@@ -2,7 +2,7 @@ import abc
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 import numpy
 
@@ -16,12 +16,12 @@ class BaseImage(abc.ABC):
     interpolation_mode: ClassVar[str]
     name: str = ''
     _id:uuid.UUID = field(init=False)
-    meta_information: Dict = field(default_factory=lambda: defaultdict(dict))
+    meta_information: dict = field(default_factory=lambda: defaultdict(dict))
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         image_transformed = registerer.transform_image(self.data, transformation, self.interpolation_mode, **kwargs)
         return image_transformed
 
@@ -38,7 +38,7 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
+    def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
         pass
 
     @abc.abstractmethod
@@ -46,7 +46,7 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: Any, **kwargs: dict) -> Any:
         pass
 
     @abc.abstractmethod
@@ -54,7 +54,7 @@ class BaseImage(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_resolution(self) -> Optional[float]:
+    def get_resolution(self) -> float | None:
         pass
 
     @abc.abstractmethod
@@ -63,7 +63,7 @@ class BaseImage(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def load(path: str):
+    def load(path: str) -> 'BaseImage':
         pass
 
 
@@ -73,7 +73,7 @@ class BasePointset(abc.ABC):
     data: Any
     name: str = ''
     _id:uuid.UUID = field(init=False)
-    meta_information: Dict = field(default_factory=lambda: defaultdict(dict))
+    meta_information: dict = field(default_factory=lambda: defaultdict(dict))
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
@@ -91,7 +91,7 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
+    def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
         pass
 
     @abc.abstractmethod
@@ -99,7 +99,7 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         pass
 
     @abc.abstractmethod
@@ -112,5 +112,5 @@ class BasePointset(abc.ABC):
 
     @classmethod
     @abc.abstractmethod
-    def load(path: str):
+    def load(path: str) -> 'BasePointset':
         pass

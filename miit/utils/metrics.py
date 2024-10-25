@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy, numpy as np
 import pandas
 
@@ -21,7 +19,7 @@ def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame,
 
 def compute_tre(target_lms: pandas.core.frame.DataFrame, 
                 warped_lms: pandas.core.frame.DataFrame, 
-                shape: Tuple[int, int]) -> Tuple[float, float, float, float]:
+                shape: tuple[int, int]) -> tuple[float, float, float, float]:
     """Compute target registration errors between two pointsets.
 
     Args:

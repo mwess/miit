@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import json
 from os.path import join, exists
-from typing import Dict, List, Optional, Union, Tuple
 import uuid
 
 import numpy as np
@@ -19,7 +18,7 @@ class OMETIFFAnnotation(Annotation):
     # labels: Optional[Union[List[str], Dict[str, int]]] = None
     keep_axis_orientation: bool = False
     is_ome: bool = True
-    tif_metadata: Optional[Dict] = None
+    tif_metadata: dict | None = None
     
     def store(self, path: str):
         create_if_not_exists(path)
@@ -56,7 +55,7 @@ class OMETIFFAnnotation(Annotation):
         self.tif_metadata['PhysicalSizeY'] = h_spacing_new
         super().resize(width, height)
     
-    def get_spacing(self) -> Tuple[float, float]:
+    def get_spacing(self) -> tuple[float, float]:
         w_spacing = self.tif_metadata.get('PhysicalSizeX', 1)
         h_spacing = self.tif_metadata.get('PhysicalSizeY', 1)
         return (w_spacing, h_spacing)
@@ -74,7 +73,7 @@ class OMETIFFAnnotation(Annotation):
         )
     
     @classmethod
-    def load(cls, path: str):
+    def load(cls, path: str) -> 'OMETIFFAnnotation':
         aa_path = join(path, 'additional_attributes.json') 
         with open(aa_path) as f:
             additional_attributes = json.load(f)
@@ -109,10 +108,10 @@ class OMETIFFAnnotation(Annotation):
     @classmethod
     def load_from_path(cls, 
                        path_to_data: str, 
-                       path_to_labels: Optional[str] = None,
+                       path_to_labels: str | None = None,
                        keep_axis_orientation: bool = False, 
                        is_multichannel: bool = False,
-                       name: str = ''):
+                       name: str = '') -> 'OMETIFFAnnotation':
         data, tif_metadata = read_image(path_to_data)
         if not keep_axis_orientation and len(data.shape) > 2:
             data = np.moveaxis(data, 0, 2)

@@ -1,5 +1,6 @@
+from typing import Any
+
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
 import numpy, numpy as np
 
@@ -23,7 +24,7 @@ class MSItoHistMetaRegisterer(Registerer):
     """
 
     name = 'MSItoHistMetaRegisterer'
-    registerer: Optional[Registerer] = None
+    registerer: Registerer | None = None
 
     def __post_init__(self):
         if self.registerer is not None:
@@ -36,11 +37,11 @@ class MSItoHistMetaRegisterer(Registerer):
     def register_images(self, 
                  moving_img: numpy.ndarray,
                  fixed_img: numpy.ndarray, 
-                 moving_img_mask: Optional[numpy.ndarray] = None,
-                 fixed_img_mask: Optional[numpy.ndarray] = None,
+                 moving_img_mask: numpy.ndarray | None = None,
+                 fixed_img_mask: numpy.ndarray | None = None,
                  use_histology_as_fixed: bool = True,
-                 registerer_args: Optional[dict] = None, 
-                 **kwargs: Dict) -> RegistrationResult:
+                 registerer_args: dict | None = None, 
+                 **kwargs: dict) -> RegistrationResult:
         # Preprocessing steps
         # 1. Add computed padding from process dict
         # 2. add padding
@@ -98,9 +99,9 @@ class MSItoHistMetaRegisterer(Registerer):
 
 def preprocess_for_registration(hist_img: numpy.ndarray, 
                                 msi_img: numpy.ndarray,
-                                hist_img_mask: Optional[numpy.ndarray] = None,
-                                msi_img_mask: Optional[numpy.ndarray] = None,
-                                padding: int =100) -> Tuple[numpy.ndarray, numpy.ndarray, dict]:
+                                hist_img_mask: numpy.ndarray | None = None,
+                                msi_img_mask: numpy.ndarray | None = None,
+                                padding: int =100) -> tuple[numpy.ndarray, numpy.ndarray, dict]:
     if msi_img_mask is not None:
         msi_img = msi_img * msi_img_mask
     hist_img_np, process_dict = preprocess_histology(hist_img, msi_img, hist_img_mask)

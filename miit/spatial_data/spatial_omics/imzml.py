@@ -6,14 +6,8 @@ from os.path import join, exists
 from pathlib import Path
 from typing import (
     Any, 
-    Callable,
     ClassVar, 
-    Dict, 
     Optional, 
-    Tuple, 
-    Set,
-    List,
-    Union
 )
 import uuid
 
@@ -131,7 +125,7 @@ def simple_baseline(intensities: numpy.ndarray) -> numpy.ndarray:
     return intensities - np.median(intensities[:100])
 
 
-def find_nearest(array: numpy.ndarray, value: float) -> Tuple[float, int]:
+def find_nearest(array: numpy.ndarray, value: float) -> tuple[float, int]:
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx], idx
@@ -139,14 +133,14 @@ def find_nearest(array: numpy.ndarray, value: float) -> Tuple[float, int]:
 
 def tic_trapz(intensity: float, 
               intensities: numpy.ndarray, 
-              mz: Optional[float] = None) -> numpy.ndarray:
+              mz: float | None = None) -> numpy.ndarray:
     return np.array(intensity) / trapezoid(y=intensities, x=mz)
 
 
 def get_metabolite_intensities(
         msi: pyimzml.ImzMLParser.ImzMLParser, 
-        mz_dict: Dict, 
-        spectra_idxs: Set[int]) -> Dict[Union[int, str], List[float]]:
+        mz_dict: dict, 
+        spectra_idxs: set[int]) -> dict[int | str, list[float]]:
     norm_f = tic_trapz
     intensity_f = np.max
     baseline_f = simple_baseline
@@ -169,10 +163,10 @@ def get_metabolite_intensities(
 
 
 def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser,
-                                                  spectra_idxs: List[int], 
-                                                  mz_intervals: Tuple[float, float, float],
-                                                  norm_f: Optional[callable] = None,
-                                                  baseline_f: Optional[callable] = None) -> Dict:
+                                                  spectra_idxs: list[int], 
+                                                  mz_intervals: tuple[float, float, float],
+                                                  norm_f: callable | None = None,
+                                                  baseline_f: callable | None = None) -> dict:
     """
     Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
     used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
@@ -203,8 +197,8 @@ def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzML
 
 
 def get_metabolite_intensities_preprocessed(msi: pyimzml.ImzMLParser.ImzMLParser,
-                                            spectra_idxs: Set[int],
-                                            mz_intervals: Optional[List[Dict]] = None) -> Dict[Union[int, str], List[float]]:
+                                            spectra_idxs: set[int],
+                                            mz_intervals: list[dict] | None = None) -> dict[int | str, list[float]]:
     """Extracts metabolites from imzml file. Assumes that targets have been preprocessed and selected in SCiLS prior to exporting."""
     intensity_f = np.max
     intensities = {}
@@ -228,8 +222,8 @@ def get_metabolite_intensities_preprocessed(msi: pyimzml.ImzMLParser.ImzMLParser
 
 
 def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
-                                        spectra_idxs: Set[int],
-                                        mz_labels=None) -> Tuple[Dict[Union[int, str], List[float]], List[str]]:
+                                        spectra_idxs: set[int],
+                                        mz_labels=None) -> tuple[dict[int | str, list[float]], list[str]]:
     collected_intensities = {}
     for spectrum_idx in spectra_idxs:
         mzs, intensities = msi.getspectrum(spectrum_idx)
@@ -240,7 +234,7 @@ def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
     return metabolite_df
 
 def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
-                                    target_resolution: int = 1) -> Union[numpy.array, dict, Optional[numpy.array]]:
+                                    target_resolution: int = 1) -> numpy.array | dict | Optional[numpy.array]:
     """Computes reference matrix from msi scaled to target_resolution.
 
     Args:
@@ -273,7 +267,7 @@ def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser,
 # TODO: Remove
 def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
                       srd: dict = None, 
-                      target_resolution: int = 1) -> Union[numpy.array, dict, Optional[numpy.array]]:
+                      target_resolution: int = 1) -> numpy.array | dict | Optional[numpy.array]:
     """Computes reference matrix from msi scaled to target_resolution. Will also convert a srd annotation to
     a binary annotation matrix, if provided. 
 
@@ -335,7 +329,7 @@ def compute_mean_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser):
 
 
 def load_metabolites(table_path: str, 
-                     imzml_path: str) -> Tuple[dict, pandas.core.frame.DataFrame]:
+                     imzml_path: str) -> tuple[dict, pandas.core.frame.DataFrame]:
     # NEDC_peak_table = pd.read_csv('Peaklist_136_NEDC_figshare.txt', sep='\t')
     NEDC_peak_table = pd.read_csv(table_path, sep='\t')
     NEDC_peak_table_IDed = NEDC_peak_table[NEDC_peak_table['ID'].notna()][['m/z', 'ID', 'ID in OPLSDA']].reset_index(drop=True)
@@ -374,7 +368,7 @@ def find_ided_peaks(peaks, peak_table, mass_error_mz=2.00000):
     return _ret
 
 
-def get_one_peak_dict_and_interval_list(peaks_id: Tuple[int, float, float], 
+def get_one_peak_dict_and_interval_list(peaks_id: tuple[int, float, float], 
                                         delta_factor: int = 2,
                                         default_interval_delta: float = 0.00025):
     _ret = {}
@@ -397,7 +391,7 @@ def get_one_peak_dict_and_interval_list(peaks_id: Tuple[int, float, float],
     return _ret, _ret_ints
 
 
-def compute_weighted_average(measurements: Union[pandas.core.frame.DataFrame, numpy.ndarray],
+def compute_weighted_average(measurements: pandas.core.frame.DataFrame | numpy.ndarray,
                              weights: numpy.ndarray, 
                              background_weight: float) -> pandas.core.frame.DataFrame:
     return (measurements*weights).sum()/(sum(weights) + background_weight)
@@ -415,7 +409,7 @@ def msi_default_spot_accumulation_fun(source_keys: numpy.ndarray,
                                       source_counts: numpy.ndarray, 
                                       measurement_df: pandas.core.frame.DataFrame, 
                                       bck_weight: float,
-                                      accumulator_function: Optional[callable] = None) -> pandas.core.frame.DataFrame:
+                                      accumulator_function: callable | None = None) -> pandas.core.frame.DataFrame:
     if accumulator_function is None:
         accumulator_function = lambda r: pd.Series({'mean': r.mean(), 
                                                     'std': r.std(), 
@@ -456,11 +450,11 @@ class Imzml(BaseSpatialOmics):
 
     __ref_mat: Annotation = field(init=False, default=None)
     spec_to_ref_map: dict
-    additional_spatial_data: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
+    additional_spatial_data: list[BaseImage | BasePointset] = field(default_factory=lambda: [])
     background: ClassVar[int] = 0
-    config: Optional[dict] = None
+    config: dict | None = None
     name: str = ''
-    msi: Optional[pyimzml.ImzMLParser.ImzMLParser] = None
+    msi: pyimzml.ImzMLParser.ImzMLParser | None = None
 
     def __post_init__(self):
         self._id = uuid.uuid1()
@@ -478,7 +472,7 @@ class Imzml(BaseSpatialOmics):
     def get_type() -> str:
         return 'Imzml'
 
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         self.__ref_mat.pad(padding, constant_values=self.background)
         for spatial_data in self.additional_spatial_data:
             spatial_data.pad(padding)
@@ -526,7 +520,7 @@ class Imzml(BaseSpatialOmics):
     def apply_transform(self, 
              registerer: Registerer, 
              transformation: Any, 
-             **kwargs: Dict) -> 'Imzml':
+             **kwargs: dict) -> 'Imzml':
         ref_mat_transformed = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
         transformed_spatial_datas = []
         for spatial_data in self.additional_spatial_data:
@@ -582,7 +576,7 @@ class Imzml(BaseSpatialOmics):
     @classmethod
     def load(cls, 
              directory: str,
-             spatial_base_data_loader: Optional[SpatialBaseDataLoader] = None) -> 'Imzml':
+             spatial_base_data_loader: SpatialBaseDataLoader | None = None) -> 'Imzml':
         if spatial_base_data_loader is None:
             spatial_base_data_loader = SpatialBaseDataLoader.load_default_loader()
         with open(join(directory, 'attributes.json')) as f:
@@ -614,8 +608,8 @@ class Imzml(BaseSpatialOmics):
     @classmethod
     def init_msi_data(cls,
                       imzml_path: str,
-                      config: Optional[Dict] = None,
-                      target_resolution: Optional[int] = 1,
+                      config: dict | None = None,
+                      target_resolution: int | None = 1,
                       name: str = ''):
         if config is None:
             config = {}
@@ -633,13 +627,13 @@ class Imzml(BaseSpatialOmics):
             
     def convert_mappings_and_unique_ids_back(self, 
                                              mappings: dict, 
-                                             unique_ids: set) -> Tuple[dict, set]:
+                                             unique_ids: set) -> tuple[dict, set]:
         for key in mappings:
             mappings[key] = mappings[key] - 1
         unique_ids = {x - 1 for x in unique_ids}
         return mappings, unique_ids
 
-    def set_map_to_msi_pixel_idxs(self, ref_mat_values: Optional[Set] = None) -> Set:
+    def set_map_to_msi_pixel_idxs(self, ref_mat_values: set | None = None) -> set:
         # Invert map
         spec_to_ref_map_rev = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
         if ref_mat_values is None:
@@ -656,7 +650,7 @@ class Imzml(BaseSpatialOmics):
         return mapped_mappings
     
     def get_pca_img(self,
-                    int_threshold: Optional[float]=None) -> numpy.ndarray:
+                    int_threshold: float | None = None) -> numpy.ndarray:
         """Compute the PCA image representation of the msi data.
 
         Args:
@@ -676,7 +670,7 @@ class Imzml(BaseSpatialOmics):
     def extract_ion_image(self, 
                           mz_value: float, 
                           tol: float = 0.1, 
-                          reduce_func: Callable = sum) -> Image:
+                          reduce_func: callable | None = sum) -> Image:
         """Returns an ion image for the given mz_value. Reimplentation of `getionimage` from pyimzml.
 
         Args:

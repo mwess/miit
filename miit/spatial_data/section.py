@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import json
 import os
 from os.path import join, exists
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 import uuid
 import shutil
 
@@ -22,7 +22,7 @@ from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
 # TODO: Refactor this out.
-def get_boundary_box(image: numpy.array, background_value: float = 0) -> Tuple[int, int, int, int]:
+def get_boundary_box(image: numpy.array, background_value: float = 0) -> tuple[int, int, int, int]:
     if len(image.shape) != 2:
         raise Exception(f'Bounding box requires a 2 dimensional array, but has: {len(image.shape)}')
     points = np.argwhere(image != background_value)
@@ -96,9 +96,9 @@ def get_table_summary_string(section: 'Section') -> str:
     return '\n'.join(table)
 
 
-def groupwise_registration(sections: List['Section'],
+def groupwise_registration(sections: list['Section'],
                            registerer: Registerer,
-                           **kwargs: Dict) -> Tuple[List['Section'], List[RegistrationResult]]:
+                           **kwargs: dict) -> tuple[list['Section'], list[RegistrationResult]]:
     """
     Performs a groupwise registration on all supplied sections. A registration between all sections is computed
     and applied to all sections. Per convention, the last section in sections is used as the fixed section.
@@ -128,9 +128,9 @@ def groupwise_registration(sections: List['Section'],
 
 def register_to_ref_image(target_image: numpy.array, 
                           source_image: numpy.array, 
-                          data: Union[BaseImage, BasePointset],
+                          data: BaseImage | BasePointset,
                           registerer: Registerer = None,
-                          **args) -> Tuple[Union[BaseImage, BasePointset], Image]:
+                          **args) -> tuple[BaseImage | BasePointset, Image]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
@@ -178,12 +178,12 @@ class Section:
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
-    reference_image: Optional[BaseImage] = None
-    name: Optional[str] = None
-    _id: uuid.UUID = field(init=False)
-    so_data: List[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
-    meta_information: Optional[Dict[Any, Any]] = None
+    reference_image: BaseImage | None = None
+    name: str | None = None
+    _id: uuid.UUID = field(init=False) 
+    so_data: list[BaseSpatialOmics] = field(default_factory=lambda: [])
+    annotations: list[BaseImage | BasePointset] = field(default_factory=lambda: [])
+    meta_information: dict[Any, Any] | None = None
 
 
     def __post_init__(self):
@@ -217,7 +217,7 @@ class Section:
         xmin, xmax, ymin, ymax = get_boundary_box(mask)
         self.crop(xmin, xmax, ymin, ymax)
 
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         self.reference_image.pad(padding)
         for annotation in self.annotations:
             annotation.pad(padding)
@@ -243,7 +243,7 @@ class Section:
     def apply_transform(self, 
              registerer: Registerer, 
              transformation: RegistrationResult, 
-             **kwargs: Dict) -> 'Section':
+             **kwargs: dict) -> 'Section':
         """Applies transformation to all spatially resolved data in the section object.
         """
         image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
@@ -329,8 +329,8 @@ class Section:
             
     @classmethod
     def load(cls, directory: str, 
-             base_type_loader: Optional[SpatialBaseDataLoader] = None,
-             so_type_loader: Optional[SpatialOmicsDataLoader] = None) -> 'Section':
+             base_type_loader: SpatialBaseDataLoader | None = None,
+             so_type_loader: SpatialOmicsDataLoader | None = None) -> 'Section':
         """Loads a Section object from directory. 
 
         Args:
@@ -384,7 +384,7 @@ class Section:
                                    mi: BaseSpatialOmics,
                                    register_to_primary_image=True,
                                    reference_image: numpy.array = None,
-                                   registerer: Optional[Registerer] = None):
+                                   registerer: Registerer | None = None):
         """
         Adds molecular imaging data to section.
         

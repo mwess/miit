@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar
 
 import numpy
 
@@ -23,19 +23,19 @@ class Registerer(abc.ABC):
     def register_images(self, 
                         moving_img: numpy.array, 
                         fixed_img: numpy.array, 
-                        **kwargs: Dict)-> 'RegistrationResult':
+                        **kwargs: dict)-> 'RegistrationResult':
         pass
 
     @abc.abstractmethod
     def transform_pointset(self, 
                            pointset: numpy.array, 
                            transformation: 'RegistrationResult', 
-                           **kwargs: Dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.array:
         pass
     
     @abc.abstractmethod
     def transform_image(self, 
                         image: numpy.array, 
                         transformation: 'RegistrationResult', 
-                        interpolation_mode: str, **kwargs: Dict) -> numpy.array:
+                        interpolation_mode: str, **kwargs: dict) -> numpy.array:
         pass

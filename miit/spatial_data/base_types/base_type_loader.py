@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Union
+from typing import Any
 
 from miit.spatial_data.base_types import (
     Annotation,
@@ -20,7 +20,7 @@ class SpatialDataLoaderException(Exception):
 @dataclass
 class SpatialBaseDataLoader:
     
-    class_map: Dict = field(init=False)
+    class_map: dict = field(init=False)
     
     def __post_init__(self):
         self.class_map = {}
@@ -34,12 +34,12 @@ class SpatialBaseDataLoader:
     def load(self, 
              data_type: Any, 
              path: str,
-             **kwargs: Dict):
+             **kwargs: dict):
         if data_type not in self.class_map:
             raise SpatialDataLoaderException(f'data_type {data_type} not found in loader.')
         return self.class_map[data_type].load(path, **kwargs)
 
-    def add_class(self, clazz: Union[BaseImage, BasePointset]):
+    def add_class(self, clazz: BaseImage | BasePointset):
         if clazz.get_type() in self.class_map:
             raise SpatialDataLoaderException(f'class: {clazz.get_type()} already present in SpatialDataLoader.')
         self.class_map[clazz.get_type()] = clazz

@@ -1,18 +1,18 @@
 import os
 from os.path import join
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy, numpy as np
 
         
-def run_fun_if_not_none(fun: callable, obj: Optional[Any]=None) -> Optional[Any]:
+def run_fun_if_not_none(fun: callable, obj: Any | None = None) -> Any | None:
     if obj is None:
         return None
     return fun(obj)
 
 
-def copy_if_not_none(obj: Optional[Any]) -> Optional[Any]:
+def copy_if_not_none(obj: Any | None) -> Any | None:
     fun = lambda x: x.copy()
     return run_fun_if_not_none(fun, obj)
 
@@ -53,14 +53,14 @@ def custom_max_voting_filter(img: numpy.array,
     return filtered_image
 
 
-def clean_configs(config: Dict) -> Dict:
+def clean_configs(config: dict) -> dict:
     for section in config['sections']:
         if 'molecular_imaging_data' in section:
             del section['molecular_imaging_data']
     return config
 
 
-def filter_node_ids(config: Dict, id_list: List) -> Dict:
+def filter_node_ids(config: dict, id_list: list) -> dict:
     keep_sections = []
     for section in config['sections']:
         # print(section['id'])
@@ -70,7 +70,7 @@ def filter_node_ids(config: Dict, id_list: List) -> Dict:
     return config
 
 
-def get_half_pad_size(value_string: str, max_len: int) -> Tuple[int, int]:
+def get_half_pad_size(value_string: str, max_len: int) -> tuple[int, int]:
     diff = max_len - len(value_string)
     return 1, diff - 1
 

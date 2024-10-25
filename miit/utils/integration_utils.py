@@ -1,11 +1,9 @@
-from typing import Dict, Tuple, Union
-
 import numpy, numpy as np
 
 def get_mappings(ref_mat1: numpy.array, 
                  ref_mat2: numpy.array, 
                  background1: float, 
-                 background2: float) -> Union[Dict, set]:
+                 background2: float) -> dict | set:
     mappings = compute_reference_matrix_mappings(ref_mat1, ref_mat2, background1)
     # Also get unique ids.
     unique_vals = set()

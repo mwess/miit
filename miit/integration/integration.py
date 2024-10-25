@@ -1,5 +1,3 @@
-from typing import  Dict, Set, Tuple, List, Optional
-
 import numpy, numpy as np
 import pandas, pandas as pd
 from pyimzml.ImzMLWriter import ImzMLWriter
@@ -13,7 +11,7 @@ from miit.spatial_data.spatial_omics.imzml import Imzml
 def compute_reference_matrix_mappings(ref_mat1: numpy.ndarray, 
                                       ref_mat2: numpy.ndarray, 
                                       background1: int, 
-                                      background2: int) -> Tuple[Dict[int, Tuple[numpy.ndarray, numpy.ndarray]], Dict[int, int]]:
+                                      background2: int) -> tuple[dict[int, tuple[numpy.ndarray, numpy.ndarray]], dict[int, int]]:
     """Computes the composition of any pixel in ref_mat1 by ref_mat2. 
 
     Args:
@@ -49,7 +47,7 @@ def compute_reference_matrix_mappings(ref_mat1: numpy.ndarray,
 def get_mappings(ref_mat1: numpy.ndarray, 
                  ref_mat2: numpy.ndarray, 
                  background1: int = 0, 
-                 background2: int = 0) -> Tuple[Dict[int, numpy.ndarray], Dict[int, int], Set]:
+                 background2: int = 0) -> tuple[dict[int, numpy.ndarray], dict[int, int], set]:
     """
     Gets mappings for ref_mat1 from ref_mat2.
     Returns:
@@ -68,9 +66,9 @@ def get_mappings(ref_mat1: numpy.ndarray,
     return mappings, spots_background, unique_vals
 
 
-def accumulate_counts(mappings: Dict[int, Tuple[numpy.ndarray, numpy.ndarray]], 
+def accumulate_counts(mappings: dict[int, tuple[numpy.ndarray, numpy.ndarray]], 
                       measurement_df: pandas.core.frame.DataFrame, 
-                      background_counts: Dict[int, int],
+                      background_counts: dict[int, int],
                       spot_accumulator_fun=None) -> pandas.core.frame.DataFrame:
     """Accumulated counts for each key using an accumulator_function.
 
@@ -137,10 +135,10 @@ def transform_annotations_to_table(target_data: BaseSpatialOmics,
     return integrated_annotations
 
 
-def map_annotations_to_table(spec_to_ref_map: Dict, 
+def map_annotations_to_table(spec_to_ref_map: dict, 
                              ref_mat: numpy.ndarray, 
                              annotations: numpy.ndarray, 
-                             labels: List[str]) -> pandas.core.frame.DataFrame: 
+                             labels: list[str]) -> pandas.core.frame.DataFrame: 
     glob_counts = {spec_to_ref_map[x]: np.zeros(annotations.shape[2]) for x in spec_to_ref_map}
     spot_counts = {spec_to_ref_map[x]: 0 for x in spec_to_ref_map}
     for i in range(ref_mat.shape[0]):
@@ -164,7 +162,7 @@ def map_annotations_to_table(spec_to_ref_map: Dict,
 def map_accumulated_data_to_imzml(target_bmi: Imzml,
                                   accumulated_df: pandas.core.frame.DataFrame,
                                   output_path: str,
-                                  mzs: Optional[numpy.ndarray] = None):
+                                  mzs: numpy.ndarray | None = None):
     spec_to_ref_map = target_bmi.get_spec_to_ref_map()
     template_imzml = ImzMLParser(target_bmi.config['imzml'])
     if mzs is None:

@@ -1,6 +1,6 @@
 import abc
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 import uuid
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
@@ -22,11 +22,11 @@ class BaseSpatialOmics(abc.ABC):
         pass
     
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, args: Optional[Dict[Any, Any]] = None) -> 'BaseSpatialOmics':
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, args: dict[Any, Any] | None = None) -> 'BaseSpatialOmics':
         pass
 
     @abc.abstractmethod
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         pass
 
     @abc.abstractmethod

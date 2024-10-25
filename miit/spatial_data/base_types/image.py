@@ -2,7 +2,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from os.path import join
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar
 
 
 import cv2
@@ -33,14 +33,14 @@ class Image(BaseImage):
         w_n, h_n = int(w*scaling_factor), int(h*scaling_factor)
         self.resize(w_n, h_n)
 
-    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
+    def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
         self.data = cv2.copyMakeBorder(self.data, top, bottom, left, right, cv2.BORDER_CONSTANT, constant_values)
 
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
 
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return Image(data=transformed_image)
 
@@ -59,7 +59,7 @@ class Image(BaseImage):
             json.dump(attributes, f)
         sitk.WriteImage(sitk.GetImageFromArray(self.data), img_path)
 
-    def get_resolution(self) -> Optional[float]:
+    def get_resolution(self) -> float | None:
         return self.meta_information.get('resolution', None)
 
     @staticmethod
@@ -67,7 +67,7 @@ class Image(BaseImage):
         return 'image'
 
     @classmethod
-    def load(cls, path: str):
+    def load(cls, path: str) -> 'Image':
         img = sitk.GetArrayFromImage(sitk.ReadImage(join(path, 'image.nii.gz')))
         with open(join(path, 'attributes.json')) as f:
             attributes = json.load(f)
@@ -78,6 +78,6 @@ class Image(BaseImage):
         return image
 
     @classmethod
-    def load_from_path(cls, path: str, name: str = ''):
+    def load_from_path(cls, path: str, name: str = '') -> 'Image':
         img = sitk.GetArrayFromImage(sitk.ReadImage(path))
         return cls(data=img, name=name)

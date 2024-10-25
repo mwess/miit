@@ -2,7 +2,7 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from os.path import join
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 import numpy, numpy as np
@@ -22,13 +22,13 @@ class Pointset(BasePointset):
     name: str = ''
     x_axis: Any = 'x'
     y_axis: Any = 'y'
-    index_col: Optional[Any] = None
-    header: Optional[Any] = 'infer'
+    index_col: Any | None = None
+    header: Any | None = 'infer'
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         warped_pc = self.data.copy()
         pc_ = self.data[[self.x_axis, self.y_axis]].to_numpy()
         coordinates_transformed = registerer.transform_pointset(pc_, transformation, **kwargs)
@@ -56,12 +56,12 @@ class Pointset(BasePointset):
         self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor
         self.data[self.y_axis] = self.data[self.y_axis] * scaling_factor
 
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         left, right, top, bottom = padding
         self.data[self.x_axis] = self.data[self.x_axis] + left
         self.data[self.y_axis] = self.data[self.y_axis] + top
 
-    def flip(self, ref_img_shape: Tuple[int, int], axis: int = 0):
+    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
         if axis == 0:
             center_x = ref_img_shape[1] // 2
             self.data.x = self.data.x + 2 * (center_x - self.data.x)
@@ -107,7 +107,7 @@ class Pointset(BasePointset):
 
     @classmethod
     def load(cls,
-             path: str):
+             path: str) -> 'Pointset':
         with open(join(path, 'attributes.json')) as f:
             attributes = json.load(f)
         header = attributes['header']
@@ -131,8 +131,8 @@ class Pointset(BasePointset):
                        path_to_data: str,
                        x_axis: Any = 'x',
                        y_axis: Any = 'y',
-                       index_col: Optional[Any] = None,
-                       header: Optional[Any] = 'infer',
+                       index_col: Any | None = None,
+                       header: Any | None = 'infer',
                        name: str = '') -> 'Pointset':
         """Load a Pointset object.
 

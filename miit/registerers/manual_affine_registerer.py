@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import cv2
 import numpy, numpy as np
@@ -10,13 +10,17 @@ class ManualAffineRegisterer(Registerer):
 
     name = 'ManualAffineRegisterer'
     
-    def register_images(self, moving_img: numpy.array, fixed_img: numpy.array, **kwargs: Dict) -> RegistrationResult:
+    def register_images(self, 
+                        moving_img: numpy.array, 
+                        fixed_img: numpy.array, 
+                        **kwargs: dict) -> RegistrationResult:
         pass
 
     def transform_image(self, 
                         image: numpy.array, 
                         transformation: numpy.array, 
-                        interpolation_mode: str, **kwargs: Dict) -> numpy.array:
+                        interpolation_mode: str, 
+                        **kwargs: dict) -> numpy.array:
         if interpolation_mode == 'LINEAR':
             sitk_interpolation = sitk.sitkLinear
         else:
@@ -38,7 +42,8 @@ class ManualAffineRegisterer(Registerer):
 
     def transform_pointset(self, 
                            pointset: numpy.array, 
-                           transformation: RegistrationResult, **kwargs: Dict) -> numpy.array:
+                           transformation: RegistrationResult, 
+                           **kwargs: dict) -> numpy.array:
         transform = sitk.AffineTransform(2)
         transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
         transform.SetTranslation((transformation[0,2], transformation[1,2]))
@@ -52,7 +57,7 @@ class ManualAffineRegisterer(Registerer):
         return warped_pointset
     
     @classmethod
-    def load_from_config(cls, config: Dict[str, Any]) -> Registerer:
+    def load_from_config(cls, config: dict[str, Any]) -> Registerer:
         return cls()
 
 def get_center(img: numpy.array):

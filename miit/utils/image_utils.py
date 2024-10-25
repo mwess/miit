@@ -1,11 +1,9 @@
-from typing import Any, Dict, List, Tuple
-
 import cv2
 import numpy, numpy as np
 
 
 def remove_padding(image: numpy.ndarray, 
-                   padding: Tuple[int, int, int, int]) -> numpy.ndarray:
+                   padding: tuple[int, int, int, int]) -> numpy.ndarray:
     """Removes padding from image.
 
     Args:
@@ -21,14 +19,14 @@ def remove_padding(image: numpy.ndarray,
     return image[top:bottom_idx, left:right_idx]
 
 
-def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> Tuple[Tuple[int, int, int, int], Tuple[int, int, int, int]]:
+def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
     padding_img1 = get_padding_params(img1, max_size)
     padding_img2 = get_padding_params(img2, max_size)
     return padding_img1, padding_img2
 
 
-def pad_asym(image: numpy.ndarray, padding: Tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
+def pad_asym(image: numpy.ndarray, padding: tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
     """Applies padding to image.
 
     Args:
@@ -48,7 +46,7 @@ def pad_asym(image: numpy.ndarray, padding: Tuple[int, int, int, int], constant_
     return image
 
 
-def get_padding_params(img: numpy.array, shape: int) -> Tuple[int, int, int, int]:
+def get_padding_params(img: numpy.array, shape: int) -> tuple[int, int, int, int]:
     pad_x = shape - img.shape[0]
     pad_x_l = pad_x // 2
     pad_x_u = pad_x // 2

@@ -4,7 +4,7 @@ import math
 import os
 from os.path import join, exists
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Optional, Tuple
+from typing import Any, ClassVar
 import uuid
 
 import cv2
@@ -26,7 +26,7 @@ def merge_dicts(dict1: dict, dict2: dict) -> dict:
 
 def convert_table_to_mat(table: pandas.core.frame.DataFrame,
                          visium: 'Visium',
-                         col: Any):
+                         col: Any) -> numpy.ndarray:
     """
     Utility function that uses a visium object to convert integrated data
     from a dataframe format to a matrix format by projecting onto the
@@ -41,7 +41,7 @@ def convert_table_to_mat(table: pandas.core.frame.DataFrame,
 def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame, 
                                ref_mat: numpy.ndarray, 
                                st_table: pandas.core.frame.DataFrame, 
-                               col: Any):
+                               col: Any) -> numpy.ndarray:
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
     intern_idx_local_idx_dict = {}
     for idx, row in st_table.iterrows():
@@ -52,14 +52,14 @@ def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame,
     return measurement_mat
 
 
-def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any):
+def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any) -> dict:
     dct = {}
     for idx, row in df.iterrows():
         dct[idx] = row[col1]
     return dct
 
 
-def get_scalefactor(scalefactors: dict, image_scale: str):
+def get_scalefactor(scalefactors: dict, image_scale: str) -> float:
     # 1 corresponds to ogirinal image size.
     scalefactor = 1
     if image_scale == 'lowres':
@@ -71,7 +71,7 @@ def get_scalefactor(scalefactors: dict, image_scale: str):
 
 def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
                            scalefactors: dict,
-                           image_scale: str):
+                           image_scale: str) -> pandas.core.frame.DataFrame:
     scale = 1
     if image_scale == 'lowres':
         scale = scalefactors['tissue_lowres_scalef']
@@ -92,8 +92,8 @@ class Visium(BaseSpatialOmics):
     spec_to_ref_map: dict = field(init=False)
     name: str = ''
     skip_ref_mat_creation: bool = False
-    config: Optional[dict] = None
-    tissue_mask: Optional[numpy.ndarray] = None
+    config: dict | None = None
+    tissue_mask: numpy.ndarray | None = None
     background: ClassVar[int] = 0
     
     def __post_init__(self):
@@ -152,7 +152,7 @@ class Visium(BaseSpatialOmics):
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory: str):
+    def load(cls, directory: str) -> 'Visium':
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
@@ -224,7 +224,7 @@ class Visium(BaseSpatialOmics):
     def get_type() -> str:
         return 'visium'
         
-    def pad(self, padding: Tuple[int, int, int, int]):
+    def pad(self, padding: tuple[int, int, int, int]):
         self.image.pad(padding)
         self.table.pad(padding)
         self.__ref_mat.pad(padding)
@@ -276,7 +276,7 @@ class Visium(BaseSpatialOmics):
     def apply_transform(self, 
              registerer: Registerer, 
              transformation: Any, 
-             **kwargs: Dict) -> 'Visium':
+             **kwargs: dict) -> 'Visium':
         image_transformed = self.image.apply_transform(registerer, transformation, **kwargs)
         ref_mat_warped = self.__ref_mat.apply_transform(registerer, transformation, **kwargs)
         ref_mat_warped = Annotation(data=ref_mat_warped.data)
@@ -306,7 +306,7 @@ class Visium(BaseSpatialOmics):
                     directory: str,
                     image_scale: str = 'hires',
                     fullres_image_path: str = None,
-                    config: Dict =None):
+                    config: dict =None):
         """
         Initiates Visium10X from spaceranger output directory.
         
@@ -335,7 +335,7 @@ class Visium(BaseSpatialOmics):
                           path_to_tissue_positions: str,
                           path_to_image: str,
                           image_scale: str = 'hires',
-                          config: Dict = None):
+                          config: dict = None):
         """
         Loads Visium10X object from spaceranger output.
         

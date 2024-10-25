@@ -3,7 +3,7 @@ import json
 import uuid
 from dataclasses import dataclass, field
 from os.path import exists, join
-from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Any, ClassVar
 
 
 import cv2
@@ -32,7 +32,7 @@ class Annotation(BaseImage):
     """
 
     interpolation_mode: ClassVar[str] = 'NN'
-    labels: Optional[Union[List[str], Dict[str, int]]] = None
+    labels: list[str] | dict[str, int] | None = None
     is_multichannel: bool = False
 
     def __post_init__(self) -> None:
@@ -71,7 +71,7 @@ class Annotation(BaseImage):
         w_n, h_n = int(w*scaling_factor), int(h*scaling_factor)
         self.resize(w_n, h_n)            
 
-    def pad(self, padding: Tuple[int, int, int, int], constant_values: int = 0):
+    def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
         if len(self.data.shape) == 2:
             self.data = np.pad(self.data, ((top, bottom), (left, right)), constant_values=constant_values)
@@ -82,7 +82,7 @@ class Annotation(BaseImage):
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
 
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: Dict) -> Any:
+    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return Annotation(data=transformed_image,
                           labels=self.labels,
@@ -111,7 +111,7 @@ class Annotation(BaseImage):
                 json.dump(self.labels, f)            
 
     def get_by_labels(self, 
-                      labels: Union[List[str], str]) -> Optional[numpy.array]:
+                      labels: list[str] | str) -> numpy.array | None:
         if isinstance(labels, str):
             labels = [labels]
         if len(labels) == 0:
@@ -126,7 +126,7 @@ class Annotation(BaseImage):
             return mats[0]
         return np.dstack(mats)
     
-    def __get_by_label(self, label: str) -> Optional[numpy.ndarray]:
+    def __get_by_label(self, label: str) -> numpy.ndarray | None:
         """Returns a mask for the specified label.
 
         Args:
@@ -194,15 +194,15 @@ class Annotation(BaseImage):
         self.data = sc_mat
         self.is_multichannel = False              
 
-    def get_resolution(self) -> Optional[float]:
+    def get_resolution(self) -> float | None:
         return self.meta_information.get('resolution', None)
     
     def plot_annotation(self, 
-                        grid_layout: Union[str, Tuple[int, int]]=None,
+                        grid_layout: str | tuple[int, int] | None = None,
                         image_scale: int = 6,
                         plot_labels: bool = True,
                         axis_off: bool = True,
-                        reference_image: Optional[Union[numpy.array, BaseImage]] = None):
+                        reference_image: numpy.array | BaseImage | None = None):
         """Utility function for plotting an annotation.
 
         Args:
@@ -301,7 +301,7 @@ class Annotation(BaseImage):
     @classmethod
     def load_from_path(cls, 
                        path_to_data: str, 
-                       path_to_labels: Optional[str] = None,
+                       path_to_labels: str | None = None,
                        name: str = '',
                        is_multichannel: bool = False,
                        channel_idx: int = -1) -> 'Annotation':

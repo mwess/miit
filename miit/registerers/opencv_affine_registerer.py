@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import cv2
 import numpy
@@ -40,7 +40,7 @@ class OpenCVAffineRegisterer(Registerer):
                         flann_checks: int = 50,
                         matching_method: int = cv2.RANSAC,
                         verbose: bool = False,
-                        **kwargs: Dict) -> Any:
+                        **kwargs: dict) -> Any:
         return self.register_(
             moving_img,
             fixed_img,
@@ -133,12 +133,19 @@ class OpenCVAffineRegisterer(Registerer):
 
         return OpenCVAffineTransformation(transformation_matrix, height, width)        
 
-    def transform_pointset(self, pointset: numpy.array, transformation: OpenCVAffineTransformation, **kwargs: Dict) -> numpy.array:
+    def transform_pointset(self, 
+                           pointset: numpy.array, 
+                           transformation: OpenCVAffineTransformation, 
+                           **kwargs: dict) -> numpy.array:
         transformed_pointset = (transformation.transformation_matrix @ np.hstack((pointset, np.ones((pointset.shape[0], 1)))).T).T
         pointset_df = pd.DataFrame(transformed_pointset[:,:2]).rename(columns={0:'x', 1:'y'})
         return pointset_df
 
-    def transform_image(self, image: numpy.array, transformation: OpenCVAffineTransformation, interpolation_mode: str, **kwargs: Dict) -> numpy.array:
+    def transform_image(self, 
+                        image: numpy.array, 
+                        transformation: OpenCVAffineTransformation, 
+                        interpolation_mode: str, 
+                        **kwargs: dict) -> numpy.array:
         if interpolation_mode == 'NN':
             order = 0
         else:
@@ -148,9 +155,9 @@ class OpenCVAffineRegisterer(Registerer):
         return transformed_image
 
     @classmethod
-    def load_from_config(cls, config: Dict[str, Any]) -> 'Registerer':
+    def load_from_config(cls, config: dict[str, Any]) -> 'Registerer':
         return cls()
     
     @classmethod
-    def load_registerer(cls, args: Dict[str, Any]) -> 'Registerer':
+    def load_registerer(cls, args: dict[str, Any]) -> 'Registerer':
         return cls()

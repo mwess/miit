@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple, Optional
+from typing import Any
 
 import numpy, numpy as np
 import skimage, skimage as ski
@@ -18,7 +18,7 @@ def affine_transform(points: numpy.array,
 class PointsetRegistrationResult(RegistrationResult):
 
     tform: skimage.transform._geometric.AffineTransform
-    output_shape: Tuple[int, int]
+    output_shape: tuple[int, int]
 
 
 @dataclass
@@ -33,7 +33,7 @@ class PointsetRegisterer(Registerer):
                         fixed_image: numpy.array,
                         moving_pointset: numpy.array,
                         fixed_pointset: numpy.array,
-                        **kwargs: Dict):
+                        **kwargs: dict):
         # Assumes that pointsets are already numpy array
         # Performs affine registration based on matching pointsets
         tform = ski.transform.AffineTransform()
@@ -48,9 +48,9 @@ class PointsetRegisterer(Registerer):
     def _transform_image_affine(self, 
                         image: numpy.array, 
                         tform: skimage.transform._geometric.AffineTransform,
-                        output_shape: Tuple[int, int],
+                        output_shape: tuple[int, int],
                         interpolation_mode: str, 
-                        **kwargs: Dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.array:
         order = 0 if interpolation_mode == 'NN' else 1
         return ski.transform.warp(image, 
                                   inverse_map=tform.inverse, 
@@ -61,7 +61,7 @@ class PointsetRegisterer(Registerer):
                         image: numpy.array, 
                         transformation: RegistrationResult, 
                         interpolation_mode: str, 
-                        **kwargs: Dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.array:
         order = 0 if interpolation_mode == 'NN' else 1
         warped_image = self._transform_image_affine(
             image,
@@ -74,11 +74,11 @@ class PointsetRegisterer(Registerer):
     def transform_pointset(self, 
                            pointset: numpy.array, 
                            transformation: RegistrationResult, 
-                           **kwargs: Dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.array:
         warped_pointset = affine_transform(pointset, transformation.tform.params) 
         return warped_pointset
             
     @classmethod
     def load_from_config(cls, 
-                         config: Optional[Dict[str, Any]] = None) -> Registerer:
+                         config: dict[str, Any] | None = None) -> Registerer:
         return cls()
