@@ -32,9 +32,9 @@ class SpatialBaseDataLoader:
         self.class_map[OMETIFFAnnotation.get_type()] = OMETIFFAnnotation
 
     def load(self, 
-             data_type: Any, 
+             data_type: str, 
              path: str,
-             **kwargs: dict):
+             **kwargs: dict) -> Any:
         if data_type not in self.class_map:
             raise SpatialDataLoaderException(f'data_type {data_type} not found in loader.')
         return self.class_map[data_type].load(path, **kwargs)

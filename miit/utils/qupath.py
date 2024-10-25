@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 import geojson
 import numpy, numpy as np
 import shapely
@@ -16,9 +14,9 @@ def convert_linestring_to_polygon(geom):
 
 
 # TODO: Split function up. Add function for extracting a single feature.
-def to_annotation(geojson_data: Union[GeoJSONData, geojson.feature.FeatureCollection],
+def to_annotation(geojson_data: GeoJSONData | geojson.feature.FeatureCollection,
                   ref_image: numpy.ndarray,
-                  label_fun: Optional[callable] = None,
+                  label_fun: callable | None = None,
                   name: str = '') -> Annotation:
     """Utility function for converting a geojson object to an 
     annotation. 

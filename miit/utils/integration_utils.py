@@ -17,7 +17,7 @@ def get_mappings(ref_mat1: numpy.array,
 
 def compute_reference_matrix_mappings(ref_mat1: numpy.array, 
                                       ref_mat2: numpy.array, 
-                                      background1: float) -> Dict[int, Tuple[numpy.ndarray, numpy.ndarray]]:
+                                      background1: float) -> dict[int, tuple[numpy.ndarray, numpy.ndarray]]:
     spots = {}
     for i in range(ref_mat1.shape[0]):
         for j in range(ref_mat1.shape[1]):

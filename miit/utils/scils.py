@@ -30,9 +30,9 @@ def read_srd_with_msi(path: str,
     return read_srd(path, (max_x, max_y), (scale_x, scale_y))
 
 def read_srd(path: str, 
-             dims: Tuple[int, int],
-             scale: Tuple[float, float] = None 
-             ) -> List[Annotation]:
+             dims: tuple[int, int],
+             scale: tuple[float, float] = None 
+             ) -> list[Annotation]:
     """Read srd file and translate into image format.
 
     Args:
