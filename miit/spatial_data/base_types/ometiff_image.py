@@ -35,7 +35,7 @@ class OMETIFFImage(Image):
     Attributes
     ----------
     
-    data: numpy.array
+    data: numpy.ndarray
         Image data as a numpy array. 
         
     path: str

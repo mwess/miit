@@ -38,6 +38,7 @@ pyimzML = "1.5.3"
 greedyfhist = { git = "https://github.com/mwess/greedyfhist", tag= "v0.0.2-rc2" }
 niftyreg = "1.5.70rc1"
 seaborn = "0.13.2"
+h5py = "3.12.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"

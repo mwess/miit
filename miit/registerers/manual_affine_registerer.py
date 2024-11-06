@@ -11,16 +11,16 @@ class ManualAffineRegisterer(Registerer):
     name = 'ManualAffineRegisterer'
     
     def register_images(self, 
-                        moving_img: numpy.array, 
-                        fixed_img: numpy.array, 
+                        moving_img: numpy.ndarray, 
+                        fixed_img: numpy.ndarray, 
                         **kwargs: dict) -> RegistrationResult:
         pass
 
     def transform_image(self, 
-                        image: numpy.array, 
-                        transformation: numpy.array, 
+                        image: numpy.ndarray, 
+                        transformation: numpy.ndarray, 
                         interpolation_mode: str, 
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         if interpolation_mode == 'LINEAR':
             sitk_interpolation = sitk.sitkLinear
         else:
@@ -41,9 +41,9 @@ class ManualAffineRegisterer(Registerer):
         return transformed_image
 
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: RegistrationResult, 
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         transform = sitk.AffineTransform(2)
         transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
         transform.SetTranslation((transformation[0,2], transformation[1,2]))
@@ -60,12 +60,12 @@ class ManualAffineRegisterer(Registerer):
     def load_from_config(cls, config: dict[str, Any]) -> Registerer:
         return cls()
 
-def get_center(img: numpy.array):
+def get_center(img: numpy.ndarray) -> (int, int):
     w, h = img.shape[:2]
     w_c, h_c = int(w//2), int(h//2)
     return (w_c, h_c)
 
-def get_rotation_matrix_around_center(img: numpy.array, angle: float):
+def get_rotation_matrix_around_center(img: numpy.ndarray, angle: float) -> numpy.ndarray:
     w_c, h_c = get_center(img)
     rot_mat = cv2.getRotationMatrix2D((h_c, w_c), angle, 1)
     return rot_mat    

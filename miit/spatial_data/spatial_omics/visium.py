@@ -8,6 +8,7 @@ from typing import Any, ClassVar
 import uuid
 
 import cv2
+import h5py
 import numpy, numpy as np
 import pandas, pandas as pd
 
@@ -16,12 +17,68 @@ from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 
 
-def merge_dicts(dict1: dict, dict2: dict) -> dict:
-    new_dict = {}
-    for key in dict1:
-        if dict1[key] in dict2:
-            new_dict[key] = dict2[dict1[key]]
-    return new_dict
+def compose_dicts(dict1: dict, dict2: dict) -> dict:
+    """Composes two dictionaries. If a key is only present in one of the two dictionaries, it
+    will be skipped.
+
+    Args:
+        dict1 (dict): 
+        dict2 (dict):
+
+    Returns:
+        dict: Composed dictionaries.
+    
+    """
+    return {k: dict2.get(v) for k, v in dict1.items() if v in dict2}
+    # new_dict = {}
+    # for key in dict1:
+    #     if dict1[key] in dict2:
+    #         new_dict[key] = dict2[dict1[key]]
+    # return new_dict
+
+
+def load_visium_data_matrix(path: str,
+                            row_feature: list[str] | str | None = None) -> pandas.core.frame.DataFrame:
+    """ Reads Visium data from SpaceRanger output h5 file and convert to a pandas DataFrane. The dataframe
+    has the shape (feature, barcode).
+
+    Args:
+        path (str): Path to h5 file.
+        row_feature: Feature name to name rows. If None, features are enumerate. If row_feature
+                     is a list, features are joined by ' - '.
+    
+    Returns:
+        pandas.core.frame.DataFrame: Visium data. 
+    """
+    f = h5py.File(path, 'r')
+    indptr = f['matrix']['indptr'][:]
+    indices = f['matrix']['indices'][:]
+
+    ys = np.array(range(indptr.shape[0]-1))
+    indptr_diffs = indptr[1:] - indptr[:-1]
+    y_inds = np.repeat(ys, indptr_diffs)
+
+    mat = np.zeros(f['matrix']['shape'][:2])
+    data = f['matrix']['data'][:]
+    mat[indices, y_inds] = data
+
+    # Get barcodes
+    barcodes = [x.decode('utf-8') for x in f['matrix']['barcodes'][:]]
+
+    # Get row names
+    if row_feature is None:
+        row_names = list(range(mat.shape[0]))
+    elif isinstance(row_feature, str):
+        row_names = [x.decode('utf-8') for x in f['matrix']['features'][row_feature][:]]
+    elif isinstance(row_feature, list):
+        r_feat_list = []
+        for row_feature_ in row_feature:
+            row_names_ = [x.decode('utf-8') for x in f['matrix']['features'][row_feature_][:]]
+            r_feat_list.append(row_names_)
+        row_names = [' - '.join(names) for names in zip(*r_feat_list)]
+
+    df = pd.DataFrame(mat, columns=barcodes, index=row_names)
+    return df
 
 
 def convert_table_to_mat(table: pandas.core.frame.DataFrame,
@@ -32,31 +89,42 @@ def convert_table_to_mat(table: pandas.core.frame.DataFrame,
     from a dataframe format to a matrix format by projecting onto the
     reference matrix.
     """
-    return get_measurement_matrix_sep(table, 
+    return fill_measurement_matrix(table, 
                                       visium.ref_mat.data,
                                       visium.table.data,
                                       col)
     
 
-def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame, 
+def fill_measurement_matrix(measurement_df: pandas.core.frame.DataFrame, 
                                ref_mat: numpy.ndarray, 
                                st_table: pandas.core.frame.DataFrame, 
                                col: Any) -> numpy.ndarray:
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
-    intern_idx_local_idx_dict = {}
-    for idx, row in st_table.iterrows():
-        intern_idx_local_idx_dict[int(row['int_idx'])] = idx
-    merged_dict = merge_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
-    indexer = np.array([merged_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+
+    intern_idx_local_idx_dict = {int(row['int_idx']): idx for idx, row in st_table.iterrows()}
+
+    # intern_idx_local_idx_dict = {}
+    # for idx, row in st_table.iterrows():
+    #     intern_idx_local_idx_dict[int(row['int_idx'])] = idx
+    
+    comp_dict = compose_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
+    indexer = np.array([comp_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
     measurement_mat = indexer[(ref_mat - ref_mat.min())]
     return measurement_mat
 
 
-def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any) -> dict:
-    dct = {}
-    for idx, row in df.iterrows():
-        dct[idx] = row[col1]
-    return dct
+def get_measurement_dict(df: pandas.core.frame.DataFrame, key_col: Any) -> dict:
+    """Converts a dataframe to a dicionary.
+    
+    Args:
+        df (pandas.core.frame.DataFrame): Source dataframe.
+        key_col (Any): Column to use as an index for the dataframe.
+    """
+    return {idx: row[key_col] for idx, row in df.iterrows()}
+    # dct = {}
+    # for idx, row in df.iterrows():
+    #     dct[idx] = row[key_col]
+    # return dct
 
 
 def get_scalefactor(scalefactors: dict, image_scale: str) -> float:

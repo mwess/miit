@@ -1,10 +1,5 @@
-
-from miit.registerers.base_registerer import Registerer
-from miit.registerers.nifty_reg import NiftyRegWrapper
-
 import cv2
 import numpy, numpy as np
-import SimpleITK, SimpleITK as sitk
 from sklearn.decomposition import PCA
 import pyimzml, pyimzml.ImzMLParser
 from greedyfhist.segmentation import load_yolo_segmentation
@@ -12,55 +7,7 @@ from greedyfhist.segmentation import load_yolo_segmentation
 from .image_utils import (
     get_symmetric_padding, 
     pad_asym,
-    remove_padding
 )
-
-
-# TODO: Remove that function
-def do_msi_registration(histology_image: numpy.ndarray, 
-                        ref_mat: numpy.ndarray, 
-                        spec_to_ref_map: dict, 
-                        msi: pyimzml.ImzMLParser.ImzMLParser, 
-                        reg_img: numpy.ndarray | None = None, 
-                        additional_images: list[numpy.array] | None = None,
-                        registerer: Registerer | None = None) -> tuple[numpy.ndarray, numpy.ndarray, list[numpy.ndarray]]:
-    if additional_images is None:
-        additional_images = []
-    if reg_img is None:
-        reg_img = get_pca_img(msi, ref_mat, spec_to_ref_map)
-    (fixed_image, 
-     moving_image, 
-     proc_ref_mat,
-     proc_add_imgs,
-     padding_dict
-    ) = preprocess_for_registration(histology_image, reg_img, ref_mat, additional_image_datas=additional_images)
-    if registerer is None:
-        registerer = NiftyRegWrapper.load_from_config({})
-    registration_result = registerer.register_images(moving_image, fixed_image)
-    warped_image = registerer.transform_image(moving_image, registration_result, 'LINEAR')
-    warped_ref_mat = registerer.transform_image(proc_ref_mat, registration_result, 'NN')
-    warped_add_imgs = []
-    for img in proc_add_imgs:
-        warped_add_img = registerer.transform_image(img, registration_result, 'NN')
-        warped_add_imgs.append(warped_add_img)
-    unpadded_images = post_registration_transforms([warped_image, warped_ref_mat] + warped_add_imgs, padding_dict)
-    unpadded_warped_img = unpadded_images[0]
-    unpadded_ref_mat = unpadded_images[1]
-    unpadded_add_imgs = unpadded_images[2:]
-    return unpadded_warped_img, unpadded_ref_mat, unpadded_add_imgs
-    
-
-
-# TODO: Remove that function
-def post_registration_transforms(warped_images: list[numpy.array], processing_dict: dict) -> list[numpy.array]:
-    global_padding = processing_dict['global_padding']
-    unpadded_images = []
-    for warped_image_np in warped_images:
-        # warped_image_np = sitk.GetArrayFromImage(warped_image)
-        warped_image_np = warped_image_np[global_padding:-global_padding,global_padding:-global_padding]
-        warped_image_np = remove_padding(warped_image_np, processing_dict['fix_sym_pad'])
-        unpadded_images.append(warped_image_np)
-    return unpadded_images
 
 
 def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser, 
@@ -91,35 +38,6 @@ def get_pca_img(msi: pyimzml.ImzMLParser.ImzMLParser,
     indexer = np.array([map_mz_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
     pca_mz_mat = indexer[(ref_mat - ref_mat.min())]
     return pca_mz_mat
-
-
-# TODO: Remove that function
-def preprocess_for_registration(fixed_image: numpy.ndarray, 
-                                moving_image: numpy.ndarray, 
-                                ref_mat: numpy.ndarray,
-                                additional_image_datas: list[numpy.array] | None = None,
-                                padding: int = 100) -> tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, list[numpy.ndarray], dict]:
-    fixed_image_np, process_dict = preprocess_histology(fixed_image, moving_image)
-    # Add global padding
-    # First do asym padding
-    fixed_image_padding = pad_asym(fixed_image_np, process_dict['fix_sym_pad'])
-    fixed_image_padding = np.pad(fixed_image_padding, ((padding, padding),(padding, padding)))
-    moving_image_padding = pad_asym(moving_image, process_dict['mov_sym_pad'])
-    moving_image_padding = np.pad(moving_image_padding, ((padding, padding),(padding, padding)))
-    # Here do first asym data
-    ref_mat_padding = pad_asym(ref_mat, process_dict['mov_sym_pad'])
-    ref_mat_padding = np.pad(ref_mat_padding, ((padding, padding), (padding, padding)))
-    if additional_image_datas is not None:
-        padded_additional_image_datas = []
-        for image_data in additional_image_datas:
-            padded_image_data = pad_asym(image_data, process_dict['mov_sym_pad'])
-            padded_image_data = np.pad(padded_image_data, ((padding, padding), (padding, padding)))
-            padded_additional_image_datas.append(padded_image_data)
-    else:
-        padded_additional_image_datas = None
-    process_dict['global_padding'] = padding
-    return fixed_image_padding, moving_image_padding, ref_mat_padding, padded_additional_image_datas, process_dict
-
 
 
 def preprocess_histology(hist_img: numpy.ndarray, 

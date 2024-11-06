@@ -79,7 +79,7 @@ class Pointset(BasePointset):
                         index_col=self.index_col,
                         header=self.header)
 
-    def to_numpy(self) -> numpy.array:
+    def to_numpy(self) -> numpy.ndarray:
         return self.data[[self.x_axis, self.y_axis]].to_numpy()
 
     @staticmethod

@@ -82,7 +82,7 @@ class MSItoHistMetaRegisterer(Registerer):
     
 
     def transform_pointset(self,
-                           pointset: numpy.array,
+                           pointset: numpy.ndarray,
                            transformation: MSItoHistMetaRegistererResult) -> numpy.ndarray:
         # Verify this function.
         left, right, top, bottom = transformation.processing_dict['mov_sym_pad']

@@ -1,9 +1,11 @@
+import gzip
 import json
 import os
 import uuid
 from dataclasses import dataclass, field
 from os.path import join
 from typing import Any
+from zipfile import ZipFile
 
 
 import geojson
@@ -162,6 +164,15 @@ class GeoJSONData(BasePointset):
         Returns:
             GeoJSONData: Initialized GeoJSONData object.
         """
-        with open(path_to_geojson) as f:
-            data = geojson.load(f)
+        if path_to_geojson.endswith('.geojson'):
+            with open(path_to_geojson) as f:
+                data = geojson.load(f)
+        elif path_to_geojson.endswith('.gz'):
+            with gzip.open(path_to_geojson) as f:
+                data = geojson.load(f)
+        elif path_to_geojson.endswith('.zip'):
+            with ZipFile(path_to_geojson) as f:
+                fname = f.namelist()[0]
+                fcont = f.read(fname)
+                data = geojson.loads(fcont)
         return cls(data=data, name=name)

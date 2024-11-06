@@ -12,7 +12,7 @@ from .base_registerer import Registerer
 @dataclass
 class OpenCVAffineTransformation:
     
-    transformation_matrix: numpy.array
+    transformation_matrix: numpy.ndarray
     height: int
     width: int
     
@@ -29,8 +29,8 @@ class OpenCVAffineRegisterer(Registerer):
     
     # TODO: What is the datatype of the return registration
     def register_images(self, 
-                        moving_img: numpy.array, 
-                        fixed_img: numpy.array, 
+                        moving_img: numpy.ndarray, 
+                        fixed_img: numpy.ndarray, 
                         rigid: bool = True,
                         rotation: bool = False,
                         warn_angle_deg: float = 1,
@@ -55,8 +55,8 @@ class OpenCVAffineRegisterer(Registerer):
             )
         
     def register_(self, 
-                  moving_img: numpy.array, 
-                  target_img: numpy.array, 
+                  moving_img: numpy.ndarray, 
+                  target_img: numpy.ndarray, 
                   rigid: bool = True, 
                   rotation: bool = False, 
                   warn_angle_deg: int = 1, 
@@ -134,18 +134,18 @@ class OpenCVAffineRegisterer(Registerer):
         return OpenCVAffineTransformation(transformation_matrix, height, width)        
 
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: OpenCVAffineTransformation, 
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         transformed_pointset = (transformation.transformation_matrix @ np.hstack((pointset, np.ones((pointset.shape[0], 1)))).T).T
         pointset_df = pd.DataFrame(transformed_pointset[:,:2]).rename(columns={0:'x', 1:'y'})
         return pointset_df
 
     def transform_image(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         transformation: OpenCVAffineTransformation, 
                         interpolation_mode: str, 
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         if interpolation_mode == 'NN':
             order = 0
         else:

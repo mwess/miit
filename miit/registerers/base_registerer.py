@@ -21,21 +21,21 @@ class Registerer(abc.ABC):
     
     @abc.abstractmethod
     def register_images(self, 
-                        moving_img: numpy.array, 
-                        fixed_img: numpy.array, 
+                        moving_img: numpy.ndarray, 
+                        fixed_img: numpy.ndarray, 
                         **kwargs: dict)-> 'RegistrationResult':
         pass
 
     @abc.abstractmethod
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: 'RegistrationResult', 
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         pass
     
     @abc.abstractmethod
     def transform_image(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         transformation: 'RegistrationResult', 
-                        interpolation_mode: str, **kwargs: dict) -> numpy.array:
+                        interpolation_mode: str, **kwargs: dict) -> numpy.ndarray:
         pass

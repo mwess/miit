@@ -15,7 +15,7 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import derive_unique_directory
 
 
-def get_max_dim(img: numpy.array):
+def get_max_dim(img: numpy.ndarray) -> int:
     x, y = img.shape[:2]
     return x if x > y else y    
 
@@ -50,8 +50,8 @@ class NiftyRegWrapper(Registerer):
     path_to_nifty_reg_resample: str = ''
     
     def register_images(self, 
-                        moving_img: numpy.array, 
-                        fixed_img: numpy.array, 
+                        moving_img: numpy.ndarray, 
+                        fixed_img: numpy.ndarray, 
                         tmp_dir: str = 'tmp',
                         reg_mode: str = 'rigid',
                         **kwargs: dict) -> RegistrationResult:
@@ -114,12 +114,12 @@ class NiftyRegWrapper(Registerer):
         return registration_result
     
     def transform_image(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         transformation: RegistrationResult, 
                         interpolation_mode: str, 
                         tmp_directory: str = 'tmp', 
                         keep_src_dtype: bool = True,
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         src_dtype = image.dtype
         tmp_directory = derive_unique_directory(tmp_directory)
         if tmp_directory != '' and not os.path.exists(tmp_directory):
@@ -162,9 +162,9 @@ class NiftyRegWrapper(Registerer):
         return warped_image
     
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: RegistrationResult, 
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         # Check for off-by-one errors.
         m = string_mat_to_mat(transformation.rigid_transform)
         transform = sitk.AffineTransform(2)

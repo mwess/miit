@@ -19,7 +19,7 @@ def remove_padding(image: numpy.ndarray,
     return image[top:bottom_idx, left:right_idx]
 
 
-def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
+def get_symmetric_padding(img1: numpy.ndarray, img2: numpy.ndarray) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
     padding_img1 = get_padding_params(img1, max_size)
     padding_img2 = get_padding_params(img2, max_size)
@@ -46,7 +46,7 @@ def pad_asym(image: numpy.ndarray, padding: tuple[int, int, int, int], constant_
     return image
 
 
-def get_padding_params(img: numpy.array, shape: int) -> tuple[int, int, int, int]:
+def get_padding_params(img: numpy.ndarray, shape: int) -> tuple[int, int, int, int]:
     pad_x = shape - img.shape[0]
     pad_x_l = pad_x // 2
     pad_x_u = pad_x // 2
@@ -60,7 +60,7 @@ def get_padding_params(img: numpy.array, shape: int) -> tuple[int, int, int, int
     return pad_y_l, pad_y_u, pad_x_l, pad_x_u
 
 
-def apply_mask(image: numpy.array, mask: numpy.array) -> numpy.array:
+def apply_mask(image: numpy.ndarray, mask: numpy.ndarray) -> numpy.ndarray:
     if len(image.shape) == 3:
         mask = np.moveaxis(np.expand_dims(mask, 0), 0, -1)
     return image * mask

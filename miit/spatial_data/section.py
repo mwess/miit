@@ -22,7 +22,7 @@ from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
 # TODO: Refactor this out.
-def get_boundary_box(image: numpy.array, background_value: float = 0) -> tuple[int, int, int, int]:
+def get_boundary_box(image: numpy.ndarray, background_value: float = 0) -> tuple[int, int, int, int]:
     if len(image.shape) != 2:
         raise Exception(f'Bounding box requires a 2 dimensional array, but has: {len(image.shape)}')
     points = np.argwhere(image != background_value)
@@ -126,8 +126,8 @@ def groupwise_registration(sections: list['Section'],
     return warped_sections, transforms
 
 
-def register_to_ref_image(target_image: numpy.array, 
-                          source_image: numpy.array, 
+def register_to_ref_image(target_image: numpy.ndarray, 
+                          source_image: numpy.ndarray, 
                           data: BaseImage | BasePointset,
                           registerer: Registerer = None,
                           **args) -> tuple[BaseImage | BasePointset, Image]:
@@ -383,7 +383,7 @@ class Section:
     def add_molecular_imaging_data(self,
                                    mi: BaseSpatialOmics,
                                    register_to_primary_image=True,
-                                   reference_image: numpy.array = None,
+                                   reference_image: numpy.ndarray = None,
                                    registerer: Registerer | None = None):
         """
         Adds molecular imaging data to section.

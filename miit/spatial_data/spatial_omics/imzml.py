@@ -6,6 +6,7 @@ from os.path import join, exists
 from pathlib import Path
 from typing import (
     Any, 
+    Callable,
     ClassVar, 
     Optional, 
 )
@@ -25,15 +26,12 @@ from miit.spatial_data.base_types import (
     Annotation,
     BaseImage,
     Image,
-    read_image,
     BasePointset,
     SpatialBaseDataLoader
 )
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
-from miit.utils.utils import copy_if_not_none
 from miit.utils.imzml import (
-    do_msi_registration,
     get_mode,
     get_scan_direction,
     get_scan_pattern,
@@ -43,12 +41,24 @@ from miit.utils.imzml import (
 )
 
 
-def merge_dicts(dict1: dict, dict2: dict) -> dict:
-    new_dict = {}
-    for key in dict1:
-        if dict1[key] in dict2:
-            new_dict[key] = dict2[dict1[key]]
-    return new_dict
+def compose_dicts(dict1: dict, dict2: dict) -> dict:
+    """Composes two dictionaries. If a key is only present in one of the two dictionaries, it
+    will be skipped.
+
+    Args:
+        dict1 (dict): 
+        dict2 (dict):
+
+    Returns:
+        dict: Composed dictionaries.
+    
+    """
+    return {k: dict2.get(v) for k, v in dict1.items() if v in dict2}
+    # new_dict = {}
+    # for key in dict1:
+    #     if dict1[key] in dict2:
+    #         new_dict[key] = dict2[dict1[key]]
+    # return new_dict
 
 
 def export_imzml(template_msi: pyimzml.ImzMLParser.ImzMLParser, 
@@ -162,8 +172,8 @@ def get_metabolite_intensities(
 def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser,
                                                   spectra_idxs: list[int], 
                                                   mz_intervals: tuple[float, float, float],
-                                                  norm_f: callable | None = None,
-                                                  baseline_f: callable | None = None) -> dict:
+                                                  norm_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None,
+                                                  baseline_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None) -> dict:
     """
     Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
     used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
@@ -231,7 +241,7 @@ def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
     return metabolite_df
 
 def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
-                                    target_resolution: int = 1) -> numpy.array | dict | Optional[numpy.array]:
+                                    target_resolution: int = 1) -> numpy.ndarray | dict | Optional[numpy.ndarray]:
     """Computes reference matrix from msi scaled to target_resolution.
 
     Args:
@@ -264,7 +274,7 @@ def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser,
 # TODO: Remove
 def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
                       srd: dict = None, 
-                      target_resolution: int = 1) -> numpy.array | dict | Optional[numpy.array]:
+                      target_resolution: int = 1) -> numpy.ndarray | dict | Optional[numpy.ndarray]:
     """Computes reference matrix from msi scaled to target_resolution. Will also convert a srd annotation to
     a binary annotation matrix, if provided. 
 
@@ -275,7 +285,7 @@ def convert_to_matrix(msi: pyimzml.ImzMLParser.ImzMLParser,
 
 
     Returns:
-        Union[numpy.array, dict, Optional[numpy.array]]: Reference matrix, mapping of msi pixels to reference matrix, If supplied, srd in matrix form.
+        Union[numpy.ndarray, dict, Optional[numpy.ndarray]]: Reference matrix, mapping of msi pixels to reference matrix, If supplied, srd in matrix form.
     """
     scale_x = msi.imzmldict['pixel size x']/target_resolution
     scale_y = msi.imzmldict['pixel size y']/target_resolution
@@ -406,7 +416,7 @@ def msi_default_spot_accumulation_fun(source_keys: numpy.ndarray,
                                       source_counts: numpy.ndarray, 
                                       measurement_df: pandas.core.frame.DataFrame, 
                                       bck_weight: float,
-                                      accumulator_function: callable | None = None) -> pandas.core.frame.DataFrame:
+                                      accumulator_function: Callable | None = None) -> pandas.core.frame.DataFrame:
     if accumulator_function is None:
         accumulator_function = lambda r: pd.Series({'mean': r.mean(), 
                                                     'std': r.std(), 
@@ -667,13 +677,13 @@ class Imzml(BaseSpatialOmics):
     def extract_ion_image(self, 
                           mz_value: float, 
                           tol: float = 0.1, 
-                          reduce_func: callable | None = sum) -> Image:
+                          reduce_func: Callable[[numpy.ndarray], float] | None = sum) -> Image:
         """Returns an ion image for the given mz_value. Reimplentation of `getionimage` from pyimzml.
 
         Args:
             mz_value (float): m/z value to extract.
             tol (float, optional): tolerance to extract mz_value. Defaults to 0.1.
-            reduce_func (Callable, optional): Function to accumulate intensities that fall into [mz_value - tol, mz_value + tol]. Defaults to sum.
+            reduce_func (Callable[[numpy.ndarray], float], optional): Function to accumulate intensities that fall into [mz_value - tol, mz_value + tol]. Defaults to sum.
 
         Returns:
             numpy.ndarray: Computed ion image.
@@ -686,9 +696,9 @@ class Imzml(BaseSpatialOmics):
             spec_to_intensity[idx] = val
         # local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
         rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
-        merged_dict = merge_dicts(rev_spec_to_ref_map, spec_to_intensity)
-        merged_dict[self.background] = 0
-        indexer = np.array([merged_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
+        composed_dict = compose_dicts(rev_spec_to_ref_map, spec_to_intensity)
+        composed_dict[self.background] = 0
+        indexer = np.array([composed_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
         ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
         return Image(data=ion_image)
     
@@ -703,9 +713,9 @@ class Imzml(BaseSpatialOmics):
             spec_to_intensity[idx] = intensities[index]
         # local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
         rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
-        merged_dict = merge_dicts(rev_spec_to_ref_map, spec_to_intensity)
-        merged_dict[self.background] = 0
-        indexer = np.array([merged_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
+        composed_dict = compose_dicts(rev_spec_to_ref_map, spec_to_intensity)
+        composed_dict[self.background] = 0
+        indexer = np.array([composed_dict.get(i) for i in range(self.ref_mat.data.min(), self.ref_mat.data.max() + 1)])
         ion_image = indexer[(self.ref_mat.data - self.ref_mat.data.min())]
         return Image(data=ion_image)
 
@@ -728,9 +738,9 @@ class Imzml(BaseSpatialOmics):
         
         local_idx_measurement_dict = {x: table[x].to_numpy() for x in table}
         rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
-        merged_dict = merge_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
-        merged_dict[background_value] = np.zeros(n_ints)
-        indexer = np.array([merged_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        composed_dict = compose_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
+        composed_dict[background_value] = np.zeros(n_ints)
+        indexer = np.array([composed_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
         ion_cube = indexer[(ref_mat - ref_mat.min())]
         ion_cube_annotation = Annotation(data=ion_cube,
                                         labels=table.index.to_list())

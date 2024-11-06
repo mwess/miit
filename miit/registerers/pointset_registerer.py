@@ -8,8 +8,8 @@ import itk
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 
 
-def affine_transform(points: numpy.array, 
-                     transform: numpy.array) -> numpy.array:
+def affine_transform(points: numpy.ndarray, 
+                     transform: numpy.ndarray) -> numpy.ndarray:
     trans_points = (transform @ np.hstack((points, np.ones((points.shape[0], 1)))).T).T
     return trans_points[:, 0:2]
 
@@ -29,10 +29,10 @@ class PointsetRegisterer(Registerer):
     name = 'PointsetRegisterer'
 
     def register_images(self,
-                        moving_image: numpy.array,
-                        fixed_image: numpy.array,
-                        moving_pointset: numpy.array,
-                        fixed_pointset: numpy.array,
+                        moving_image: numpy.ndarray,
+                        fixed_image: numpy.ndarray,
+                        moving_pointset: numpy.ndarray,
+                        fixed_pointset: numpy.ndarray,
                         **kwargs: dict):
         # Assumes that pointsets are already numpy array
         # Performs affine registration based on matching pointsets
@@ -46,11 +46,11 @@ class PointsetRegisterer(Registerer):
         )
     
     def _transform_image_affine(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         tform: skimage.transform._geometric.AffineTransform,
                         output_shape: tuple[int, int],
                         interpolation_mode: str, 
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         order = 0 if interpolation_mode == 'NN' else 1
         return ski.transform.warp(image, 
                                   inverse_map=tform.inverse, 
@@ -58,10 +58,10 @@ class PointsetRegisterer(Registerer):
                                   output_shape=output_shape)
     
     def transform_image(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         transformation: RegistrationResult, 
                         interpolation_mode: str, 
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         order = 0 if interpolation_mode == 'NN' else 1
         warped_image = self._transform_image_affine(
             image,
@@ -72,9 +72,9 @@ class PointsetRegisterer(Registerer):
         return warped_image
 
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: RegistrationResult, 
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         warped_pointset = affine_transform(pointset, transformation.tform.params) 
         return warped_pointset
             

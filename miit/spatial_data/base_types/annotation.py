@@ -111,7 +111,7 @@ class Annotation(BaseImage):
                 json.dump(self.labels, f)            
 
     def get_by_labels(self, 
-                      labels: list[str] | str) -> numpy.array | None:
+                      labels: list[str] | str) -> numpy.ndarray | None:
         if isinstance(labels, str):
             labels = [labels]
         if len(labels) == 0:
@@ -202,7 +202,7 @@ class Annotation(BaseImage):
                         image_scale: int = 6,
                         plot_labels: bool = True,
                         axis_off: bool = True,
-                        reference_image: numpy.array | BaseImage | None = None):
+                        reference_image: numpy.ndarray | BaseImage | None = None):
         """Utility function for plotting an annotation.
 
         Args:
@@ -212,7 +212,7 @@ class Annotation(BaseImage):
             image_scale (int, optional): Image scale in plot. Defaults to 6.
             plot_labels (bool, optional): If True, plots labels. Defaults to True.
             axis_off (bool, optional): Removes axis description. Defaults to True.
-            reference_image (Optional[numpy.array], optional): Optional reference image to add. If not None, will be the first image in the plot.
+            reference_image (Optional[numpy.ndarray], optional): Optional reference image to add. If not None, will be the first image in the plot.
                  Defaults to None.
 
         Raises:
