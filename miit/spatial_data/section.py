@@ -130,6 +130,7 @@ def register_to_ref_image(target_image: numpy.ndarray,
                           source_image: numpy.ndarray, 
                           data: BaseImage | BasePointset,
                           registerer: Registerer = None,
+                          reg_opts: dict | None = None,
                           **args) -> tuple[BaseImage | BasePointset, Image]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
@@ -138,7 +139,9 @@ def register_to_ref_image(target_image: numpy.ndarray,
     """
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
-    transformation = registerer.register_images(source_image, target_image, **args)
+    if reg_opts is None:
+        reg_opts = {}
+    transformation = registerer.register_images(source_image, target_image, **reg_opts)
     warped_data = data.apply_transform(registerer, transformation)
     warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
     return warped_data, warped_ref_image

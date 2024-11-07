@@ -108,7 +108,7 @@ def load_sections(root_dir, skip_so_data=False):
         
         msi_pos = Imzml.init_msi_data(msi_pos_imzml_path, name='msi_pos', target_resolution=1)
         msi_pos_pca = msi_pos.get_pca_img()
-        warped_msi_pos, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer())
+        warped_msi_pos, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer(), reg_opts={'nonrigid': False})
         sections['6'].so_data.append(warped_msi_pos)
     
     
@@ -120,7 +120,7 @@ def load_sections(root_dir, skip_so_data=False):
 
         msi_neg = Imzml.init_msi_data(msi_neg_imzml_path, name='msi_neg', target_resolution=1)
         msi_neg_pca = msi_neg.get_pca_img()
-        warped_msi_neg, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer())
+        warped_msi_neg, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer(), reg_opts={'nonrigid': False})
         sections['7'].so_data.append(warped_msi_neg)    
     
         st = Visium.from_spcrng(join(root_dir, '2', 'spatial_transcriptomics'))
