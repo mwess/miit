@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_types.base_imaging import BaseImage
 from miit.utils.utils import create_if_not_exists
+from miit.utils.distance_unit import DUnit
 
 
 @dataclass(kw_only=True)
@@ -55,6 +56,7 @@ class Annotation(BaseImage):
             self.data = self.data[xmin:xmax, ymin:ymax, :]
 
     def resize(self, width: int, height: int):
+        old_width, old_height = self.data.shape[:2]
         if len(self.data.shape) == 2:
             # TODO: Rewrite that with skimage's resize function
             self.data = cv2.resize(self.data, (height, width), interpolation=cv2.INTER_NEAREST)
@@ -65,12 +67,17 @@ class Annotation(BaseImage):
                 # Use cv as it performs significantly faster on larger images.
                 new_image_data[:, :, i] = cv2.resize(self.data[:, :, i], (height, width), interpolation=cv2.INTER_NEAREST)
             self.data = new_image_data
+        rate_w = old_width / width
+        rate_h = old_height / height
+        self.scale_resolution((rate_w, rate_h))            
 
-    def rescale(self, scaling_factor: float):
+    def rescale(self, scaling_factor: float | tuple[float, float]):
+        if isinstance(scaling_factor, float):
+            scaling_factor = (scaling_factor, scaling_factor)
         w, h = self.data.shape[:2]
-        w_n, h_n = int(w*scaling_factor), int(h*scaling_factor)
-        self.resize(w_n, h_n)            
-
+        w_n, h_n = int(w*scaling_factor[0]), int(h*scaling_factor[1])
+        self.resize(w_n, h_n)      
+              
     def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
         left, right, top, bottom = padding
         if len(self.data.shape) == 2:
@@ -81,18 +88,22 @@ class Annotation(BaseImage):
 
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
+        self.resolution = self.resolution[::-1]
+
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return Annotation(data=transformed_image,
                           labels=self.labels,
-                          name=self.name)
+                          name=self.name,
+                          resolution=self.resolution)
 
     def copy(self):
         return Annotation(data=self.data.copy(),
                           labels=self.labels,
                           name=self.name,
-                          is_multichannel=self.is_multichannel)
+                          is_multichannel=self.is_multichannel,
+                          resolution=self.resolution)
 
     def store(self, path: str):
         # Use path as a directory here.
@@ -102,7 +113,11 @@ class Annotation(BaseImage):
         sitk.WriteImage(sitk.GetImageFromArray(self.data), img_path)
         additional_attributes = {
             'name' : self.name,
-            'id': str(self._id)
+            'id': str(self._id),
+            'resolution': {
+                'width': self.resolution[0].to_json(),
+                'height': self.resolution[1].to_json()
+            }            
         }
         with open(join(path, 'additional_attributes.json'), 'w') as f:
             json.dump(additional_attributes, f)
@@ -110,6 +125,7 @@ class Annotation(BaseImage):
             with open(join(path, 'labels.json'), 'w') as f:
                 json.dump(self.labels, f)            
 
+    # TODO: Return Annotation
     def get_by_labels(self, 
                       labels: list[str] | str) -> numpy.ndarray | None:
         if isinstance(labels, str):
@@ -193,9 +209,6 @@ class Annotation(BaseImage):
         self.labels = labels
         self.data = sc_mat
         self.is_multichannel = False              
-
-    def get_resolution(self) -> float | None:
-        return self.meta_information.get('resolution', None)
     
     def plot_annotation(self, 
                         grid_layout: str | tuple[int, int] | None = None,
@@ -275,8 +288,6 @@ class Annotation(BaseImage):
                     if len(label_keys) == idx:
                         return
 
-
-
     @staticmethod
     def get_type() -> str:
         return 'annotation'
@@ -294,7 +305,13 @@ class Annotation(BaseImage):
             additional_attributes = json.load(f)
         name = additional_attributes['name']
         id_ = uuid.UUID(additional_attributes['id'])
-        annotation = cls(data=annotation, labels=labels, name=name)
+        resolution = additional_attributes['resolution']
+        res_w = DUnit.from_dict(resolution['width'])
+        res_h = DUnit.from_dict(resolution['height'])
+        annotation = cls(data=annotation, 
+                         labels=labels, 
+                         name=name,
+                         resolution=(res_w, res_h))
         annotation._id = id_
         return annotation
 

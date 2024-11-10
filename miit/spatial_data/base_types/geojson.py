@@ -67,9 +67,14 @@ class GeoJSONData(BasePointset):
             self.data['features'] = features_new
         else:
             self.data = features_new
+        rate_w = 1 / width
+        rate_h = 1 / height
+        self.scale_resolution((rate_w, rate_h))        
 
-    def rescale(self, scaling_factor: float):
-        self.resize(scaling_factor, scaling_factor)
+    def rescale(self, scaling_factor: float | tuple[float, float]):
+        if isinstance(scaling_factor, float):
+            scaling_factor = (scaling_factor, scaling_factor)
+        self.resize(scaling_factor[0], scaling_factor[1])
 
     def pad(self, padding: tuple[int, int, int, int]):
         left, right, top, bottom = padding
@@ -102,9 +107,12 @@ class GeoJSONData(BasePointset):
             self.data['features'] = features_new
         else:
             self.data = features_new
+        self.resolution = self.resolution[::-1]
 
     def copy(self):
-        return GeoJSONData(data=self.data.copy(), name=self.name)
+        return GeoJSONData(data=self.data.copy(), 
+                           name=self.name,
+                           resolution=self.resolution)
 
     def store(self, path: str):
         create_if_not_exists(path)

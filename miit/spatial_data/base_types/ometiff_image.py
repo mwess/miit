@@ -26,6 +26,8 @@ def get_default_metadata() -> dict:
     }
     return metadata
 
+
+# TODO: Add resolution to file parsing.
 @dataclass(kw_only=True)
 class OMETIFFImage(Image):
     """
