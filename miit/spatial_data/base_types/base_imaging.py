@@ -60,10 +60,6 @@ class BaseImage(abc.ABC):
     def get_type(self) -> str:
         pass
 
-    @abc.abstractmethod
-    def set_resolution(self, resolution: DUnit | tuple[DUnit, DUnit]):
-        pass
-
     def scale_resolution(self, scale_factors: tuple[float, float]):
         res_w, res_h = self.resolution
         scale_w, scale_h = scale_factors
@@ -71,12 +67,25 @@ class BaseImage(abc.ABC):
         res_h.scale(scale_h)
         self.resolution = (res_w, res_h)
 
-    def align_resolution(self, target: BaseImage | BasePointset):
+    def scale_to_resolution(self, resolution: DUnit | tuple[DUnit, DUnit], align_units: bool = True):
+        if isinstance(resolution, DUnit):
+            resolution = (resolution, resolution)    
         res_w, res_h = self.resolution
-        dst_w, dst_h = target.resolution
+        dst_w, dst_h = resolution
         conv_rate_w = 1 / res_w.get_conversion_factor(dst_w)
         conv_rate_h = 1 / res_h.get_conversion_factor(dst_h)
         self.rescale((conv_rate_w, conv_rate_h))
+        if align_units:
+            rw, rh = self.resolution
+            self.resolution = (rw.convert_to_unit(dst_w.symbol), rh.convert_to_unit(dst_h.symbol))
+
+    def align_resolution(self, target: BaseImage | BasePointset, align_units: bool = True):
+        self.scale_to_resolution(target.resolution)
+
+    def set_resolution(self, resolution: DUnit | tuple[DUnit]):
+        if isinstance(resolution, DUnit):
+            resolution = [resolution, resolution]
+        self.resolution = resolution            
 
     @classmethod
     @abc.abstractmethod
@@ -139,3 +148,13 @@ class BasePointset(abc.ABC):
         res_w.scale(scale_w)
         res_h.scale(scale_h)
         self.resolution = (res_w, res_h)    
+
+    def align_resolution(self, target: BaseImage | BasePointset, align_units: bool = True):
+        res_w, res_h = self.resolution
+        dst_w, dst_h = target.resolution
+        conv_rate_w = 1 / res_w.get_conversion_factor(dst_w)
+        conv_rate_h = 1 / res_h.get_conversion_factor(dst_h)
+        self.rescale((conv_rate_w, conv_rate_h))
+        if align_units:
+            rw, rh = self.resolution
+            self.resolution = (rw.convert_to_unit(dst_w.symbol), rh.convert_to_unit(dst_h.symbol))   

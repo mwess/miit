@@ -37,7 +37,7 @@ class Image(BaseImage):
         if isinstance(scaling_factor, float):
             scaling_factor = (scaling_factor, scaling_factor)
         w, h = self.data.shape[:2]
-        w_n, h_n = int(w*scaling_factor[0]), int(h*scaling_factor[0])
+        w_n, h_n = int(w*scaling_factor[0]), int(h*scaling_factor[1])
         self.resize(w_n, h_n)
 
     def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
@@ -51,7 +51,7 @@ class Image(BaseImage):
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
         return Image(data=transformed_image, resolution=self.resolution)
-
+    
     def copy(self):
         return Image(data=self.data.copy(), resolution = self.resolution)
 
@@ -74,11 +74,6 @@ class Image(BaseImage):
     @staticmethod
     def get_type() -> str:
         return 'image'
-
-    def set_resolution(self, resolution: DUnit | tuple[DUnit]):
-        if isinstance(resolution, DUnit):
-            resolution = [resolution, resolution]
-        self.resolution = resolution
 
     @classmethod
     def load(cls, path: str) -> 'Image':

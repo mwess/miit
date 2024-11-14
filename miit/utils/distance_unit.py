@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal, ROUND_DOWN, ROUND_UP
 import math
 
 unit_to_factor = {
@@ -36,7 +37,7 @@ unit_to_factor = {
 @dataclass
 class DUnit:
 
-    value: float
+    value: Decimal
     symbol: str = field(init=False, default='px')
     factor: int | None = field(init=False, default=None)
 
@@ -61,13 +62,14 @@ class DUnit:
         factor_to_unit = {value: key for (key, value) in unit_to_factor.items()}
         self._symbol = factor_to_unit[factor]
 
-    def __init__(self, value: float, symbol: str = 'px'):
+    def __init__(self, value: str | float | Decimal, symbol: str = 'px'):
+        value = DUnit.to_decimal(value)
         self.value = value
         self.symbol = symbol
         self.factor = unit_to_factor[symbol]
 
     def __str__(self):
-        return f'{self.value}{self.symbol}'
+        return f'{float(self.value)}{self.symbol}'
     
     def equal_instance(self, other: 'DUnit') -> bool:
         return self.value == other.value and self.symbol == other.symbol
@@ -75,10 +77,10 @@ class DUnit:
     def __eq__(self, other: 'DUnit') -> bool:
         if self.factor == other.factor:
             return self.value == other.value
-        return self.to_float() == other.to_float()
+        return self.to_dec() == other.to_dec()
 
     def __gt__(self, other: 'DUnit') -> bool:
-        return self.to_float().__gt__(other.to_float)
+        return self.to_dec().__gt__(other.to_dec)
 
     def __ge__(self, other: 'DUnit') -> bool:
         if self.__eq__(other):
@@ -86,39 +88,53 @@ class DUnit:
         return self.__gt__(other)
     
     def __lt__(self, other: 'DUnit') -> bool:
-        return self.to_float().__lt__(other.to_float())
+        return self.to_dec().__lt__(other.to_dec())
     
     def __le__(self, other: 'DUnit') -> bool:
-        return self.to_float().__le__(other.to_float())
+        return self.to_dec().__le__(other.to_dec())
 
-    def scale(self, scale_factor: float, inplace: bool = True) -> 'DUnit' | None:
+    @staticmethod
+    def to_decimal(value: float | str | Decimal) -> Decimal:
+        if isinstance(value, float):
+            value = str(value)
+        if isinstance(value, str):
+            value = Decimal(value)
+        return value
+
+    def scale(self, scale_factor: float | Decimal, inplace: bool = True) -> 'DUnit' | None:
+        scale_factor = DUnit.to_decimal(scale_factor)
         if inplace:
             self.value = self.value * scale_factor
         else:
             return DUnit(self.value * scale_factor, self.symbol)
 
+    def to_dec(self) -> Decimal:
+        return (self.value * Decimal(math.pow(10, self.factor))).quantize(Decimal('0.00000000001'))
+    
     def to_float(self) -> float:
-        return self.value * math.pow(10, self.factor)
+        return float(self.to_dec())
     
     @staticmethod
     def __verify_symbol(symbol: str):
         if symbol == 'px':
             raise Exception(f'px cannot be used in coordination with other symbols. Change symbol first to SI unit.')
 
-    def convert_symbol(self, symbol: str) -> 'DUnit':
+    def convert_to_unit(self, symbol: str) -> 'DUnit':
         self.__verify_symbol(symbol)
         self.__verify_symbol(self.symbol)
         new_factor = unit_to_factor[symbol]
-        rate = math.pow(10, new_factor) / math.pow(10, self.factor)
+        rate = Decimal(math.pow(10, self.factor)) / Decimal(math.pow(10, new_factor))
+        rate = rate.quantize(Decimal('0.00000000001'))
         new_value = self.value * rate
         return DUnit(new_value, symbol)
 
-    def get_conversion_factor(self, target: 'DUnit') -> float:
+    def get_conversion_factor(self, target: 'DUnit') -> Decimal:
         self.__verify_symbol(target.symbol)
         self.__verify_symbol(self.symbol)        
-        src_flt = self.to_float()
-        target_flt = target.to_float()
+        src_flt = self.to_dec()
+        target_flt = target.to_dec()
         conv_rate = target_flt / src_flt
+        conv_rate = conv_rate.quantize(Decimal('0.00000000001'))
         return conv_rate
 
     @classmethod

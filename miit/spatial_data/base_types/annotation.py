@@ -45,7 +45,7 @@ class Annotation(BaseImage):
                 if len(self.data.shape) == 2:
                     labels = [1]
                 else:
-                    labels = list(1, range(self.data.shape[-1] + 1))
+                    labels = list(range(1, self.data.shape[-1] + 1))
             self.labels = labels 
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
