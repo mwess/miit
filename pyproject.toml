@@ -35,12 +35,13 @@ tqdm = "^4.66.1"
 onnxruntime = "1.17.0"
 toml = "0.10.2"
 pyimzML = "1.5.3"
-greedyfhist = { git = "https://github.com/mwess/greedyfhist", tag= "v0.0.2-rc2" }
+# greedyfhist = { git = "https://github.com/mwess/greedyfhist", tag= "v0.0.2-rc2" }
 niftyreg = "1.5.70rc1"
 seaborn = "0.13.2"
 h5py = "3.12.1"
 pydicom = "3.*"
-# torch = "~2.5.1+cu124"
+torch = "~2.5.1"
+torchvision = "~0.20.1"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"

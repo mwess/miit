@@ -3,7 +3,6 @@ from typing import Any
 
 import numpy, numpy as np
 import skimage, skimage as ski
-import itk
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 
@@ -75,7 +74,16 @@ class PointsetRegisterer(Registerer):
                            pointset: numpy.ndarray, 
                            transformation: RegistrationResult, 
                            **kwargs: dict) -> numpy.ndarray:
-        warped_pointset = affine_transform(pointset, transformation.tform.params) 
+        warped_pointset = []
+        for i in range(pointset.shape[0]):
+            ps_ = np.expand_dims(pointset[i,], 0)
+            if np.isinf(ps_[0,0]) or np.isinf(ps_[0,1]):
+                warped_pointset.append(ps_.squeeze())
+                continue
+            warped_ps_ = affine_transform(ps_, transformation.tform.params).squeeze()
+            warped_pointset.append(warped_ps_)
+        warped_pointset = np.array(warped_pointset)
+        # warped_pointset = affine_transform(pointset, transformation.tform.params) 
         return warped_pointset
             
     @classmethod

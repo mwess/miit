@@ -35,7 +35,7 @@ class GeoJSONData(BasePointset):
         geometries = self.data['features'] if 'features' in self.data else self.data
         warped_geometries = []
         for _, geometry in enumerate(geometries):
-            warped_geometry = geojson.utils.map_tuples(lambda coords: self.__warp_geojson_coord_tuple(coords, registerer, transformation), geometry)
+            warped_geometry = geojson.utils.map_tuples(lambda coords: warp_geojson_coord_tuple__(coords, registerer, transformation), geometry)
             warped_geometries.append(warped_geometry)
         if 'features' in self.data:
             warped_data = self.data.copy()
@@ -142,23 +142,6 @@ class GeoJSONData(BasePointset):
         gdata._id = id_
         return gdata
 
-    def __warp_geojson_coord_tuple(self, 
-                                   coord: tuple[float, float], 
-                                   registerer: Registerer, 
-                                   transform: RegistrationResult) -> tuple[float, float]:
-        """Transforms coordinates from geojson data from moving to fixed image space.
-
-        Args:
-            coord (Tuple[float, float]): 
-            transform (SimpleITK.SimpleITK.Transform): 
-
-        Returns:
-            Tuple[float, float]: 
-        """
-        ps = np.array([[coord[0], coord[1]]]).astype(float)
-        warped_ps = registerer.transform_pointset(ps, transform)
-        return (warped_ps[0, 0], warped_ps[0, 1])
-
     @classmethod
     def load_from_path(cls, 
                        path_to_geojson: str,
@@ -184,3 +167,19 @@ class GeoJSONData(BasePointset):
                 fcont = f.read(fname)
                 data = geojson.loads(fcont)
         return cls(data=data, name=name)
+    
+def warp_geojson_coord_tuple__(coord: tuple[float, float], 
+                               registerer: Registerer, 
+                               transform: RegistrationResult) -> tuple[float, float]:
+    """Transforms coordinates from geojson data from moving to fixed image space.
+
+    Args:
+        coord (Tuple[float, float]): 
+        transform (SimpleITK.SimpleITK.Transform): 
+
+    Returns:
+        Tuple[float, float]: 
+    """
+    ps = np.array([[coord[0], coord[1]]]).astype(float)
+    warped_ps = registerer.transform_pointset(ps, transform)
+    return (warped_ps[0, 0], warped_ps[0, 1])

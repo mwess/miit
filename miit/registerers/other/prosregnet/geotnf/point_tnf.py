@@ -5,7 +5,7 @@ The following code is from: https://github.com/ignacio-rocco/cnngeometric_pytorc
 import torch
 from torch.autograd import Variable
 import numpy as np
-from geotnf.transformation import TpsGridGen
+from .transformation import TpsGridGen
 
 class PointTnf(object):
     """

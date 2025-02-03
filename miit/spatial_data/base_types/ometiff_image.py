@@ -12,6 +12,7 @@ from greedyfhist.utils.io import read_image, write_to_ometiffile
 from .image import Image
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.utils import create_if_not_exists
+from miit.utils.distance_unit import DUnit
 
 
 def get_default_metadata() -> dict:
@@ -53,6 +54,16 @@ class OMETIFFImage(Image):
     is_ome: bool = True
     tif_metadata: dict = field(default_factory=lambda: defaultdict(dict))
     
+    def __post_init__(self):
+        super().__post_init__()
+        if self.tif_metadata is not None:
+            x_size = self.tif_metadata.get('PhysicalSizeX', 1.0)
+            x_unit = self.tif_metadata.get('PhysicalSizeXUnit', 'px')
+            y_size = self.tif_metadata.get('PhysicalSizeY', 1.0)
+            y_unit = self.tif_metadata.get('PhysicalSizeYUnit', 'px')
+            self.resolution = (DUnit(x_size, x_unit), DUnit(y_size, y_unit))
+            
+    
     def resize(self, width: int, height: int):
         # Use opencv's resize function here, because it typically works a lot faster and for now
         # we assume that data in Image is always some kind of rgb like image.
@@ -90,7 +101,7 @@ class OMETIFFImage(Image):
         create_if_not_exists(path)
         image_fname = 'image.ome.tif'
         image_path = join(path, image_fname)
-        self.__to_file(image_path)
+        self.to_file__(image_path)
         additional_attributes = {
             'name': self.name,
             'meta_information': self.meta_information,
@@ -100,7 +111,7 @@ class OMETIFFImage(Image):
         with open(join(path, 'additional_attributes.json'), 'w') as f:
             json.dump(additional_attributes, f)
 
-    def __to_file(self, path: str):
+    def to_file__(self, path: str):
         write_to_ometiffile(
             self.data, path, self.tif_metadata, False
         )

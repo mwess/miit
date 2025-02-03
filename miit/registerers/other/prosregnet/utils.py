@@ -4,7 +4,7 @@ from os.path import join
 import cv2
 import numpy, numpy as np
 import pydicom
-import SimpleITk as sitk
+import SimpleITK as sitk
 import torch
 from torch.autograd import Variable
 

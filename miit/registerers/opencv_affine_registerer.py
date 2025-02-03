@@ -18,11 +18,11 @@ class OpenCVAffineTransformation:
     dst_pts: numpy.ndarray | None
     
 
-def get_detector(detector_name: str) -> cv2.SIFT | cv2.ORB:
+def get_detector(detector_name: str, n_features: int = 0) -> cv2.SIFT | cv2.ORB:
     if detector_name == 'sift':
-        return cv2.SIFT_create()
+        return cv2.SIFT_create(n_features)
     elif detector_name == 'orb':
-        return cv2.ORB_create(500)
+        return cv2.ORB_create(n_features)
     else:
         raise Exception(f'Detector unknown: {detector_name}')
 
@@ -52,6 +52,7 @@ class OpenCVAffineRegisterer(Registerer):
                         flann_checks: int = 50,
                         matching_method: int = cv2.RANSAC,
                         matching_criteron_distance_factor: float = 0.75,
+                        n_features: int = 1000,                        
                         verbose: bool = False,
                         **kwargs: dict) -> Any:
         return self.register_(
@@ -67,6 +68,7 @@ class OpenCVAffineRegisterer(Registerer):
             flann_checks=flann_checks,
             matching_method=matching_method,
             matching_criteron_distance_factor=matching_criteron_distance_factor,
+            n_features=n_features,
             verbose=verbose
             )
         
@@ -83,6 +85,7 @@ class OpenCVAffineRegisterer(Registerer):
                   flann_checks: int = 50, 
                   matching_method: int = cv2.RANSAC, 
                   matching_criteron_distance_factor: float = 0.75,
+                  n_features: int = 1000,
                   verbose: bool = False):
         """
         co-registers two images and returns the moving image warped to fit target_img and the respective transform matrix
@@ -116,7 +119,7 @@ class OpenCVAffineRegisterer(Registerer):
 
 
         # find the keypoints and descriptors with SIFT
-        feature_detector_ = get_detector(feature_detector)
+        feature_detector_ = get_detector(feature_detector, n_features=n_features)
         kp1, des1 = feature_detector_.detectAndCompute(moving_img, None)
         kp2, des2 = feature_detector_.detectAndCompute(fixed_img, None)
 
@@ -170,8 +173,9 @@ class OpenCVAffineRegisterer(Registerer):
                            transformation: OpenCVAffineTransformation, 
                            **kwargs: dict) -> numpy.ndarray:
         transformed_pointset = (transformation.transformation_matrix @ np.hstack((pointset, np.ones((pointset.shape[0], 1)))).T).T
-        pointset_df = pd.DataFrame(transformed_pointset[:,:2]).rename(columns={0:'x', 1:'y'})
-        return pointset_df
+        return transformed_pointset
+        # pointset_df = pd.DataFrame(transformed_pointset[:,:2]).rename(columns={0:'x', 1:'y'})
+        # return pointset_df
 
     def transform_image(self, 
                         image: numpy.ndarray, 

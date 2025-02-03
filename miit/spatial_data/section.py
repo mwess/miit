@@ -126,17 +126,21 @@ def groupwise_registration(sections: list['Section'],
     return warped_sections, transforms
 
 
-def register_to_ref_image(target_image: numpy.ndarray, 
-                          source_image: numpy.ndarray, 
+def register_to_ref_image(target_image: numpy.ndarray | BaseImage, 
+                          source_image: numpy.ndarray | BaseImage, 
                           data: BaseImage | BasePointset,
                           registerer: Registerer = None,
                           reg_opts: dict | None = None,
-                          **args) -> tuple[BaseImage | BasePointset, Image]:
+                          **args) -> tuple[BaseImage | BasePointset, RegistrationResult, Image]:
     """
     Finds a registration from source_image (or reference image) to target_image using registerer. 
     Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
     args is additional options that will be passed to the registerer during registration.
     """
+    if isinstance(target_image, BaseImage):
+        target_image = target_image.data
+    if isinstance(source_image, BaseImage):
+        source_image = source_image.data
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
     if reg_opts is None:
@@ -144,7 +148,7 @@ def register_to_ref_image(target_image: numpy.ndarray,
     transformation = registerer.register_images(source_image, target_image, **reg_opts)
     warped_data = data.apply_transform(registerer, transformation)
     warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
-    return warped_data, warped_ref_image
+    return warped_data, transformation, warped_ref_image
 
 
 @dataclass
@@ -240,6 +244,7 @@ class Section:
         for so_data_ in self.so_data:
             so_data_.resize(width, height)
 
+    # TODO: Implement function
     def rescale(self, scaling_factor: float):
         pass
 
