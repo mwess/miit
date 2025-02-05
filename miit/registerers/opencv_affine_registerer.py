@@ -92,19 +92,24 @@ class OpenCVAffineRegisterer(Registerer):
         Script is very close to OpenCV2 image co-registration tutorial:
         https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_feature2d/py_feature_homography/py_feature_homography.html
         only addition/change here: rigid transform & no rotation option
-        :param moving_img: 
-        :param fixed_img: 
-        :param feature_detector:
-        :param rigid: if true only tranlation, rotation, and uniform scale
-        :param rotation: if false no rotation
-        :param warn_angle_deg: cuttoff for warning check if supposed rotation angle bigger in case of rotation=False
-        :param min_match_count: min good feature matches
-        :param flann_index_kdtree: define algorithm for Fast Library for Approximate Nearest Neighbors - see FLANN doc
-        :param flann_trees:
-        :param flan_checks:
-        :param matching_method
-        :param matching_criteron_distance_factor
-        :return: transformation matrix
+        
+        Args:
+            moving_img (numpy.ndarray):
+            fixed_img (numpy.ndarray): 
+            feature_detector (str):
+            rigid (bool): if true only tranlation, rotation, and uniform scale
+            rotation (bool): if false no rotation
+            warn_angle_deg (int): cuttoff for warning check if supposed rotation angle bigger in case of rotation=False
+            min_match_count (int): min good feature matches
+            flann_index_kdtree (int): define algorithm for Fast Library for Approximate Nearest Neighbors - see FLANN doc
+            flann_trees (int):
+            flan_checks (int):
+            matching_method (int):
+            matching_criteron_distance_factor (float):
+            n_features (int):
+            verbose (bool):
+        Returns:
+            numpy.ndarray
         """
         all_feature_detectors = ['sift', 'orb']
         if feature_detector not in all_feature_detectors:
@@ -115,8 +120,6 @@ class OpenCVAffineRegisterer(Registerer):
         if len(moving_img.shape) > 2:
             moving_img = cv2.cvtColor(moving_img, cv2.COLOR_BGR2GRAY)
         height, width = fixed_img.shape
-
-
 
         # find the keypoints and descriptors with SIFT
         feature_detector_ = get_detector(feature_detector, n_features=n_features)

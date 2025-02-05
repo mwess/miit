@@ -240,6 +240,7 @@ def get_metabolite_intensities_targeted(msi: pyimzml.ImzMLParser.ImzMLParser,
     metabolite_df = pd.DataFrame(collected_intensities, index=mz_labels)
     return metabolite_df
 
+
 def convert_msi_to_reference_matrix(msi: pyimzml.ImzMLParser.ImzMLParser, 
                                     target_resolution: int = 1) -> numpy.ndarray | dict | Optional[numpy.ndarray]:
     """Computes reference matrix from msi scaled to target_resolution.
@@ -335,6 +336,7 @@ def compute_mean_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser):
     return avg_spec
 
 
+# TODO: Remove. This is just custom code.
 def load_metabolites(table_path: str, 
                      imzml_path: str) -> tuple[dict, pandas.core.frame.DataFrame]:
     # NEDC_peak_table = pd.read_csv('Peaklist_136_NEDC_figshare.txt', sep='\t')

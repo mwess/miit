@@ -8,6 +8,7 @@ import numpy
 
 from .base_registerer import Registerer, RegistrationResult
 
+
 @dataclass
 class GreedyFHistRegistrationResult(RegistrationResult):
 
@@ -18,6 +19,7 @@ class GreedyFHistRegistrationResult(RegistrationResult):
 class GreedyFHistGroupRegistrationResult(RegistrationResult):
     
     registration_result: GroupwiseRegResult
+
 
 @dataclass
 class GreedyFHistExt(Registerer):

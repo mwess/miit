@@ -60,7 +60,7 @@ class ManualAffineRegisterer(Registerer):
     def load_from_config(cls, config: dict[str, Any]) -> Registerer:
         return cls()
 
-def get_center(img: numpy.ndarray) -> (int, int):
+def get_center(img: numpy.ndarray) -> tuple[int, int]:
     w, h = img.shape[:2]
     w_c, h_c = int(w//2), int(h//2)
     return (w_c, h_c)

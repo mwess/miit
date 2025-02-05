@@ -1,3 +1,6 @@
+"""
+Module that handles Visium data.
+"""
 from dataclasses import dataclass, field
 import json
 import math
@@ -30,11 +33,6 @@ def compose_dicts(dict1: dict, dict2: dict) -> dict:
     
     """
     return {k: dict2.get(v) for k, v in dict1.items() if v in dict2}
-    # new_dict = {}
-    # for key in dict1:
-    #     if dict1[key] in dict2:
-    #         new_dict[key] = dict2[dict1[key]]
-    # return new_dict
 
 
 def load_visium_data_matrix(path: str,
@@ -100,13 +98,7 @@ def fill_measurement_matrix(measurement_df: pandas.core.frame.DataFrame,
                                st_table: pandas.core.frame.DataFrame, 
                                col: Any) -> numpy.ndarray:
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
-
     intern_idx_local_idx_dict = {int(row['int_idx']): idx for idx, row in st_table.iterrows()}
-
-    # intern_idx_local_idx_dict = {}
-    # for idx, row in st_table.iterrows():
-    #     intern_idx_local_idx_dict[int(row['int_idx'])] = idx
-    
     comp_dict = compose_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
     indexer = np.array([comp_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
     measurement_mat = indexer[(ref_mat - ref_mat.min())]
@@ -121,10 +113,6 @@ def get_measurement_dict(df: pandas.core.frame.DataFrame, key_col: Any) -> dict:
         key_col (Any): Column to use as an index for the dataframe.
     """
     return {idx: row[key_col] for idx, row in df.iterrows()}
-    # dct = {}
-    # for idx, row in df.iterrows():
-    #     dct[idx] = row[key_col]
-    # return dct
 
 
 def get_scalefactor(scalefactors: dict, image_scale: str) -> float:
@@ -137,9 +125,17 @@ def get_scalefactor(scalefactors: dict, image_scale: str) -> float:
     return scalefactor
     
 
-def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
+def scale_tissue_positions(tissue_positions: pandas.DataFrame,
                            scalefactors: dict,
-                           image_scale: str) -> pandas.core.frame.DataFrame:
+                           image_scale: str) -> pandas.DataFrame:
+    """
+    Scales tissue position according to new scale.
+    
+    Args:
+        tissue_positions (pandas.DataFrame):
+        scale_factors (dict):
+        image_scale (str): Key for scale_factors.
+    """
     scale = 1
     if image_scale == 'lowres':
         scale = scalefactors['tissue_lowres_scalef']
@@ -403,14 +399,15 @@ class Visium(BaseSpatialOmics):
                           path_to_tissue_positions: str,
                           path_to_image: str,
                           image_scale: str = 'hires',
-                          config: dict = None):
+                          config: dict = None) -> 'Visium':
         """
         Loads Visium10X object from spaceranger output.
         
-        path_to_scalefactors:
-        path_to_tissue_positions:
-        path_to_image:
-        image_scale: One of 'lowres', 'highres', 'fullres'. Default is 'highres'. 
+        Args:
+            path_to_scalefactors (str):
+            path_to_tissue_positions (str):
+            path_to_image (str):
+            image_scale (str): One of 'lowres', 'highres', 'fullres'. Default is 'highres'. 
         """
         # Select right scaling from scalefactors based on the supplied image.
         if image_scale not in ['lowres', 'hires', 'fullres']:
@@ -434,8 +431,3 @@ class Visium(BaseSpatialOmics):
         config['image_scale'] = image_scale
         config['scalefactor'] = get_scalefactor(scalefactors, image_scale)
         return cls(image, tissue_positions, scalefactors, config=config)
-        
-
-    def apply_tissue_mask(self, ref_mat: Annotation):
-        if self.tissue_mask is not None:
-            ref_mat.data *= self.tissue_mask
