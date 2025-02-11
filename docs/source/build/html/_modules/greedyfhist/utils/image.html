@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>greedyfhist.utils.image &mdash; MIIT 11/02/2025 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/custom.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster.custom.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster.bundle.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-shadow.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-punk.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-noir.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-light.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-borderless.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/micromodal.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/sphinx_rtd_theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/js/hoverxref.js"></script>
+        <script src="../../../_static/js/tooltipster.bundle.min.js"></script>
+        <script src="../../../_static/js/micromodal.min.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> MIIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+    
+              <p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">MIIT Python API</a></li>
+</ul>
+
+
+    
+
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">MIIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>greedyfhist.utils.image</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for greedyfhist.utils.image</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Utils for transformation of image and warp functions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="o">,</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">scipy.ndimage</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">SimpleITK</span><span class="o">,</span><span class="w"> </span><span class="nn">SimpleITK</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sitk</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">resize</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.filters</span><span class="w"> </span><span class="kn">import</span> <span class="n">gaussian</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">skimage.color</span><span class="w"> </span><span class="kn">import</span> <span class="n">rgb2gray</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tifffile</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">greedyfhist.custom_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">padding_type</span><span class="p">,</span> <span class="n">image_shape</span>
+
+
+<div class="viewcode-block" id="com_affine_matrix"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.com_affine_matrix">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">com_affine_matrix</span><span class="p">(</span><span class="n">fixed</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">moving</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the difference in center of mass between fixed and moving image masks.</span>
+
+<span class="sd">    Returns: Affine matrix</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">fixed_com</span> <span class="o">=</span> <span class="n">nd</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">fixed</span><span class="p">)</span>
+    <span class="n">moving_com</span> <span class="o">=</span> <span class="n">nd</span><span class="o">.</span><span class="n">center_of_mass</span><span class="p">(</span><span class="n">moving</span><span class="p">)</span>
+    <span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fixed_com</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">moving_com</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">fixed_com</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">moving_com</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">mat</span></div>
+
+
+<div class="viewcode-block" id="get_com_offset"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.get_com_offset">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_com_offset</span><span class="p">(</span><span class="n">mat</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the translation offset of the given matrix.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        mat (numpy.ndarray):</span>
+<span class="sd">            transform matrix</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        translation offset</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">mat</span><span class="p">[:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">translation</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">translation</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span></div>
+
+
+<div class="viewcode-block" id="read_affine_transform"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.read_affine_transform">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">read_affine_transform</span><span class="p">(</span><span class="n">small_affine_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimpleITK</span><span class="o">.</span><span class="n">SimpleITK</span><span class="o">.</span><span class="n">Transform</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads affine transform from file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        small_affine_path (str): Source file path.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SimpleITK.SimpleITK.Transform:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">small_affine_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">my_var</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+    <span class="c1"># Modify translation vector</span>
+
+    <span class="n">affine_transform</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">affine_transform</span><span class="o">.</span><span class="n">SetTranslation</span><span class="p">((</span><span class="n">my_var</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">5</span><span class="p">]))</span>
+    <span class="n">affine_transform</span><span class="o">.</span><span class="n">SetMatrix</span><span class="p">((</span><span class="n">my_var</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">4</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">affine_transform</span></div>
+    
+
+<div class="viewcode-block" id="rescale_affine"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.rescale_affine">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">rescale_affine</span><span class="p">(</span><span class="n">small_affine_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimpleITK</span><span class="o">.</span><span class="n">SimpleITK</span><span class="o">.</span><span class="n">Transform</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads affine transformation matrix and scales it by factor.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        small_affine_path (str): </span>
+<span class="sd">        factor (float): </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SimpleITK.SimpleITK.Transform: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">small_affine_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">my_var</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">()))</span>
+    <span class="c1"># Modify translation vector</span>
+    <span class="n">new_val_1</span> <span class="o">=</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">factor</span>
+    <span class="n">new_val_2</span> <span class="o">=</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">*</span> <span class="n">factor</span>
+
+    <span class="n">affine_transform</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">affine_transform</span><span class="o">.</span><span class="n">SetTranslation</span><span class="p">((</span><span class="n">new_val_1</span><span class="p">,</span> <span class="n">new_val_2</span><span class="p">))</span>
+    <span class="n">affine_transform</span><span class="o">.</span><span class="n">SetMatrix</span><span class="p">((</span><span class="n">my_var</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">my_var</span><span class="p">[</span><span class="mi">4</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">affine_transform</span></div>
+
+
+<div class="viewcode-block" id="rescale_warp"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.rescale_warp">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">rescale_warp</span><span class="p">(</span><span class="n">small_warp_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">big_warp_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">small_resolution</span><span class="p">:</span> <span class="n">image_shape</span><span class="p">,</span>
+                 <span class="n">original_resolution</span><span class="p">:</span> <span class="n">image_shape</span><span class="p">,</span>
+                 <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads a displacement field, removes padding, scales it by factor and writes it to a new file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        small_warp_path (str): Source file path.</span>
+<span class="sd">        big_warp_path (str): Target file path.</span>
+<span class="sd">        small_resolution (image_shape): Source resolution without padding</span>
+<span class="sd">        original_resolution (image_shape): Target resolution</span>
+<span class="sd">        factor (float): Scaling factor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">warp_sitk</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">ReadImage</span><span class="p">(</span><span class="n">small_warp_path</span><span class="p">)</span>
+    <span class="n">warp</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetArrayFromImage</span><span class="p">(</span><span class="n">warp_sitk</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">small_resolution</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">small_resolution</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">padding</span> <span class="o">=</span> <span class="p">(</span><span class="n">warp</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">small_resolution</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">//</span><span class="mi">2</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="p">((</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="n">warp_no_pad</span> <span class="o">=</span> <span class="p">(</span><span class="n">warp</span><span class="p">)[</span><span class="n">padding</span><span class="p">:</span><span class="o">-</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span><span class="o">-</span><span class="n">padding</span><span class="p">]</span>
+    <span class="n">big_warp</span> <span class="o">=</span> <span class="n">resize</span><span class="p">(</span><span class="n">warp_no_pad</span><span class="p">,</span> <span class="p">(</span><span class="n">original_resolution</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">original_resolution</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span> <span class="o">*</span> <span class="n">factor</span>
+    <span class="n">big_warp_sitk</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetImageFromArray</span><span class="p">(</span><span class="n">big_warp</span><span class="p">,</span> <span class="n">isVector</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">big_warp_sitk</span><span class="o">.</span><span class="n">SetDirection</span><span class="p">(</span><span class="n">warp_sitk</span><span class="o">.</span><span class="n">GetDirection</span><span class="p">())</span>
+    <span class="n">big_warp_sitk</span><span class="o">.</span><span class="n">SetOrigin</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">sitk</span><span class="o">.</span><span class="n">WriteImage</span><span class="p">(</span><span class="n">big_warp_sitk</span><span class="p">,</span> <span class="n">big_warp_path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="apply_mask"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.apply_mask">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">apply_mask</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies mask to image.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        mask (numpy.ndarray): </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span> <span class="o">*</span> <span class="n">mask</span>
+    <span class="k">return</span> <span class="n">image</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_symmetric_padding"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.get_symmetric_padding">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_symmetric_padding</span><span class="p">(</span><span class="n">img1</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">img2</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">padding_type</span><span class="p">,</span> <span class="n">padding_type</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get padding parameters to make img1 and img2 uniform.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img1 (numpy.ndarray): </span>
+<span class="sd">        img2 (numpy.ndarray): </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[padding_type, padding_type]: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_size</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">img1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">img1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">img2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">img2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="c1"># print(max_size)</span>
+    <span class="n">padding_img1</span> <span class="o">=</span> <span class="n">get_padding_params</span><span class="p">(</span><span class="n">img1</span><span class="p">,</span> <span class="n">max_size</span><span class="p">)</span>
+    <span class="n">padding_img2</span> <span class="o">=</span> <span class="n">get_padding_params</span><span class="p">(</span><span class="n">img2</span><span class="p">,</span> <span class="n">max_size</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">padding_img1</span><span class="p">,</span> <span class="n">padding_img2</span></div>
+
+
+<div class="viewcode-block" id="get_padding_params"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.get_padding_params">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_padding_params</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">shape</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">padding_type</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get padding parameters for img.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (numpy.ndarray):</span>
+<span class="sd">        shape (int): Square shape.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        padding_type: Padding</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pad_x</span> <span class="o">=</span> <span class="n">shape</span> <span class="o">-</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">pad_x_l</span> <span class="o">=</span> <span class="n">pad_x</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">pad_x_u</span> <span class="o">=</span> <span class="n">pad_x</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="k">if</span> <span class="n">pad_x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pad_x_u</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">pad_y</span> <span class="o">=</span> <span class="n">shape</span> <span class="o">-</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">pad_y_l</span> <span class="o">=</span> <span class="n">pad_y</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">pad_y_u</span> <span class="o">=</span> <span class="n">pad_y</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="k">if</span> <span class="n">pad_y</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">pad_y_u</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">pad_y_l</span><span class="p">,</span> <span class="n">pad_y_u</span><span class="p">,</span> <span class="n">pad_x_l</span><span class="p">,</span> <span class="n">pad_x_u</span></div>
+
+
+<div class="viewcode-block" id="denoise_image"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.denoise_image">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">denoise_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                  <span class="n">resolution</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> 
+                  <span class="n">sp</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> 
+                  <span class="n">sr</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> 
+                  <span class="n">maxLevel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Applies mean shift filtering to denoise the input image:</span>
+<span class="sd">        - Image is changed from RGB to HSV.</span>
+<span class="sd">        - Downscaling</span>
+<span class="sd">        - Mean shift filtering.</span>
+<span class="sd">        - Upscaling. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): Input image.</span>
+<span class="sd">        resolution (int, optional): Downscaling applied prior to denoising. Defaults to 512.</span>
+<span class="sd">        sp (int, optional): Spatial window radius. Defaults to 20.</span>
+<span class="sd">        sr (int, optional): Color window radius. Defaults to 20.</span>
+<span class="sd">        maxLevel (int, optional): Maximum recursion level. Defaults to 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Denoised input image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shape</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">img_hsv</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_RGB2HSV</span><span class="p">)</span>
+    <span class="n">img_hsv</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">img_hsv</span><span class="p">,</span> <span class="p">(</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">))</span>
+    <span class="n">img_denoised</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">pyrMeanShiftFiltering</span><span class="p">(</span><span class="n">img_hsv</span><span class="p">,</span> <span class="n">sp</span><span class="p">,</span> <span class="n">sr</span><span class="p">,</span> <span class="n">maxLevel</span><span class="p">)</span>
+    <span class="n">img_denoised</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img_denoised</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_HSV2RGB</span><span class="p">)</span>
+    <span class="n">img_denoised</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">img_denoised</span><span class="p">,</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">img_denoised</span></div>
+
+
+<div class="viewcode-block" id="resample_image_with_gaussian"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.resample_image_with_gaussian">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">resample_image_with_gaussian</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">resolution</span><span class="p">:</span> <span class="n">image_shape</span><span class="p">,</span> <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resamples image to target resolution. Gaussian smoothing is applied beforehand to </span>
+<span class="sd">    help with anti-aliasing effects.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        resolution (image_shape): </span>
+<span class="sd">        sigma (float): Applied to gaussian.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Resampled image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">sigma</span><span class="p">,</span> <span class="n">channel_axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">resize</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">rgb2gray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span> <span class="o">*</span> <span class="mi">255</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span></div>
+
+
+<div class="viewcode-block" id="pad_image"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.pad_image">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">pad_image</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">constant_values</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pads image symmetrically with given padding value.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        padding (padding_type): </span>
+<span class="sd">        constant_values (float, optional): Padding value. Defaults to 0.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Padded image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">dims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dims</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">padded_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">((</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">)),</span> <span class="n">constant_values</span><span class="o">=</span><span class="n">constant_values</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">dims</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">padded_image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">((</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="n">padding</span><span class="p">,</span> <span class="n">padding</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">)),</span> <span class="n">constant_values</span><span class="o">=</span><span class="n">constant_values</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">pass</span> <span class="c1"># Throw error instead</span>
+    <span class="k">return</span> <span class="n">padded_image</span></div>
+
+
+<div class="viewcode-block" id="pad_asym"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.pad_asym">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">pad_asym</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="n">padding_type</span><span class="p">,</span> <span class="n">constant_values</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pads image with given padding information.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        padding (padding_type): </span>
+<span class="sd">        constant_values (float, optional): Padding value. Defaults to 0.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Padded image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>    
+    <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">bottom</span> <span class="o">=</span> <span class="n">padding</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">((</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)),</span> <span class="n">constant_values</span><span class="o">=</span><span class="n">constant_values</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Assume 3 dimensions</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="p">((</span><span class="n">top</span><span class="p">,</span> <span class="n">bottom</span><span class="p">),</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span> <span class="n">constant_values</span><span class="o">=</span><span class="n">constant_values</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span></div>
+
+
+<div class="viewcode-block" id="cropping"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.cropping">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">cropping</span><span class="p">(</span><span class="n">mask</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">crop_value</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">padding_type</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Crops image around given value.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mask (numpy.ndarray): </span>
+<span class="sd">        crop_value (int, optional): Defaults to 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[numpy.ndarray, padding_type]: Cropped image and cropping parameters.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argwhere</span><span class="p">(</span><span class="n">mask</span> <span class="o">==</span> <span class="n">crop_value</span><span class="p">)</span>
+    <span class="n">min_x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">p</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">max_x</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">p</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">min_y</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">p</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">max_y</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">p</span><span class="p">[:,</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">cropped_mask</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">min_x</span><span class="p">:</span><span class="n">max_x</span><span class="p">,</span> <span class="n">min_y</span><span class="p">:</span><span class="n">max_y</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">cropped_mask</span><span class="p">,</span> <span class="p">(</span><span class="n">min_x</span><span class="p">,</span> <span class="n">max_x</span><span class="p">,</span> <span class="n">min_y</span><span class="p">,</span> <span class="n">max_y</span><span class="p">)</span>    </div>
+
+
+<div class="viewcode-block" id="resample_by_factor"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.resample_by_factor">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">resample_by_factor</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resample image by a given factor.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (numpy.ndarray): </span>
+<span class="sd">        factor (float):</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Resampled image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h</span><span class="p">,</span> <span class="n">w</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">img2</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">w</span><span class="o">*</span><span class="n">factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">h</span><span class="o">*</span><span class="n">factor</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">img2</span></div>
+
+
+<span class="c1"># TODO: Fix type for interpolator</span>
+<div class="viewcode-block" id="resample_image_sitk"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.resample_image_sitk">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">resample_image_sitk</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                        <span class="n">scaling_factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+                        <span class="n">ref_image_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                        <span class="n">interpolator</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">sitkLinear</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resample an image by a given factor using SimpleITK functionality..</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        scaling_factor (float): </span>
+<span class="sd">        ref_image_shape (tuple[int, int] | None, optional): Defaults to None.</span>
+<span class="sd">        interpolator (int, optional): _description_. Defaults to sitk.sitkLinear.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Resampled image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">scaling_factor</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">image</span>
+    <span class="k">if</span> <span class="n">ref_image_shape</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">ref_image_shape</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">scaling_factor</span><span class="p">))</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">ScaleTransform</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">scaling_factor</span><span class="p">,</span> <span class="mi">1</span><span class="o">/</span><span class="n">scaling_factor</span><span class="p">))</span>
+    <span class="n">ref_img</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetImageFromArray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ref_image_shape</span><span class="p">))</span>
+    
+    <span class="n">sitk_image</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetImageFromArray</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">resampler</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">ResampleImageFilter</span><span class="p">()</span>
+    <span class="n">resampler</span><span class="o">.</span><span class="n">SetReferenceImage</span><span class="p">(</span><span class="n">ref_img</span><span class="p">)</span>
+    <span class="n">resampler</span><span class="o">.</span><span class="n">SetInterpolator</span><span class="p">(</span><span class="n">interpolator</span><span class="p">)</span>
+    <span class="n">resampler</span><span class="o">.</span><span class="n">SetDefaultPixelValue</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">resampler</span><span class="o">.</span><span class="n">SetTransform</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+    <span class="n">warped_image_sitk</span> <span class="o">=</span> <span class="n">resampler</span><span class="o">.</span><span class="n">Execute</span><span class="p">(</span><span class="n">sitk_image</span><span class="p">)</span>
+    <span class="n">resampled_image_np</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetArrayFromImage</span><span class="p">(</span><span class="n">warped_image_sitk</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">resampled_image_np</span></div>
+    
+    
+<div class="viewcode-block" id="derive_resampling_factor"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.derive_resampling_factor">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">derive_resampling_factor</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                             <span class="n">max_resample_dim</span> <span class="o">=</span> <span class="mi">3500</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Determines the resampling factor necessary for rescaling the </span>
+<span class="sd">    given image to max_resample_dim. If the image&#39;s maximum </span>
+<span class="sd">    resolution is smaller than max_resample_dim, a neutral </span>
+<span class="sd">    scaling factor of 1 will be returned.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray): </span>
+<span class="sd">        max_resample_dim (int, optional): Defaults to 3500.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: resample factor</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_dim</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">max_dim</span> <span class="o">&lt;=</span> <span class="n">max_resample_dim</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    <span class="n">resample_factor</span> <span class="o">=</span> <span class="n">max_resample_dim</span> <span class="o">/</span> <span class="n">max_dim</span>
+    <span class="k">return</span> <span class="n">resample_factor</span></div>
+
+<span class="c1"># TODO: Set return type to displacement field</span>
+<div class="viewcode-block" id="realign_displacement_field"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.realign_displacement_field">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">realign_displacement_field</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimpleITK</span><span class="o">.</span><span class="n">SimpleITK</span><span class="o">.</span><span class="n">CompositeTransform</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads and rotates the rotation field from &quot;NIFTI&quot; to &quot;DICOM&quot; orientation. Needed because Greedy outputs transforms in NIFTI orientation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path (str):</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        SimpleITK.SimpleITK.CompositeTransform:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">displacement_field</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">ReadImage</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">sitk</span><span class="o">.</span><span class="n">sitkVectorFloat64</span><span class="p">)</span>
+    <span class="n">rotated_displ_field</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetArrayFromImage</span><span class="p">(</span><span class="n">displacement_field</span><span class="p">)</span>
+    <span class="n">rotated_displ_field</span> <span class="o">*=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="n">rotated_displ_field_sitk</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetImageFromArray</span><span class="p">(</span><span class="n">rotated_displ_field</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">displ_field</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">rotated_displ_field_sitk</span><span class="p">)</span> 
+    <span class="n">displ_field</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">Cast</span><span class="p">(</span><span class="n">displ_field</span><span class="p">,</span> <span class="n">sitk</span><span class="o">.</span><span class="n">sitkVectorFloat64</span><span class="p">)</span>
+    <span class="n">deformable_transform</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">DisplacementFieldTransform</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">deformable_transform</span><span class="o">.</span><span class="n">SetDisplacementField</span><span class="p">(</span><span class="n">displ_field</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">deformable_transform</span></div>
+
+
+<div class="viewcode-block" id="translation_length"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.translation_length">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">translation_length</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Computes length of translation offset</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        x (float):</span>
+<span class="sd">        y (float):</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">y</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="pad_image_square"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.pad_image_square">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">pad_image_square</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns an image with square shape. Ends of image are padded symmetrically.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (numpy.ndarray): </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_dim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+    <span class="n">padding</span> <span class="o">=</span> <span class="n">get_padding_params</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">max_dim</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pad_asym</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">padding</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_corner_pixels"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.get_corner_pixels">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_corner_pixels</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">x_range</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">y_range</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get pixels from the image corners.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image (numpy.ndarray):</span>
+<span class="sd">        x_range (int): range in x-axis</span>
+<span class="sd">        y_range (int): range in y-axis</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: Flattened array of pixels</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">c_dl</span> <span class="o">=</span> <span class="n">image</span><span class="p">[:</span><span class="n">x_range</span><span class="p">,</span> <span class="p">:</span><span class="n">y_range</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">c_dr</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_range</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">:</span><span class="n">y_range</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">c_ul</span> <span class="o">=</span> <span class="n">image</span><span class="p">[:</span><span class="n">x_range</span><span class="p">,</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_range</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">c_ur</span> <span class="o">=</span> <span class="n">image</span><span class="p">[</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">x_range</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">y_range</span><span class="p">:</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">pxs_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">c_dl</span><span class="p">,</span> <span class="n">c_dr</span><span class="p">,</span> <span class="n">c_ul</span><span class="p">,</span> <span class="n">c_ur</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">pxs_arr</span></div>
+
+
+<div class="viewcode-block" id="scale_image_to_max_dim"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.image.scale_image_to_max_dim">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">scale_image_to_max_dim</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">target_resolution</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Scales an image such that its largest dimension corresponds to target_resolution.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (numpy.ndarray): </span>
+<span class="sd">        target_res (int, optional): Defaults to 640.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">max_res</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">factor</span> <span class="o">=</span> <span class="n">target_resolution</span> <span class="o">/</span> <span class="n">max_res</span>
+    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">wn</span><span class="p">,</span> <span class="n">hn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">w</span><span class="o">*</span><span class="n">factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">h</span><span class="o">*</span><span class="n">factor</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="n">hn</span><span class="p">,</span> <span class="n">wn</span><span class="p">))</span> </div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Maximilian Wess.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

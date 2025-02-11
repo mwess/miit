@@ -6,8 +6,8 @@ def eucl(src: numpy.ndarray, dst: numpy.ndarray) -> float:
     return np.sqrt(np.square(src[:, 0] - dst[:, 0]) + np.square(src[:, 1] - dst[:, 1]))
 
 
-def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame, 
-                            fixed_df: pandas.core.frame.DataFrame) -> pandas.core.frame.DataFrame:
+def compute_distance_for_lm(warped_df: pandas.DataFrame, 
+                            fixed_df: pandas.DataFrame) -> pandas.DataFrame:
     merged_df = warped_df.merge(fixed_df, on='label', suffixes=('_src', '_dst'))
     merged_df.replace([np.inf, -np.inf], np.nan, inplace=True)
     merged_df.dropna(inplace=True)
@@ -17,14 +17,14 @@ def compute_distance_for_lm(warped_df: pandas.core.frame.DataFrame,
     return merged_df
 
 
-def compute_tre(target_lms: pandas.core.frame.DataFrame, 
-                warped_lms: pandas.core.frame.DataFrame, 
+def compute_tre(target_lms: pandas.DataFrame, 
+                warped_lms: pandas.DataFrame, 
                 shape: tuple[int, int]) -> tuple[float, float, float, float]:
     """Compute target registration errors between two pointsets.
 
     Args:
-        target_lms (pandas.core.frame.DataFrame): _description_
-        warped_lms (pandas.core.frame.DataFrame): _description_
+        target_lms (pandas.DataFrame): _description_
+        warped_lms (pandas.DataFrame): _description_
         shape (Tuple[int, int]): _description_
 
     Returns:

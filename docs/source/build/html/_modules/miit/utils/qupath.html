@@ -1,0 +1,343 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>miit.utils.qupath &mdash; MIIT 11/02/2025 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=cd42dcda" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster.custom.css?v=7bc2f056" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster.bundle.min.css?v=37217874" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/micromodal.css?v=d7bf34ee" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/sphinx_rtd_theme.css?v=3234e928" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=eea51470"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../_static/js/hoverxref.js?v=6ff7264e"></script>
+      <script src="../../../_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="../../../_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            MIIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+    
+              <p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">MIIT Python API</a></li>
+</ul>
+
+
+    
+
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">MIIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">miit.utils.qupath</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for miit.utils.qupath</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">geojson</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="o">,</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shapely</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">miit.spatial_data.base_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotation</span><span class="p">,</span> <span class="n">GeoJSONData</span><span class="p">,</span> <span class="n">BaseImage</span>
+
+
+<div class="viewcode-block" id="convert_linestring_to_polygon">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.convert_linestring_to_polygon">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">convert_linestring_to_polygon</span><span class="p">(</span><span class="n">geom</span><span class="p">:</span> <span class="n">shapely</span><span class="o">.</span><span class="n">LineString</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">shapely</span><span class="o">.</span><span class="n">Polygon</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert linestring to polygon.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        geom (shapely.LineString): </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        shapely.Polygon:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">geom</span><span class="o">.</span><span class="n">coords</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">geom</span><span class="o">.</span><span class="n">is_closed</span><span class="p">:</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">coords</span><span class="p">,</span> <span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:]))</span>
+    <span class="k">return</span> <span class="n">shapely</span><span class="o">.</span><span class="n">Polygon</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="fill_geojson_polygon">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.fill_geojson_polygon">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fill_geojson_polygon</span><span class="p">(</span><span class="n">polygon</span><span class="p">:</span> <span class="n">shapely</span><span class="o">.</span><span class="n">Polygon</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project filled polygon onto image template.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        polygon (shapely.Polygon): </span>
+<span class="sd">        img (numpy.ndarray): </span>
+<span class="sd">        color (int, optional): Defaults to 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ext_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">polygon</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">coords</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">fillPoly</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="p">[</span><span class="n">ext_coords</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">polygon</span><span class="o">.</span><span class="n">interiors</span><span class="p">)):</span>
+        <span class="n">int_coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">polygon</span><span class="o">.</span><span class="n">interiors</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">coords</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">fillPoly</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">pts</span><span class="o">=</span><span class="p">[</span><span class="n">int_coords</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">img</span></div>
+
+
+
+<div class="viewcode-block" id="fill_geojson_multipolygon">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.fill_geojson_multipolygon">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fill_geojson_multipolygon</span><span class="p">(</span><span class="n">multipolygon</span><span class="p">:</span> <span class="n">shapely</span><span class="o">.</span><span class="n">MultiPolygon</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Project filled multipolygon onto image template.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        multipolygon (shapely.MultiPolygon): </span>
+<span class="sd">        img (numpy.ndarray): </span>
+<span class="sd">        color (int, optional): Defaults to 1.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">polygon</span> <span class="ow">in</span> <span class="n">multipolygon</span><span class="o">.</span><span class="n">geoms</span><span class="p">:</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">fill_geojson_polygon</span><span class="p">(</span><span class="n">polygon</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">color</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">img</span></div>
+
+
+
+<div class="viewcode-block" id="resolve_naming_conflicts_fun">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.resolve_naming_conflicts_fun">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resolve_naming_conflicts_fun</span><span class="p">(</span><span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+                                  <span class="n">existing_labels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> 
+                                  <span class="n">max_loop_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Helper function for retrieving unique label name.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        label (str): </span>
+<span class="sd">        existing_labels (list[str]): </span>
+<span class="sd">        max_loop_size (int, optional): Defaults to 100000.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">new_label</span> <span class="o">=</span> <span class="n">label</span>
+    <span class="n">counter</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">while</span> <span class="n">new_label</span> <span class="ow">in</span> <span class="n">existing_labels</span> <span class="ow">and</span> <span class="n">counter</span> <span class="o">&lt;</span> <span class="n">max_loop_size</span><span class="p">:</span>
+        <span class="n">new_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">counter</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">new_label</span></div>
+
+
+
+<div class="viewcode-block" id="simple_naming_function">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.simple_naming_function">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">simple_naming_function</span><span class="p">(</span><span class="n">feature</span><span class="p">:</span> <span class="n">geojson</span><span class="o">.</span><span class="n">Feature</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Derive name from geojson feature.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        feature (geojson.Feature):</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">feature</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="s1">&#39;classification&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;feature&#39;</span></div>
+
+
+
+<div class="viewcode-block" id="geojson_to_annotation">
+<a class="viewcode-back" href="../../../api.html#miit.utils.qupath.geojson_to_annotation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">geojson_to_annotation</span><span class="p">(</span><span class="n">geojson_data</span><span class="p">:</span> <span class="n">GeoJSONData</span> <span class="o">|</span> <span class="n">geojson</span><span class="o">.</span><span class="n">FeatureCollection</span> <span class="o">|</span> <span class="n">geojson</span><span class="o">.</span><span class="n">Feature</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">geojson</span><span class="o">.</span><span class="n">Feature</span><span class="p">],</span>
+                  <span class="n">ref_image</span><span class="p">:</span> <span class="n">BaseImage</span> <span class="o">|</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+                  <span class="n">label_fun</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">geojson</span><span class="o">.</span><span class="n">Feature</span><span class="p">],</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                  <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                  <span class="n">skip_non_polygons</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                  <span class="n">resolve_name_conflicts</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                  <span class="n">geometry</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;geometry&#39;</span><span class="p">,</span>
+                  <span class="n">select_object_type</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                  <span class="n">keep_properties</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                  <span class="n">ignore_invalid_geom_types</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                  <span class="n">to_multichannel_annotation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Annotation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Utility function for converting a geojson object to an </span>
+<span class="sd">    annotation. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        geojson_data (GeoJSONData | geojson.feature.FeatureCollection):</span>
+<span class="sd">            Data source.</span>
+<span class="sd">        ref_image (Union[Image, numpy.ndarray]):</span>
+<span class="sd">            Defines the shape of the result annotation.</span>
+<span class="sd">        label_fun (Callable[[geojson.feature.Feature], str], optional):</span>
+<span class="sd">            Optional function for extracting label names from feature objects. </span>
+<span class="sd">            If not supplied, the labels of the annotation are taken from &#39;id&#39;,</span>
+<span class="sd">            otherwise &#39;label_fun&#39; is called.</span>
+<span class="sd">        name (str): Name given to returning annotation. Defaults to &#39;&#39;.</span>
+<span class="sd">        skip_non_polygons (bool):</span>
+<span class="sd">            If False, will try to convert any geom type that is not a polygon, to </span>
+<span class="sd">            a polygon. Defaults to False.</span>
+<span class="sd">        geometry (str):</span>
+<span class="sd">            Which geometry to convert. Can either be &#39;geometry&#39; or &#39;nucleusGeometry&#39;.</span>
+<span class="sd">            Defaults to &#39;geometry&#39;.</span>
+<span class="sd">        select_object_type (list[str], optional):</span>
+<span class="sd">            Chooses which object types to convert based on the object type in feature[&#39;properties&#39;][&#39;objectType&#39;].</span>
+<span class="sd">            If empty or None, converts all object types to annotations. Otherwise, only converts object types </span>
+<span class="sd">            specified in &#39;select_object_type&#39;.</span>
+<span class="sd">        keep_properties (bool):</span>
+<span class="sd">            If True, will return all properties in feature[&#39;properties&#39;] in the Annotation</span>
+<span class="sd">            attribute &#39;meta_information&#39;.</span>
+<span class="sd">        ignore_invalid_geom_types (bool):</span>
+<span class="sd">            If True, geometry types that cannot be converted will simply be ignore. Otherwise,</span>
+<span class="sd">            an exception is thrown.</span>
+<span class="sd">        to_multichannel_annotation (bool):</span>
+<span class="sd">            If True, will compress all converted annotations into a multichannel annotation. This can save memory</span>
+<span class="sd">            and improve runtime, esp. for large images, but only one annotation per pixel is possible. Which</span>
+<span class="sd">            annotation is chosen when multiple annotations occupy the same pixel is undefined. Defaults to False.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Annotation:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_image</span><span class="p">,</span> <span class="n">BaseImage</span><span class="p">):</span>
+        <span class="n">ref_image</span> <span class="o">=</span> <span class="n">ref_image</span><span class="o">.</span><span class="n">data</span>
+    <span class="k">if</span> <span class="n">to_multichannel_annotation</span><span class="p">:</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ref_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">property_collection</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geojson_data</span><span class="p">,</span> <span class="n">GeoJSONData</span><span class="p">):</span>
+        <span class="n">geojson_data</span> <span class="o">=</span> <span class="n">geojson_data</span><span class="o">.</span><span class="n">data</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geojson_data</span><span class="p">,</span> <span class="n">geojson</span><span class="o">.</span><span class="n">Feature</span><span class="p">):</span>
+        <span class="n">geojson_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">geojson_data</span><span class="p">]}</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geojson_data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">geojson_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">geojson_data</span><span class="p">}</span>
+    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">feature</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">geojson_data</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="n">select_object_type</span> <span class="ow">and</span> <span class="n">feature</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">][</span><span class="s1">&#39;objectType&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">select_object_type</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">geom</span> <span class="o">=</span> <span class="n">shapely</span><span class="o">.</span><span class="n">from_geojson</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">feature</span><span class="p">[</span><span class="n">geometry</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="n">geom</span><span class="o">.</span><span class="n">is_empty</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&quot;&quot;Feature of type </span><span class="si">{</span><span class="n">feature</span><span class="p">[</span><span class="n">geometry</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> is empty.&quot;&quot;&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s1">&#39;LineString&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">skip_non_polygons</span><span class="p">:</span>
+            <span class="n">geom</span> <span class="o">=</span> <span class="n">convert_linestring_to_polygon</span><span class="p">(</span><span class="n">geom</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s1">&#39;MultiPolygon&#39;</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ref_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">fill_geojson_multipolygon</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span> <span class="o">==</span> <span class="s1">&#39;Polygon&#39;</span><span class="p">:</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">ref_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">mask</span> <span class="o">=</span> <span class="n">fill_geojson_polygon</span><span class="p">(</span><span class="n">geom</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">idx</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ignore_invalid_geom_types</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Geom type cannot be converted to annotation: </span><span class="si">{</span><span class="n">geom</span><span class="o">.</span><span class="n">geom_type</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">label_fun</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">feature</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">label_fun</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">resolve_name_conflicts</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">to_multichannel_annotation</span><span class="p">:</span>
+                <span class="n">existing_labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">labels</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">existing_labels</span> <span class="o">=</span> <span class="n">labels</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">resolve_naming_conflicts_fun</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">existing_labels</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">to_multichannel_annotation</span><span class="p">:</span>
+            <span class="n">inds</span> <span class="o">=</span> <span class="n">mask</span> <span class="o">==</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">masks</span><span class="p">[</span><span class="n">inds</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">inds</span><span class="p">]</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">masks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+            <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">keep_properties</span><span class="p">:</span>
+            <span class="n">property_collection</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">feature</span><span class="p">[</span><span class="s1">&#39;properties&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">to_multichannel_annotation</span><span class="p">:</span>
+        <span class="n">annotation_mask</span> <span class="o">=</span> <span class="n">masks</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">annotation_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dstack</span><span class="p">(</span><span class="n">masks</span><span class="p">)</span>
+    <span class="n">meta_information</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;properties&#39;</span><span class="p">:</span> <span class="n">property_collection</span><span class="p">}</span> <span class="k">if</span> <span class="n">keep_properties</span> <span class="k">else</span> <span class="p">{}</span>
+    <span class="n">annotation</span> <span class="o">=</span> <span class="n">Annotation</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">annotation_mask</span><span class="p">,</span> 
+                            <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> 
+                            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> 
+                            <span class="n">is_multichannel</span><span class="o">=</span><span class="n">to_multichannel_annotation</span><span class="p">,</span> 
+                            <span class="n">meta_information</span><span class="o">=</span><span class="n">meta_information</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">annotation</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Maximilian Wess.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

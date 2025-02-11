@@ -11,6 +11,7 @@ from greedyfhist.utils.io import read_image, write_to_ometiffile
 from miit.utils.utils import create_if_not_exists
 
 
+# TODO: Add resolution to parsing.
 @dataclass(kw_only=True)
 class OMETIFFAnnotation(Annotation):
     
@@ -57,9 +58,6 @@ class OMETIFFAnnotation(Annotation):
         w_spacing = self.tif_metadata.get('PhysicalSizeX', 1)
         h_spacing = self.tif_metadata.get('PhysicalSizeY', 1)
         return (w_spacing, h_spacing)
-
-    def get_resolution(self):
-        return float(self.tif_metadata['PhysicalSizeX'])
             
     def __to_file(self, path: str):
         if not self.keep_axis_orientation and len(self.data.shape) > 2:

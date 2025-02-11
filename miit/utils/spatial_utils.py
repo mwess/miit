@@ -4,7 +4,7 @@ import pandas
 from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 
 
-def map_counts_to_ref_mat(counts: pandas.core.frame.DataFrame, bmi: BaseSpatialOmics) -> numpy.ndarray:
+def map_counts_to_ref_mat(counts: pandas.DataFrame, bmi: BaseSpatialOmics) -> numpy.ndarray:
     spec_to_ref_map = bmi.get_spec_to_ref_map()
     ref_mat = bmi.ref_mat.data.astype(int)
     count_map = {}

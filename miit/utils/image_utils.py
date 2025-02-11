@@ -7,11 +7,11 @@ def remove_padding(image: numpy.ndarray,
     """Removes padding from image.
 
     Args:
-        image (numpy.ndarray): _description_
+        image (numpy.ndarray): 
         padding (Tuple[int, int, int, int]): 
 
     Returns:
-        numpy.ndarray: _description_
+        numpy.ndarray: 
     """
     left, right, top, bottom = padding
     bottom_idx = -bottom if bottom != 0 else image.shape[0]
@@ -19,7 +19,7 @@ def remove_padding(image: numpy.ndarray,
     return image[top:bottom_idx, left:right_idx]
 
 
-def get_symmetric_padding(img1: numpy.array, img2: numpy.array) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
+def get_symmetric_padding(img1: numpy.ndarray, img2: numpy.ndarray) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
     padding_img1 = get_padding_params(img1, max_size)
     padding_img2 = get_padding_params(img2, max_size)
@@ -30,12 +30,12 @@ def pad_asym(image: numpy.ndarray, padding: tuple[int, int, int, int], constant_
     """Applies padding to image.
 
     Args:
-        image (numpy.ndarray): _description_
+        image (numpy.ndarray): 
         padding (Tuple[int, int, int, int]): padding is organized as top, bottom, left, right
-        constant_values (int, optional): _description_. Defaults to 0.
+        constant_values (int, optional): Defaults to 0.
 
     Returns:
-        numpy.ndarray: _description_
+        numpy.ndarray: 
     """
     left, right, top, bottom = padding
     if len(image.shape) == 2:
@@ -46,7 +46,16 @@ def pad_asym(image: numpy.ndarray, padding: tuple[int, int, int, int], constant_
     return image
 
 
-def get_padding_params(img: numpy.array, shape: int) -> tuple[int, int, int, int]:
+def get_padding_params(img: numpy.ndarray, shape: int) -> tuple[int, int, int, int]:
+    """Computes padding parameters to pad image to given shape.
+
+    Args:
+        img (numpy.ndarray): 
+        shape (int): 
+
+    Returns:
+        tuple[int, int, int, int]: 
+    """
     pad_x = shape - img.shape[0]
     pad_x_l = pad_x // 2
     pad_x_u = pad_x // 2
@@ -60,13 +69,29 @@ def get_padding_params(img: numpy.array, shape: int) -> tuple[int, int, int, int
     return pad_y_l, pad_y_u, pad_x_l, pad_x_u
 
 
-def apply_mask(image: numpy.array, mask: numpy.array) -> numpy.array:
+def apply_mask(image: numpy.ndarray, mask: numpy.ndarray) -> numpy.ndarray:
+    """Applies mask to image
+
+    Args:
+        image (numpy.ndarray): 
+        mask (numpy.ndarray): 
+
+    Returns:
+        numpy.ndarray: 
+    """
     if len(image.shape) == 3:
         mask = np.moveaxis(np.expand_dims(mask, 0), 0, -1)
     return image * mask
 
 
 def write_affine_to_file(mat: numpy.ndarray, path: str):
+    """Writes affine matrix to a text file.
+    
+    Args:
+        mat (numpy.ndarray):
+        path (str):
+        
+    """
     with open(path, 'w') as f:
         output_str = f"""{mat[0,0]} {mat[0,1]} {mat[0,2]}\n{mat[1,0]} {mat[1,1]} {mat[1,2]}\n0.0 0.0 1.0"""
         f.write(output_str)
@@ -74,16 +99,16 @@ def write_affine_to_file(mat: numpy.ndarray, path: str):
 
 def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value: int = 0) -> numpy.ndarray:
     """
+    Pads source image symmetrically to the same shape as target.
 
     Args:
-        source (numpy.ndarray): _description_
-        target (numpy.ndarray): _description_
-        background_value (int, optional): _description_. Defaults to 0.
+        source (numpy.ndarray): 
+        target (numpy.ndarray): 
+        background_value (int, optional): Defaults to 0.
 
     Returns:
-        numpy.ndarray: _description_
+        numpy.ndarray: 
     """
-    # Assumes that 
     x_diff = target.shape[0] - source.shape[0]
     y_diff = target.shape[1] - source.shape[1]
     pad_x_left = x_diff // 2

@@ -1,23 +1,25 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Callable
 
 import greedyfhist, greedyfhist as gfh
 from greedyfhist.options import RegistrationOptions
-from greedyfhist.registration.greedy_f_hist import RegistrationResult, GroupwiseRegResult
+from greedyfhist.registration import RegistrationResult as GFHRegResult, GroupwiseRegResult
 import numpy
 
 from .base_registerer import Registerer, RegistrationResult
 
+
 @dataclass
 class GreedyFHistRegistrationResult(RegistrationResult):
 
-    registration_result: RegistrationResult
+    registration_result: GFHRegResult
 
 
 @dataclass
 class GreedyFHistGroupRegistrationResult(RegistrationResult):
     
     registration_result: GroupwiseRegResult
+
 
 @dataclass
 class GreedyFHistExt(Registerer):
@@ -26,14 +28,14 @@ class GreedyFHistExt(Registerer):
     """
 
     name: ClassVar[str] = 'GreedyFHist'
-    registerer: greedyfhist.registration.greedy_f_hist.GreedyFHist
+    registerer: greedyfhist.registration.GreedyFHist
     
     # TODO: What is the datatype of the return registration
     def register_images(self, 
-                        moving_img: numpy.array, 
-                        fixed_img: numpy.array, 
-                        moving_img_mask: numpy.array | None = None,
-                        fixed_img_mask: numpy.array | None = None,
+                        moving_img: numpy.ndarray, 
+                        fixed_img: numpy.ndarray, 
+                        moving_img_mask: numpy.ndarray | None = None,
+                        fixed_img_mask: numpy.ndarray | None = None,
                         options: RegistrationOptions | None = None) -> GreedyFHistRegistrationResult:
         if options is None:
             options = RegistrationOptions()
@@ -46,20 +48,20 @@ class GreedyFHistExt(Registerer):
         return greedy_result
 
     def transform_pointset(self, 
-                           pointset: numpy.array, 
+                           pointset: numpy.ndarray, 
                            transformation: GreedyFHistRegistrationResult, 
                            do_reverse_transform: bool = False,
-                           **kwargs: dict) -> numpy.array:
+                           **kwargs: dict) -> numpy.ndarray:
         reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration
         transformed_pointset = self.registerer.transform_pointset(pointset, reg_transform.backward_transform)
         return transformed_pointset 
     
     def transform_image(self, 
-                        image: numpy.array, 
+                        image: numpy.ndarray, 
                         transformation: GreedyFHistRegistrationResult, 
-                        interpolation_mode: str, 
+                        interpolat_description_ion_mode: int, 
                         do_reverse_transform: bool = False,
-                        **kwargs: dict) -> numpy.array:
+                        **kwargs: dict) -> numpy.ndarray:
         reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration
         warped_image = self.registerer.transform_image(image, reg_transform.forward_transform, interpolation_mode)
         return warped_image
@@ -68,14 +70,14 @@ class GreedyFHistExt(Registerer):
     def init_registerer(cls, 
                         path_to_greedy: str = '',
                         use_docker_container: bool = False,
-                        segmentation_function: callable | None = None):
+                        segmentation_function: Callable[[numpy.ndarray], numpy.ndarray] | None = None):
         registerer = gfh.registration.GreedyFHist(path_to_greedy=path_to_greedy,
                                                   use_docker_container=use_docker_container,
                                                   segmentation_function=segmentation_function)
         return cls(registerer=registerer)
 
     def groupwise_registration(self,
-                               image_with_mask_list: list[tuple[numpy.array, numpy.array | None]],
+                               image_with_mask_list: list[tuple[numpy.ndarray, numpy.ndarray | None]],
                                options: RegistrationOptions | None = None) -> tuple[list[GreedyFHistRegistrationResult], GreedyFHistGroupRegistrationResult | None]:
         if options is None:
             options = RegistrationOptions()

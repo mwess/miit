@@ -21,8 +21,8 @@ from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 
-# TODO: Refactor this out.
-def get_boundary_box(image: numpy.array, background_value: float = 0) -> tuple[int, int, int, int]:
+# TODO: Refactor this out. This can probably be easily replaced using OpenCV.
+def get_boundary_box(image: numpy.ndarray, background_value: float = 0) -> tuple[int, int, int, int]:
     if len(image.shape) != 2:
         raise Exception(f'Bounding box requires a 2 dimensional array, but has: {len(image.shape)}')
     points = np.argwhere(image != background_value)
@@ -104,6 +104,13 @@ def groupwise_registration(sections: list['Section'],
     and applied to all sections. Per convention, the last section in sections is used as the fixed section.
     
     Another convention: If custom masks are to be used, they need to be supplied in an annotation called tissue_mask.
+    
+    Args:
+        sections (List[Section]):
+        registerer (Registerer):
+
+    Returns:
+        tuple[list[Section], list[RegistrationResult]]
     """
     # TODO: Allow to add options to the registerer.
     # TODO: Not all registerer can do groupwise registration. Find a way to filter those out.
@@ -112,7 +119,7 @@ def groupwise_registration(sections: list['Section'],
     for idx, section in enumerate(sections):
         image = section.reference_image.data
         # mask_annotation = section.segmentation_mask
-        mask_annotation = section.get_annotations_by_names('tissue_mask')
+        mask_annotation = section.get_annotation_by_name('tissue_mask')
         mask = mask_annotation.data if mask_annotation is not None else None
         images_with_mask_list.append((image, mask))
     # Now do groupwise registration.
@@ -126,22 +133,38 @@ def groupwise_registration(sections: list['Section'],
     return warped_sections, transforms
 
 
-def register_to_ref_image(target_image: numpy.array, 
-                          source_image: numpy.array, 
+def register_to_ref_image(target_image: numpy.ndarray | BaseImage, 
+                          source_image: numpy.ndarray | BaseImage, 
                           data: BaseImage | BasePointset,
                           registerer: Registerer = None,
-                          **args) -> tuple[BaseImage | BasePointset, Image]:
+                          reg_opts: dict | None = None,
+                          **args) -> tuple[BaseImage | BasePointset, RegistrationResult, Image]:
     """
-    Finds a registration from source_image (or reference image) to target_image using registerer. 
-    Registration is then applied to data. If registerer is None, will use the OpenCVAffineRegisterer as a default.
-    args is additional options that will be passed to the registerer during registration.
+    Utility function to register some spatial data to a target image space.
+    Registers the source to the target image and applies the transformation to additionally supplied data.
+
+    Args:
+        target_image (numpy.ndarray | BaseImage):
+        source_image (numpy.ndarray | BaseImage):
+        data (BaseImage | BasePointset): Additional data  to transform. 
+        registerer (Registerer, optional): If None, uses the OpenCVAffineRegisterer. Defaults to None.
+        reg_opts (dict | None, optional): Options parsed to the registerer.. Defaults to None.
+
+    Returns:
+        tuple[BaseImage | BasePointset, RegistrationResult, Image]: 
     """
+    if isinstance(target_image, BaseImage):
+        target_image = target_image.data
+    if isinstance(source_image, BaseImage):
+        source_image = source_image.data
     if registerer is None:
         registerer = OpenCVAffineRegisterer()
-    transformation = registerer.register_images(source_image, target_image, **args)
+    if reg_opts is None:
+        reg_opts = {}
+    transformation = registerer.register_images(source_image, target_image, **reg_opts)
     warped_data = data.apply_transform(registerer, transformation)
     warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
-    return warped_data, warped_ref_image
+    return warped_data, transformation, warped_ref_image
 
 
 @dataclass
@@ -185,7 +208,6 @@ class Section:
     annotations: list[BaseImage | BasePointset] = field(default_factory=lambda: [])
     meta_information: dict[Any, Any] | None = None
 
-
     def __post_init__(self):
         self._id = uuid.uuid1()
 
@@ -193,6 +215,11 @@ class Section:
         return self._id
 
     def copy(self) -> 'Section':
+        """Returns a copy of a section.
+
+        Returns:
+            Section:
+        """
         image = self.reference_image.copy()
         config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
@@ -207,6 +234,14 @@ class Section:
         return copied_section
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+        """Applies cropping to each datatype within the section.
+
+        Args:
+            xmin (int):
+            xmax (int):
+            ymin (int):
+            ymax (int):
+        """
         self.reference_image.crop(xmin, xmax, ymin, ymax)
         for annotation in self.annotations:
             annotation.crop(xmin, xmax, ymin, ymax)
@@ -214,10 +249,20 @@ class Section:
             so_data_.crop(xmin, xmax, ymin, ymax)
 
     def crop_by_mask(self, mask: numpy.ndarray):
+        """Crops every datatype within the section based on the mask boundaries.
+
+        Args:
+            mask (numpy.ndarray):
+        """
         xmin, xmax, ymin, ymax = get_boundary_box(mask)
         self.crop(xmin, xmax, ymin, ymax)
 
     def pad(self, padding: tuple[int, int, int, int]):
+        """Applies `padding` to each datatype within a Section.
+
+        Args:
+            padding (tuple[int, int, int, int]):
+        """
         self.reference_image.pad(padding)
         for annotation in self.annotations:
             annotation.pad(padding)
@@ -225,6 +270,12 @@ class Section:
             so_data_.pad(padding)
 
     def resize(self, width: int, height: int):
+        """Applies `resize` to each datatype within a Section.
+
+        Args:
+            width (int): 
+            height (int):
+        """
         w, h = self.reference_image.data[:2]
         ws = w // width
         hs = h // height
@@ -237,6 +288,7 @@ class Section:
         for so_data_ in self.so_data:
             so_data_.resize(width, height)
 
+    # TODO: Implement function
     def rescale(self, scaling_factor: float):
         pass
 
@@ -245,7 +297,16 @@ class Section:
              transformation: RegistrationResult, 
              **kwargs: dict) -> 'Section':
         """Applies transformation to all spatially resolved data in the section object.
+        Registerer and transformation need to be from the same registration algorithm.
+
+        Args:
+            registerer (Registerer):
+            transformation (RegistrationResult):
+
+        Returns:
+            Section: Wapred section.
         """
+
         image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
         annotations_transformed = []
         for annotation in self.annotations:
@@ -312,19 +373,39 @@ class Section:
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
-    def get_annotations_by_names(self, name: str):
+    def get_annotation_by_name(self, name: str) -> BaseImage | None:
+        """Finds an annotation by matching Annotation.name with name.
+        Returns None, if annotation could not be found.
+
+        Args:
+            name (str):
+
+        Returns:
+            BaseImage | None:
+        """
         for annotation in self.annotations:
             if annotation.name == name:
                 return annotation
         return None
     
-    def get_annotation_by_id(self, id_: str):
+    def get_annotation_by_id(self, id_: str) -> BaseImage | None:
+        """Gets annotation by matching Annotation._id with id_.
+        Returns None, if annotation can not be found.
+
+        Args:
+            id_ (str): 
+
+        Returns:
+            BaseImage | None: 
+        """
         for annotation in self.annotations:
             if str(annotation._id) == id_:
                 return annotation
         return None
     
     def print_additional_data_summary(self):
+        """Prints a summary of data.
+        """
         print(get_table_summary_string(self))
             
     @classmethod
@@ -335,11 +416,13 @@ class Section:
 
         Args:
             directory (str): Source directory.
-            base_type_loader (Optional[SpatialBaseDataLoader], optional): Data loader for base imaging types. Defaults to None.
-            so_type_loader (Optional[SpatialOmicsDataLoader], optional): Data loader for spatial omics data types. Defaults to None.
+            base_type_loader (Optional[SpatialBaseDataLoader], optional): Data loader for base imaging types. 
+                If None, uses a default SpatialBaseDataLoader. Defaults to None.
+            so_type_loader (Optional[SpatialOmicsDataLoader], optional): Data loader for spatial omics data types. 
+                If None, uses a default SpatialOmicsDataLoader. Defaults to None.
 
         Returns:
-            Section: _description_
+            Section: 
         """
         if not exists(directory):
             # TODO: Throw custom error message
@@ -383,14 +466,21 @@ class Section:
     def add_molecular_imaging_data(self,
                                    mi: BaseSpatialOmics,
                                    register_to_primary_image=True,
-                                   reference_image: numpy.array = None,
+                                   reference_image: numpy.ndarray = None,
                                    registerer: Registerer | None = None):
         """
         Adds molecular imaging data to section.
         
         If register_to_primary_image is True, registers the molecular imaging data to the primary image.
         reference_image: Needs to be set it molecular imaging data is to be registered to the primary image.
+        
+        Args:
+            mi (BaseSpatialOmics): _description_
+            register_to_primary_image (bool, optional): _description_. Defaults to True.
+            reference_image (numpy.ndarray, optional): _description_. Defaults to None.
+            registerer (Registerer | None, optional): _description_. Defaults to None.
         """
+
         # TODO: Add this function to loading from config!
         if register_to_primary_image:
             warped_mi = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)

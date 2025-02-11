@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>greedyfhist.utils.io &mdash; MIIT 11/02/2025 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/custom.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster.custom.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster.bundle.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-shadow.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-punk.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-noir.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-light.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/tooltipster-sideTip-borderless.min.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/micromodal.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/sphinx_rtd_theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/jquery.js"></script>
+        <script src="../../../_static/underscore.js"></script>
+        <script src="../../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/js/hoverxref.js"></script>
+        <script src="../../../_static/js/tooltipster.bundle.min.js"></script>
+        <script src="../../../_static/js/micromodal.min.js"></script>
+        <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../../index.html" class="icon icon-home"> MIIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+    
+              <p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">MIIT Python API</a></li>
+</ul>
+
+
+    
+
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">MIIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+      <li>greedyfhist.utils.io</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for greedyfhist.utils.io</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Contains io helper functions</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os.path</span><span class="w"> </span><span class="kn">import</span> <span class="n">join</span><span class="p">,</span> <span class="n">exists</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xml.etree.ElementTree</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ET</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="o">,</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyvips</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">SimpleITK</span><span class="o">,</span><span class="w"> </span><span class="nn">SimpleITK</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sitk</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tifffile</span>
+
+
+<div class="viewcode-block" id="create_if_not_exists"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.create_if_not_exists">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">create_if_not_exists</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Creates directory, if it does not exist. Clashes with existing directories result in nothing getting created.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path (str):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="clean_if_exists"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.clean_if_exists">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">clean_if_exists</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove directory, if it exists.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path (str): </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_mat_to_file"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.write_mat_to_file">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">write_mat_to_file</span><span class="p">(</span><span class="n">mat</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Writes 2d affine matrix to file. File format is human readable.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        mat (numpy.ndarray): </span>
+<span class="sd">        fname (str):</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">out_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">out_str</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="derive_output_path"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.derive_output_path">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">derive_output_path</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates a unique output path. If path is already existing,</span>
+<span class="sd">    adds a counter value until a unique path is found.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory (str): target directory</span>
+<span class="sd">        fname (str): target filename</span>
+<span class="sd">        limit (int, optional): Limit number to prevent endless loops. Defaults to 1000.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Target path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">target_path</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">target_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">target_path</span>
+    <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">limit</span><span class="p">):</span>
+        <span class="n">new_target_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">target_path</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">new_target_path</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">new_target_path</span>
+    <span class="k">return</span> <span class="n">target_path</span></div>
+        
+        
+<div class="viewcode-block" id="get_default_metadata"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.get_default_metadata">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_default_metadata</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a dictionary with default metadata for ome.tiff files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;PhysicalSizeX&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;PhysicalSizeXUnit&#39;</span><span class="p">:</span> <span class="s1">&#39;px&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;PhysicalSizeY&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="s1">&#39;PhysicalSizeYUnit&#39;</span><span class="p">:</span> <span class="s1">&#39;px&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Interleaved&#39;</span><span class="p">:</span> <span class="s1">&#39;true&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;channels&#39;</span><span class="p">:</span> <span class="p">[],</span>
+        <span class="s1">&#39;tiff_data&#39;</span><span class="p">:</span> <span class="p">[]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">metadata</span></div>
+
+
+<div class="viewcode-block" id="write_to_ometiffile"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.write_to_ometiffile">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">write_to_ometiffile</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+                     <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+                     <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+                     <span class="n">is_annotation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                     <span class="n">tile</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                     <span class="n">tile_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
+                     <span class="n">pyramid</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                     <span class="n">bigtiff</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                     <span class="n">skip_channel</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                     <span class="n">skip_tiffdata</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Writes an image as an ometif file. If the image to store was </span>
+<span class="sd">    originally extracted as an ome.tif, the metadata from the </span>
+<span class="sd">    source ome.tif can be passed as well. For multichannel annotations,</span>
+<span class="sd">    the format C x W x H is expected, otherwise W x H x C, or W x H.  </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (numpy.ndarray): Image to be stored. </span>
+<span class="sd">        path (str): Output path.</span>
+<span class="sd">        metadata (Dict): Contains metadata for ome.tif. Only used if</span>
+<span class="sd">                         images original source was also tif. If None,</span>
+<span class="sd">                         a simple default dict is used.</span>
+<span class="sd">        is_annotation (bool): If True, assumes that image is C x W x H.</span>
+<span class="sd">                              Otherwise assumes, W x H x C. </span>
+<span class="sd">        tile (bool): Use tiling. Defaults to True.</span>
+<span class="sd">        tile_size(int): Size of tile. Defaults to 512.</span>
+<span class="sd">        pyramid (bool): Build pyramidical. Defaults to True.</span>
+<span class="sd">        bigtiff (bool): Stores image as bigtiff. Experimental, should not be used.</span>
+<span class="sd">        skip_channel (bool): Skips channel information, if set to True. Defaults to False.</span>
+<span class="sd">        skip_tiffdata (bool): SKips tiff_data attribute in metadata if set to True. Defaults to False.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;PhysicalSizeX&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;PhysicalSizeXUnit&#39;</span><span class="p">:</span> <span class="s1">&#39;px&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;PhysicalSizeY&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s1">&#39;PhysicalSizeYUnit&#39;</span><span class="p">:</span> <span class="s1">&#39;px&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;Interleaved&#39;</span><span class="p">:</span> <span class="s1">&#39;true&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;channels&#39;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s1">&#39;tiff_data&#39;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+    <span class="k">if</span> <span class="n">is_annotation</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;Interleaved&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;false&#39;</span>
+    <span class="n">ns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ns0&#39;</span><span class="p">:</span> <span class="s1">&#39;http://www.openmicroscopy.org/Schemas/OME/2016-06&#39;</span><span class="p">}</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.ome.tif&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.ome.tiff&#39;</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">skip_tiffdata</span> <span class="ow">and</span> <span class="s1">&#39;tiff_data&#39;</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">target_fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">tiff_data</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;tiff_data&#39;</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">uuid_node</span> <span class="ow">in</span> <span class="n">tiff_data</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;ns0:UUID&#39;</span><span class="p">,</span> <span class="n">ns</span><span class="p">):</span>
+                <span class="n">uuid_node</span><span class="o">.</span><span class="n">attrib</span><span class="p">[</span><span class="s1">&#39;FileName&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_fname</span>
+    <span class="c1"># Taken from https://forum.image.sc/t/writing-qupath-bio-formats-compatible-pyramidal-image-with-libvips/51223/6</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span>
+    <span class="k">if</span> <span class="n">is_annotation</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">c</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">c</span>
+    <span class="n">img_vips</span> <span class="o">=</span> <span class="n">pyvips</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">new_from_array</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
+    <span class="n">xml_string</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<span class="s2">    &lt;OME xmlns=&quot;http://www.openmicroscopy.org/Schemas/OME/2016-06&quot;</span>
+<span class="s2">        xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span>
+<span class="s2">        xsi:schemaLocation=&quot;http://www.openmicroscopy.org/Schemas/OME/2016-06 http://www.openmicroscopy.org/Schemas/OME/2016-06/ome.xsd&quot;&gt;</span>
+<span class="s2">        &lt;Image ID=&quot;Image:0&quot;&gt;</span>
+<span class="s2">            &lt;!-- Minimum required fields about image dimensions --&gt;</span>
+<span class="s2">            &lt;Pixels DimensionOrder=&quot;XYCZT&quot;</span>
+<span class="s2">                    ID=&quot;Pixels:0&quot;</span>
+<span class="s2">                    PhysicalSizeX=&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeX&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    PhysicalSizeXUnit=&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeXUnit&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    PhysicalSizeY=&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeY&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    PhysicalSizeYUnit=&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeYUnit&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    Interleaved=&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Interleaved&#39;</span><span class="p">,</span><span class="w"> </span><span class="kc">True</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    SizeC=&quot;</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    SizeT=&quot;1&quot;</span>
+<span class="s2">                    SizeX=&quot;</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    SizeY=&quot;</span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="s2">                    SizeZ=&quot;1&quot;</span>
+<span class="s2">                    Type=&quot;uint8&quot;&gt;</span>
+<span class="s2">            &lt;/Pixels&gt;</span>
+<span class="s2">        &lt;/Image&gt;</span>
+<span class="s2">        &lt;StructuredAnnotations&gt;</span>
+<span class="s2">		&lt;MapAnnotation ID=&quot;Annotation:Resolution:0&quot; Namespace=&quot;openmicroscopy.org/PyramidResolution&quot;&gt;&lt;Value/&gt;&lt;/MapAnnotation&gt;&lt;/StructuredAnnotations&gt;</span>
+<span class="s2">    &lt;/OME&gt;&quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">xml_string</span><span class="p">)</span>
+    <span class="n">ns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ns0&#39;</span><span class="p">:</span> <span class="s1">&#39;http://www.openmicroscopy.org/Schemas/OME/2016-06&#39;</span><span class="p">}</span>
+    <span class="n">elem</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;*/ns0:Pixels&#39;</span><span class="p">,</span> <span class="n">ns</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_channel</span><span class="p">:</span>
+        <span class="n">channels</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;channels&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">for</span> <span class="n">channel_</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+            <span class="n">elem</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">channel_</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">skip_tiffdata</span><span class="p">:</span>
+        <span class="n">tiff_data</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tiff_data&#39;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">for</span> <span class="n">tiff_data_</span> <span class="ow">in</span> <span class="n">tiff_data</span><span class="p">:</span>
+            <span class="n">elem</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tiff_data_</span><span class="p">)</span>
+    <span class="n">ome_metadata_xml_string</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;unicode&#39;</span><span class="p">)</span>
+    <span class="n">img_vips</span><span class="o">.</span><span class="n">set_type</span><span class="p">(</span><span class="n">pyvips</span><span class="o">.</span><span class="n">GValue</span><span class="o">.</span><span class="n">gint_type</span><span class="p">,</span> <span class="s2">&quot;page-height&quot;</span><span class="p">,</span> <span class="n">img_vips</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+    <span class="n">img_vips</span><span class="o">.</span><span class="n">set_type</span><span class="p">(</span><span class="n">pyvips</span><span class="o">.</span><span class="n">GValue</span><span class="o">.</span><span class="n">gstr_type</span><span class="p">,</span> <span class="s2">&quot;image-description&quot;</span><span class="p">,</span> <span class="n">ome_metadata_xml_string</span><span class="p">)</span>
+    <span class="n">img_vips</span><span class="o">.</span><span class="n">tiffsave</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">tile</span><span class="o">=</span><span class="n">tile</span><span class="p">,</span> <span class="n">tile_width</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">tile_height</span><span class="o">=</span><span class="n">tile_size</span><span class="p">,</span> <span class="n">pyramid</span><span class="o">=</span><span class="n">pyramid</span><span class="p">,</span> <span class="n">bigtiff</span><span class="o">=</span><span class="n">bigtiff</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="is_tiff_file"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.is_tiff_file">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">is_tiff_file</span><span class="p">(</span><span class="n">suffix</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns True, if file suffix matches tif file ending.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        suffix (str): File suffix. Should contain a &#39;.&#39; in the beginning.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool:</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;.tif&#39;</span><span class="p">,</span> <span class="s1">&#39;.tiff&#39;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="read_image"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.read_image">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">read_image</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">is_annotation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reads an image. Tries to iterate through different file readers until something that works is found. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        path (str): </span>
+<span class="sd">        is_annotation (bool, optional): If set to true, axis are swapped at after loading image. Defaults to False.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        numpy.ndarray | Optional[dict]: Image and additional metadata.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">suffix</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">path</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">is_tiff_file</span><span class="p">(</span><span class="n">suffix</span><span class="p">):</span>
+        <span class="n">tif</span> <span class="o">=</span> <span class="n">tifffile</span><span class="o">.</span><span class="n">TiffFile</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">tif</span><span class="o">.</span><span class="n">asarray</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">tif</span><span class="o">.</span><span class="n">ome_metadata</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">get_metadata_from_tif</span><span class="p">(</span><span class="n">tif</span><span class="o">.</span><span class="n">ome_metadata</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">pyvips</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">get_suffixes</span><span class="p">():</span>
+        <span class="n">img_vips</span> <span class="o">=</span> <span class="n">pyvips</span><span class="o">.</span><span class="n">Image</span><span class="o">.</span><span class="n">new_from_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">img_vips</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">image_description</span> <span class="o">=</span> <span class="n">img_vips</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;image-description&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_tiff_file</span><span class="p">(</span><span class="n">suffix</span><span class="p">):</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">get_metadata_from_tif</span><span class="p">(</span><span class="n">image_description</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.nii.gz&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.nii&#39;</span><span class="p">):</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">sitk</span><span class="o">.</span><span class="n">GetArrayFromImage</span><span class="p">(</span><span class="n">sitk</span><span class="o">.</span><span class="n">ReadImage</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">is_annotation</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">img</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">moveaxis</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">img</span><span class="p">,</span> <span class="n">metadata</span></div>
+
+
+<div class="viewcode-block" id="get_metadata_from_tif"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.get_metadata_from_tif">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">get_metadata_from_tif</span><span class="p">(</span><span class="n">xml_string</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Extracts metadata from tiffile.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        xml_string (str): Tif metadata xml as a string.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with extracted metadata.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">xml_string</span><span class="p">)</span>
+    <span class="n">ns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ns0&#39;</span><span class="p">:</span> <span class="s1">&#39;http://www.openmicroscopy.org/Schemas/OME/2016-06&#39;</span><span class="p">}</span>
+    <span class="n">elem</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;*/ns0:Pixels&#39;</span><span class="p">,</span> <span class="n">ns</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">elem</span><span class="o">.</span><span class="n">attrib</span>
+    <span class="n">channels</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;**/ns0:Channel&#39;</span><span class="p">,</span> <span class="n">ns</span><span class="p">)</span>
+    <span class="n">tiff_data</span> <span class="o">=</span> <span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s1">&#39;**/ns0:TiffData&#39;</span><span class="p">,</span> <span class="n">ns</span><span class="p">)</span>
+    <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;channels&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">channels</span>
+    <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;tiff_data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tiff_data</span>
+    <span class="k">if</span> <span class="s1">&#39;PhysicalSizeX&#39;</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeX&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeX&#39;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="s1">&#39;PhysicalSizeY&#39;</span> <span class="ow">in</span> <span class="n">metadata</span><span class="p">:</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeY&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;PhysicalSizeY&#39;</span><span class="p">])</span>
+    <span class="k">del</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;SizeX&#39;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;SizeY&#39;</span><span class="p">]</span>
+    <span class="k">del</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;SizeC&#39;</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">metadata</span></div>
+
+
+<div class="viewcode-block" id="affine_transform_to_file"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.affine_transform_to_file">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">affine_transform_to_file</span><span class="p">(</span><span class="n">transform</span><span class="p">:</span> <span class="n">SimpleITK</span><span class="o">.</span><span class="n">SimpleITK</span><span class="o">.</span><span class="n">AffineTransform</span><span class="p">,</span> <span class="n">fpath</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save affube transform to file.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        transform (SimpleITK.SimpleITK.AffineTransform): Affine transform.</span>
+<span class="sd">        fpath (str): Target path.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mat</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">GetMatrix</span><span class="p">()</span>
+    <span class="n">trans</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">GetTranslation</span><span class="p">()</span>
+    <span class="n">mat_str</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">trans</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">mat</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="si">}</span><span class="s1"> </span><span class="si">{</span><span class="n">trans</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="s1">0 0 1&#39;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">mat_str</span><span class="p">)</span></div>
+        
+        
+<div class="viewcode-block" id="derive_subdir"><a class="viewcode-back" href="../../../api.html#greedyfhist.utils.io.derive_subdir">[docs]</a><span class="k">def</span><span class="w"> </span><span class="nf">derive_subdir</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Derives a unique subdirectory. Counts upwards until a new directory is found.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        directory (_type_): </span>
+<span class="sd">        limit (int, optional): Maximum subdir count. Defaults to 1000.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple[str, int]: Subdir and final count.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">subdir_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">limit</span><span class="p">):</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">directory</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">subdir_num</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">exists</span><span class="p">(</span><span class="n">subdir</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">subdir</span><span class="p">,</span> <span class="n">subdir_num</span>
+    <span class="c1"># TODO: Do better error handling here, but who has 1000 sections to register, really?!</span>
+    <span class="k">return</span> <span class="n">subdir</span><span class="p">,</span> <span class="n">subdir_num</span></div>
+        
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Maximilian Wess.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

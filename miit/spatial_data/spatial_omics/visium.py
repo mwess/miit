@@ -1,3 +1,6 @@
+"""
+Module that handles Visium data.
+"""
 from dataclasses import dataclass, field
 import json
 import math
@@ -8,6 +11,7 @@ from typing import Any, ClassVar
 import uuid
 
 import cv2
+import h5py
 import numpy, numpy as np
 import pandas, pandas as pd
 
@@ -16,50 +20,130 @@ from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
 from miit.registerers.base_registerer import Registerer
 
 
-def merge_dicts(dict1: dict, dict2: dict) -> dict:
-    new_dict = {}
-    for key in dict1:
-        if dict1[key] in dict2:
-            new_dict[key] = dict2[dict1[key]]
-    return new_dict
+def compose_dicts(dict1: dict, dict2: dict) -> dict:
+    """Composes two dictionaries. If a key is only present in one of the two dictionaries, it
+    will be skipped.
+
+    Args:
+        dict1 (dict): 
+        dict2 (dict):
+
+    Returns:
+        dict: Composed dictionaries.
+    
+    """
+    return {k: dict2.get(v) for k, v in dict1.items() if v in dict2}
 
 
-def convert_table_to_mat(table: pandas.core.frame.DataFrame,
+# TODO: Add example for row_features.
+def load_visium_data_matrix(path: str,
+                            row_feature: list[str] | str | None = None) -> pandas.DataFrame:
+    """ Reads Visium data from SpaceRanger output h5 file and convert to a pandas DataFrane. The dataframe
+    has the shape (feature, barcode).
+
+    Args:
+        path (str): Path to h5 file.
+        row_feature: Feature name to name rows. If None, features are enumerate. If row_feature
+                     is a list, features are joined by ' - '.
+    
+    Returns:
+        pandas.DataFrame: Visium data. 
+    """
+    f = h5py.File(path, 'r')
+    indptr = f['matrix']['indptr'][:]
+    indices = f['matrix']['indices'][:]
+
+    ys = np.array(range(indptr.shape[0]-1))
+    indptr_diffs = indptr[1:] - indptr[:-1]
+    y_inds = np.repeat(ys, indptr_diffs)
+
+    mat = np.zeros(f['matrix']['shape'][:2])
+    data = f['matrix']['data'][:]
+    mat[indices, y_inds] = data
+
+    # Get barcodes
+    barcodes = [x.decode('utf-8') for x in f['matrix']['barcodes'][:]]
+
+    # Get row names
+    if row_feature is None:
+        row_names = list(range(mat.shape[0]))
+    elif isinstance(row_feature, str):
+        row_names = [x.decode('utf-8') for x in f['matrix']['features'][row_feature][:]]
+    elif isinstance(row_feature, list):
+        r_feat_list = []
+        for row_feature_ in row_feature:
+            row_names_ = [x.decode('utf-8') for x in f['matrix']['features'][row_feature_][:]]
+            r_feat_list.append(row_names_)
+        row_names = [' - '.join(names) for names in zip(*r_feat_list)]
+
+    df = pd.DataFrame(mat, columns=barcodes, index=row_names)
+    return df
+
+
+def convert_table_to_mat(measurement_df: pandas.DataFrame,
                          visium: 'Visium',
                          col: Any) -> numpy.ndarray:
-    """
-    Utility function that uses a visium object to convert integrated data
+    """Utility function that uses a visium object to convert integrated data
     from a dataframe format to a matrix format by projecting onto the
     reference matrix.
+
+    Args:
+        measurement_df (pandas.DataFrame): Table containing measurements.
+        visium (Visium): 
+        col (Any): Column in measurement_df.
+
+    Returns:
+        numpy.ndarray: 
     """
-    return get_measurement_matrix_sep(table, 
+    return fill_measurement_matrix(measurement_df, 
                                       visium.ref_mat.data,
                                       visium.table.data,
                                       col)
     
 
-def get_measurement_matrix_sep(measurement_df: pandas.core.frame.DataFrame, 
-                               ref_mat: numpy.ndarray, 
-                               st_table: pandas.core.frame.DataFrame, 
-                               col: Any) -> numpy.ndarray:
+def fill_measurement_matrix(measurement_df: pandas.DataFrame, 
+                            ref_mat: numpy.ndarray, 
+                            st_table: pandas.DataFrame, 
+                            col: Any) -> numpy.ndarray:
+    """Fill the layout defined by ref_mat with values from ST data. 
+
+    Args:
+        measurement_df (pandas.DataFrame): 
+        ref_mat (numpy.ndarray): 
+        st_table (pandas.DataFrame): 
+        col (Any): 
+
+    Returns:
+        numpy.ndarray: 
+    """
     local_idx_measurement_dict = get_measurement_dict(measurement_df, col)
-    intern_idx_local_idx_dict = {}
-    for idx, row in st_table.iterrows():
-        intern_idx_local_idx_dict[int(row['int_idx'])] = idx
-    merged_dict = merge_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
-    indexer = np.array([merged_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+    intern_idx_local_idx_dict = {int(row['int_idx']): idx for idx, row in st_table.iterrows()}
+    comp_dict = compose_dicts(intern_idx_local_idx_dict, local_idx_measurement_dict)
+    indexer = np.array([comp_dict.get(i, 0) for i in range(ref_mat.min(), ref_mat.max() + 1)])
     measurement_mat = indexer[(ref_mat - ref_mat.min())]
     return measurement_mat
 
 
-def get_measurement_dict(df: pandas.core.frame.DataFrame, col1: Any) -> dict:
-    dct = {}
-    for idx, row in df.iterrows():
-        dct[idx] = row[col1]
-    return dct
+def get_measurement_dict(df: pandas.DataFrame, key_col: Any) -> dict:
+    """Converts a dataframe to a dicionary.
+    
+    Args:
+        df (pandas.DataFrame): Source dataframe.
+        key_col (Any): Column to use as an index for the dataframe.
+    """
+    return {idx: row[key_col] for idx, row in df.iterrows()}
 
 
 def get_scalefactor(scalefactors: dict, image_scale: str) -> float:
+    """Get scalefactors from ST data.
+
+    Args:
+        scalefactors (dict): 
+        image_scale (str): 
+
+    Returns:
+        float: 
+    """
     # 1 corresponds to ogirinal image size.
     scalefactor = 1
     if image_scale == 'lowres':
@@ -69,9 +153,20 @@ def get_scalefactor(scalefactors: dict, image_scale: str) -> float:
     return scalefactor
     
 
-def scale_tissue_positions(tissue_positions: pandas.core.frame.DataFrame,
+def scale_tissue_positions(tissue_positions: pandas.DataFrame,
                            scalefactors: dict,
-                           image_scale: str) -> pandas.core.frame.DataFrame:
+                           image_scale: str) -> pandas.DataFrame:
+    """
+    Scales tissue position according to new scale.
+    
+    Args:
+        tissue_positions (pandas.DataFrame):
+        scale_factors (dict):
+        image_scale (str): Key for scale_factors.
+        
+    Returns:
+        pandas.DataFrame: 
+    """
     scale = 1
     if image_scale == 'lowres':
         scale = scalefactors['tissue_lowres_scalef']
@@ -102,7 +197,7 @@ class Visium(BaseSpatialOmics):
         self._id = uuid.uuid1()
     
     def __init_ref_mat(self):
-        self.build_ref_mat()
+        self._build_ref_mat()
 
     @property
     def ref_mat(self):
@@ -193,7 +288,7 @@ class Visium(BaseSpatialOmics):
         return obj
         
 
-    def build_ref_mat(self):
+    def _build_ref_mat(self):
         scalefactor = self.config['scalefactor']
         spot_diameter = int(round(self.scale_factors['spot_diameter_fullres'] * scalefactor))
         spot_radius = spot_diameter//2
@@ -306,11 +401,17 @@ class Visium(BaseSpatialOmics):
                     directory: str,
                     image_scale: str = 'hires',
                     fullres_image_path: str = None,
-                    config: dict =None):
-        """
-        Initiates Visium10X from spaceranger output directory.
-        
-        directory: output directory of spaceranger, typically named out.
+                    config: dict =None) -> 'Visium':
+        """Initiates Visium10X from spaceranger output directory.
+
+        Args:
+            directory (str): output directory of spaceranger, typically named out.
+            image_scale (str, optional): Image scale used to st spots. Defaults to 'hires'.
+            fullres_image_path (str, optional): Path to image if 'fullres' image scale is used.. Defaults to None.
+            config (dict, optional): _description_. Defaults to None.
+
+        Returns:
+            Visium: _description_
         """
         if not exists(directory):
             # Throw nice custom exception here.
@@ -329,20 +430,22 @@ class Visium(BaseSpatialOmics):
                                            image_scale,
                                            config)
     
+    # TODO: Check that it works with other version of ST.
     @classmethod
     def from_spcrng_files(cls,
                           path_to_scalefactors: str,
                           path_to_tissue_positions: str,
                           path_to_image: str,
                           image_scale: str = 'hires',
-                          config: dict = None):
+                          config: dict = None) -> 'Visium':
         """
         Loads Visium10X object from spaceranger output.
         
-        path_to_scalefactors:
-        path_to_tissue_positions:
-        path_to_image:
-        image_scale: One of 'lowres', 'highres', 'fullres'. Default is 'highres'. 
+        Args:
+            path_to_scalefactors (str):
+            path_to_tissue_positions (str):
+            path_to_image (str):
+            image_scale (str): One of 'lowres', 'highres', 'fullres'. Default is 'highres'. 
         """
         # Select right scaling from scalefactors based on the supplied image.
         if image_scale not in ['lowres', 'hires', 'fullres']:
@@ -366,8 +469,3 @@ class Visium(BaseSpatialOmics):
         config['image_scale'] = image_scale
         config['scalefactor'] = get_scalefactor(scalefactors, image_scale)
         return cls(image, tissue_positions, scalefactors, config=config)
-        
-
-    def apply_tissue_mask(self, ref_mat: Annotation):
-        if self.tissue_mask is not None:
-            ref_mat.data *= self.tissue_mask

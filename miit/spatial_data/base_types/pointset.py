@@ -12,12 +12,13 @@ import pandas, pandas as pd
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_types.base_imaging import BasePointset
 from miit.utils.utils import create_if_not_exists
+from miit.utils.distance_unit import DUnit
 
 
 @dataclass(kw_only=True)
 class Pointset(BasePointset):
 
-    data: pandas.core.frame.DataFrame
+    data: pandas.DataFrame
     _id: uuid.UUID = field(init=False)
     name: str = ''
     x_axis: Any = 'x'
@@ -41,7 +42,8 @@ class Pointset(BasePointset):
                         x_axis=self.x_axis,
                         y_axis=self.y_axis,
                         index_col=self.index_col,
-                        header=self.header)
+                        header=self.header,
+                        resolution=self.resolution)
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data[self.x_axis] = self.data[self.x_axis] - ymin
@@ -51,10 +53,18 @@ class Pointset(BasePointset):
         # Remember to convert new dimensions to scale.
         self.data[self.x_axis] = self.data[self.x_axis] * width
         self.data[self.y_axis] = self.data[self.y_axis] * height
+        rate_w = 1 / width
+        rate_h = 1 / height
+        self.scale_resolution((rate_w, rate_h))
 
-    def rescale(self, scaling_factor: float):
-        self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor
-        self.data[self.y_axis] = self.data[self.y_axis] * scaling_factor
+    def rescale(self, scaling_factor: float | tuple[float, float]):
+        if isinstance(scaling_factor, float):
+            scaling_factor = (scaling_factor, scaling_factor)
+        self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor[0]
+        self.data[self.y_axis] = self.data[self.y_axis] * scaling_factor[1]
+        rate_w = 1 / scaling_factor[0]
+        rate_h = 1 / scaling_factor[1]
+        self.scale_resolution((rate_w, rate_h))
 
     def pad(self, padding: tuple[int, int, int, int]):
         left, right, top, bottom = padding
@@ -70,6 +80,7 @@ class Pointset(BasePointset):
             self.data.y = self.data.y + 2 * (center_y - self.data.y)
         else:
             pass
+        self.resolution = self.resolution[::-1]
 
     def copy(self):
         return Pointset(data=self.data.copy(),
@@ -77,9 +88,10 @@ class Pointset(BasePointset):
                         x_axis=self.x_axis,
                         y_axis=self.y_axis,
                         index_col=self.index_col,
-                        header=self.header)
+                        header=self.header,
+                        resolution=self.resolution)
 
-    def to_numpy(self) -> numpy.array:
+    def to_numpy(self) -> numpy.ndarray:
         return self.data[[self.x_axis, self.y_axis]].to_numpy()
 
     @staticmethod
@@ -100,7 +112,11 @@ class Pointset(BasePointset):
             'index_col': self.index_col,
             'x_axis': self.x_axis,
             'y_axis': self.y_axis,
-            'id': str(self._id)
+            'id': str(self._id),
+            'resolution': {
+                'width': self.resolution[0].to_json(),
+                'height': self.resolution[1].to_json()
+            }            
         }
         with open(join(path, 'attributes.json'), 'w') as f:
             json.dump(attributes, f)
@@ -117,12 +133,16 @@ class Pointset(BasePointset):
         name = attributes['name']
         id_ = uuid.UUID(attributes['id'])
         df = pd.read_csv(join(path, 'pointset.csv'), header=header, index_col=index_col)
+        resolution = attributes['resolution']
+        res_w = DUnit.from_dict(resolution['width'])
+        res_h = DUnit.from_dict(resolution['height'])        
         ps = cls(data=df,
                  name=name,
                  header=header,
                  index_col=index_col,
                  x_axis=x_axis,
-                 y_axis=y_axis)
+                 y_axis=y_axis,
+                 resolution=(res_w, res_h))
         ps._id = id_
         return ps
 

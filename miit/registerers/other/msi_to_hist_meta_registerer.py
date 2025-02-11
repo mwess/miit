@@ -1,5 +1,3 @@
-from typing import Any
-
 from dataclasses import dataclass
 
 import numpy, numpy as np
@@ -20,7 +18,9 @@ class MSItoHistMetaRegistererResult(RegistrationResult):
 @dataclass
 class MSItoHistMetaRegisterer(Registerer):
     """Registerer for MSI data with Histology. 
-
+    
+    This registerer works as meta registerer. Mostly contains preprocessing methods for msi and histology data.
+    An additional registration algorithm needs to be provided.
     """
 
     name = 'MSItoHistMetaRegisterer'
@@ -82,7 +82,7 @@ class MSItoHistMetaRegisterer(Registerer):
     
 
     def transform_pointset(self,
-                           pointset: numpy.array,
+                           pointset: numpy.ndarray,
                            transformation: MSItoHistMetaRegistererResult) -> numpy.ndarray:
         # Verify this function.
         left, right, top, bottom = transformation.processing_dict['mov_sym_pad']

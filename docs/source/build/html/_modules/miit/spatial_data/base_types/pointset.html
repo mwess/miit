@@ -1,0 +1,303 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>miit.spatial_data.base_types.pointset &mdash; MIIT 11/02/2025 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=cd42dcda" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster.custom.css?v=7bc2f056" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster.bundle.min.css?v=37217874" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster-sideTip-shadow.min.css?v=6227e517" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster-sideTip-punk.min.css?v=94669e23" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster-sideTip-noir.min.css?v=21a39f42" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster-sideTip-light.min.css?v=a18b2449" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/tooltipster-sideTip-borderless.min.css?v=dbff53e4" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/micromodal.css?v=d7bf34ee" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/sphinx_rtd_theme.css?v=3234e928" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=eea51470"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../../../_static/js/hoverxref.js?v=6ff7264e"></script>
+      <script src="../../../../_static/js/tooltipster.bundle.min.js?v=18bf091b"></script>
+      <script src="../../../../_static/js/micromodal.min.js?v=04d6302d"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            MIIT
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+    
+              <p class="caption" role="heading"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">MIIT Python API</a></li>
+</ul>
+
+
+    
+
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">MIIT</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">miit.spatial_data.base_types.pointset</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for miit.spatial_data.base_types.pointset</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">os.path</span><span class="w"> </span><span class="kn">import</span> <span class="n">join</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="o">,</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="o">,</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">miit.registerers.base_registerer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Registerer</span><span class="p">,</span> <span class="n">RegistrationResult</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">miit.spatial_data.base_types.base_imaging</span><span class="w"> </span><span class="kn">import</span> <span class="n">BasePointset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">miit.utils.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_if_not_exists</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">miit.utils.distance_unit</span><span class="w"> </span><span class="kn">import</span> <span class="n">DUnit</span>
+
+
+<div class="viewcode-block" id="Pointset">
+<a class="viewcode-back" href="../../../../api.html#miit.spatial_data.base_types.pointset.Pointset">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Pointset</span><span class="p">(</span><span class="n">BasePointset</span><span class="p">):</span>
+
+    <span class="n">data</span><span class="p">:</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="n">_id</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="n">x_axis</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;x&#39;</span>
+    <span class="n">y_axis</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span>
+    <span class="n">index_col</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">header</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s1">&#39;infer&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid1</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">registerer</span><span class="p">:</span> <span class="n">Registerer</span><span class="p">,</span> <span class="n">transformation</span><span class="p">:</span> <span class="n">RegistrationResult</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">warped_pc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">pc_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">coordinates_transformed</span> <span class="o">=</span> <span class="n">registerer</span><span class="o">.</span><span class="n">transform_pointset</span><span class="p">(</span><span class="n">pc_</span><span class="p">,</span> <span class="n">transformation</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coordinates_transformed</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+            <span class="n">temp_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">coordinates_transformed</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">])</span>
+            <span class="n">coordinates_transformed</span> <span class="o">=</span> <span class="n">temp_df</span>
+        <span class="n">warped_pc</span> <span class="o">=</span> <span class="n">warped_pc</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">coordinates_transformed</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">coordinates_transformed</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Pointset</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">warped_pc</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="n">x_axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span>
+                        <span class="n">y_axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">,</span>
+                        <span class="n">index_col</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index_col</span><span class="p">,</span>
+                        <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header</span><span class="p">,</span>
+                        <span class="n">resolution</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">crop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xmin</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">xmax</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ymin</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">ymax</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">-</span> <span class="n">ymin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">-</span> <span class="n">xmin</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">resize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="c1"># Remember to convert new dimensions to scale.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">*</span> <span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">*</span> <span class="n">height</span>
+        <span class="n">rate_w</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">width</span>
+        <span class="n">rate_h</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_resolution</span><span class="p">((</span><span class="n">rate_w</span><span class="p">,</span> <span class="n">rate_h</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">rescale</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scaling_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">scaling_factor</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+            <span class="n">scaling_factor</span> <span class="o">=</span> <span class="p">(</span><span class="n">scaling_factor</span><span class="p">,</span> <span class="n">scaling_factor</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaling_factor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">*</span> <span class="n">scaling_factor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">rate_w</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">scaling_factor</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">rate_h</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">scaling_factor</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scale_resolution</span><span class="p">((</span><span class="n">rate_w</span><span class="p">,</span> <span class="n">rate_h</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">pad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]):</span>
+        <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">,</span> <span class="n">top</span><span class="p">,</span> <span class="n">bottom</span> <span class="o">=</span> <span class="n">padding</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">]</span> <span class="o">+</span> <span class="n">left</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]</span> <span class="o">+</span> <span class="n">top</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">flip</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ref_img_shape</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span> <span class="n">axis</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">center_x</span> <span class="o">=</span> <span class="n">ref_img_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">center_x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">axis</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">center_y</span> <span class="o">=</span> <span class="n">ref_img_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">y</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="n">center_y</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Pointset</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                        <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="n">x_axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span>
+                        <span class="n">y_axis</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">,</span>
+                        <span class="n">index_col</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">index_col</span><span class="p">,</span>
+                        <span class="n">header</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">header</span><span class="p">,</span>
+                        <span class="n">resolution</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_numpy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">numpy</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[[</span><span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_type</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s1">&#39;pointset&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+              <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">create_if_not_exists</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">fname</span> <span class="o">=</span> <span class="s1">&#39;pointset.csv&#39;</span>
+        <span class="n">fpath</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="kc">True</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_col</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="kc">True</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">header</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
+        <span class="n">attributes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;header&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">header</span><span class="p">,</span>
+            <span class="s1">&#39;index_col&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">index_col</span><span class="p">,</span>
+            <span class="s1">&#39;x_axis&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">x_axis</span><span class="p">,</span>
+            <span class="s1">&#39;y_axis&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">y_axis</span><span class="p">,</span>
+            <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_id</span><span class="p">),</span>
+            <span class="s1">&#39;resolution&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolution</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+            <span class="p">}</span>            
+        <span class="p">}</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;attributes.json&#39;</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">attributes</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span>
+             <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Pointset&#39;</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;attributes.json&#39;</span><span class="p">))</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">attributes</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;header&#39;</span><span class="p">]</span>
+        <span class="n">index_col</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;index_col&#39;</span><span class="p">]</span>
+        <span class="n">x_axis</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;x_axis&#39;</span><span class="p">]</span>
+        <span class="n">y_axis</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;y_axis&#39;</span><span class="p">]</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span>
+        <span class="n">id_</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">(</span><span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">join</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;pointset.csv&#39;</span><span class="p">),</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="n">index_col</span><span class="p">)</span>
+        <span class="n">resolution</span> <span class="o">=</span> <span class="n">attributes</span><span class="p">[</span><span class="s1">&#39;resolution&#39;</span><span class="p">]</span>
+        <span class="n">res_w</span> <span class="o">=</span> <span class="n">DUnit</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">resolution</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">])</span>
+        <span class="n">res_h</span> <span class="o">=</span> <span class="n">DUnit</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">resolution</span><span class="p">[</span><span class="s1">&#39;height&#39;</span><span class="p">])</span>        
+        <span class="n">ps</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                 <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">,</span>
+                 <span class="n">index_col</span><span class="o">=</span><span class="n">index_col</span><span class="p">,</span>
+                 <span class="n">x_axis</span><span class="o">=</span><span class="n">x_axis</span><span class="p">,</span>
+                 <span class="n">y_axis</span><span class="o">=</span><span class="n">y_axis</span><span class="p">,</span>
+                 <span class="n">resolution</span><span class="o">=</span><span class="p">(</span><span class="n">res_w</span><span class="p">,</span> <span class="n">res_h</span><span class="p">))</span>
+        <span class="n">ps</span><span class="o">.</span><span class="n">_id</span> <span class="o">=</span> <span class="n">id_</span>
+        <span class="k">return</span> <span class="n">ps</span>
+
+<div class="viewcode-block" id="Pointset.load_from_path">
+<a class="viewcode-back" href="../../../../api.html#miit.spatial_data.base_types.pointset.Pointset.load_from_path">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> 
+                       <span class="n">path_to_data</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                       <span class="n">x_axis</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;x&#39;</span><span class="p">,</span>
+                       <span class="n">y_axis</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span>
+                       <span class="n">index_col</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                       <span class="n">header</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="s1">&#39;infer&#39;</span><span class="p">,</span>
+                       <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Pointset&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load a Pointset object.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path_to_data (str): Path to csv file.</span>
+<span class="sd">            x_axis (Any, optional): Index used to access x axis. Defaults to &#39;x&#39;.</span>
+<span class="sd">            y_axis (Any, optional): Index used to access y axis. Defaults to &#39;y&#39;.</span>
+<span class="sd">            index_col (Optional[Any], optional): index_col argument passed on to DataFrame. Defaults to None.</span>
+<span class="sd">            header (Optional[Any], optional): header argument passed on to DataFrame. Defaults to &#39;infer&#39;.</span>
+<span class="sd">            name (str, optional): Optional identifier. Defaults to &#39;&#39;.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Pointset: Initialized pointset object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path_to_data</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="n">index_col</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">x_axis</span><span class="o">=</span><span class="n">x_axis</span><span class="p">,</span>
+            <span class="n">y_axis</span><span class="o">=</span><span class="n">y_axis</span><span class="p">,</span>
+            <span class="n">index_col</span><span class="o">=</span><span class="n">index_col</span><span class="p">,</span>
+            <span class="n">header</span><span class="o">=</span><span class="n">header</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Maximilian Wess.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

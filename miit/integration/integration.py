@@ -48,12 +48,18 @@ def get_mappings(ref_mat1: numpy.ndarray,
                  ref_mat2: numpy.ndarray, 
                  background1: int = 0, 
                  background2: int = 0) -> tuple[dict[int, numpy.ndarray], dict[int, int], set]:
-    """
-    Gets mappings for ref_mat1 from ref_mat2.
+    """Gets mappings for ref_mat1 from ref_mat2.
+
+    Args:
+        ref_mat1 (numpy.ndarray): 
+        ref_mat2 (numpy.ndarray): 
+        background1 (int, optional): Defaults to 0.
+        background2 (int, optional): Defaults to 0.
+
     Returns:
-        mappings: mapping from ref_mat1 to ref_mat2
-        spots_background: mass of background in each mapping.
-        unique_vals: List of unique pixel values in ref_mat2 that are part of a mapping in ref_mat1.
+        tuple[dict[int, numpy.ndarray], dict[int, int], set]: mapping from ref_mat1 to ref_mat2,
+            mass of background in each mapping, and list of unique pixel values in ref_mat2 that 
+            are part of a mapping in ref_mat1.
     """
     mappings, spots_background = compute_reference_matrix_mappings(ref_mat1, ref_mat2, background1, background2)
     # Also get unique ids.
@@ -67,19 +73,19 @@ def get_mappings(ref_mat1: numpy.ndarray,
 
 
 def accumulate_counts(mappings: dict[int, tuple[numpy.ndarray, numpy.ndarray]], 
-                      measurement_df: pandas.core.frame.DataFrame, 
+                      measurement_df: pandas.DataFrame, 
                       background_counts: dict[int, int],
-                      spot_accumulator_fun=None) -> pandas.core.frame.DataFrame:
+                      spot_accumulator_fun = None) -> pandas.DataFrame:
     """Accumulated counts for each key using an accumulator_function.
 
     Args:
-        mappings (Dict[int, Tuple[numpy.ndarray, numpy.ndarray]]): _description_
-        measurement_df (pandas.core.frame.DataFrame): _description_
-        background_counts (Dict[int, int]): _description_
+        mappings (Dict[int, Tuple[numpy.ndarray, numpy.ndarray]]): 
+        measurement_df (pandas.DataFrame): 
+        background_counts (Dict[int, int]): 
         spot_accumulator_fun (_type_, optional): Function used to accumulate each single set of values. Defaults to None.
 
     Returns:
-        _type_: _description_
+        pandas.DataFrame: Accumulated spots. 
     """
     spot_wise_accumulated_data = []
     for target_key in mappings:
@@ -92,22 +98,42 @@ def accumulate_counts(mappings: dict[int, tuple[numpy.ndarray, numpy.ndarray]],
     return final_df
 
 
-def get_number_of_background_pixels(df: pandas.core.frame.DataFrame, 
+def get_number_of_background_pixels(df: pandas.DataFrame, 
                                     background_value: int = -1) -> int:
+    """Compute number of background pixels.
+
+    Args:
+        df (pandas.DataFrame): 
+        background_value (int, optional): Defaults to -1.
+
+    Returns:
+        int: 
+    """
     if background_value not in df.index:
         return 0
     return df.loc[background_value].shape[0]
 
 
-def map_mapping_index_to_table_index(mapped_data: pandas.core.frame.DataFrame, 
-                                     target_section: BaseSpatialOmics) -> pandas.core.frame.DataFrame:
+def map_ref_idxs_to_spec_idxs(mapped_data: pandas.DataFrame, 
+                              target_section: BaseSpatialOmics) -> pandas.DataFrame:
+    """
+    Maps reference indices to spec indices. It is assumed that indices of 
+    mapped_data correspond to indices in reference matrix. 
+
+    Args:
+        mapped_data (pandas.DataFrame): 
+        target_section (BaseSpatialOmics): 
+
+    Returns:
+        pandas.DataFrame: 
+    """
     ref_to_spec_mapping = target_section.get_spec_to_ref_map(reverse=True)
     mapped_data = mapped_data.rename(index=ref_to_spec_mapping)
     return mapped_data
 
 
 def transform_annotations_to_table(target_data: BaseSpatialOmics, 
-                                   annotation: Annotation) -> pandas.core.frame.DataFrame:
+                                   annotation: Annotation) -> pandas.DataFrame:
     """Transforms annotations onto the spatial layout provided in spatial omics data.
     Note: At the moment only implemented for images in singlechannel mode (i.e. is_multichannel == False).
 
@@ -116,7 +142,7 @@ def transform_annotations_to_table(target_data: BaseSpatialOmics,
         annotation (Annotation): Source annotation.
 
     Returns:
-        pandas.core.frame.DataFrame: Integrated annotations.
+        pandas.DataFrame: Integrated annotations.
     """
     integrated_annotations = []
     annotation_data = annotation.data
@@ -138,7 +164,18 @@ def transform_annotations_to_table(target_data: BaseSpatialOmics,
 def map_annotations_to_table(spec_to_ref_map: dict, 
                              ref_mat: numpy.ndarray, 
                              annotations: numpy.ndarray, 
-                             labels: list[str]) -> pandas.core.frame.DataFrame: 
+                             labels: list[str]) -> pandas.DataFrame: 
+    """Aggregates annotations over given reference matrix.
+
+    Args:
+        spec_to_ref_map (dict): 
+        ref_mat (numpy.ndarray): 
+        annotations (numpy.ndarray): 
+        labels (list[str]): 
+
+    Returns:
+        pandas.DataFrame: 
+    """
     glob_counts = {spec_to_ref_map[x]: np.zeros(annotations.shape[2]) for x in spec_to_ref_map}
     spot_counts = {spec_to_ref_map[x]: 0 for x in spec_to_ref_map}
     for i in range(ref_mat.shape[0]):
@@ -159,8 +196,9 @@ def map_annotations_to_table(spec_to_ref_map: dict,
     return count_df
 
     
+# TODO: Can this function be removed. Duplicate in imzml.py?
 def map_accumulated_data_to_imzml(target_bmi: Imzml,
-                                  accumulated_df: pandas.core.frame.DataFrame,
+                                  accumulated_df: pandas.DataFrame,
                                   output_path: str,
                                   mzs: numpy.ndarray | None = None):
     spec_to_ref_map = target_bmi.get_spec_to_ref_map()

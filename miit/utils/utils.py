@@ -4,32 +4,55 @@ from pathlib import Path
 from typing import Any
 
 import numpy, numpy as np
+import SimpleITK as sitk
 
         
 def run_fun_if_not_none(fun: callable, obj: Any | None = None) -> Any | None:
+    """Executes function if object is not None.
+
+    Args:
+        fun (callable): 
+        obj (Any | None, optional): Defaults to None.
+
+    Returns:
+        Any | None: _description_
+    """
     if obj is None:
         return None
     return fun(obj)
 
 
 def copy_if_not_none(obj: Any | None) -> Any | None:
+    """Copies the object if not None.
+
+    Args:
+        obj (Any | None):
+
+    Returns:
+        Any | None:
+    """
     fun = lambda x: x.copy()
     return run_fun_if_not_none(fun, obj)
 
 
 def create_if_not_exists(directory: str):
+    """Creates a directory.
+
+    Args:
+        directory (str):
+    """
     Path(directory).mkdir(parents=True, exist_ok=True)
 
 
 # Filters
-def custom_max_voting_filter(img: numpy.array,
+def custom_max_voting_filter(img: numpy.ndarray,
                              radius: int = 3,
                              background_value: int = 0,
                              target_dtype=np.int32) -> numpy.ndarray:
     """Sets all values in radius to the most occuring value.
 
     Args:
-        img (numpy.array): _description_
+        img (numpy.ndarray): _description_
         radius (int, optional): _description_. Defaults to 3.
         background_value (int, optional): _description_. Defaults to 0.
         target_dtype (_type_, optional): _description_. Defaults to np.int32.
@@ -51,23 +74,6 @@ def custom_max_voting_filter(img: numpy.array,
             max_idx = np.argmax(counts)
             filtered_image[i, j] = uniques[max_idx].astype(target_dtype)
     return filtered_image
-
-
-def clean_configs(config: dict) -> dict:
-    for section in config['sections']:
-        if 'molecular_imaging_data' in section:
-            del section['molecular_imaging_data']
-    return config
-
-
-def filter_node_ids(config: dict, id_list: list) -> dict:
-    keep_sections = []
-    for section in config['sections']:
-        # print(section['id'])
-        if section['id'] in id_list:
-            keep_sections.append(section)
-    config['sections'] = keep_sections
-    return config
 
 
 def get_half_pad_size(value_string: str, max_len: int) -> tuple[int, int]:
@@ -116,3 +122,28 @@ def derive_unique_directory(directory: str, limit: int = 1000) -> str:
         if not os.path.exists(new_target_path):
             return new_target_path
     return target_path
+
+
+def simpleitk_to_skimage_interpolation(val: int) -> int:
+    """Maps the interpolation from SimpleITK to Scikit Image.
+
+    Args:
+        val (int): SimpleITK Interpolation mode
+
+    Returns:
+        int: Scikit Image Interpolation mode
+    """
+    if val == sitk.sitkNearestNeighbor:
+        return 0
+    elif val == sitk.sitkLinear:
+        return 1
+    elif val == sitk.sitkBSpline1:
+        return 2
+    elif val == sitk.sitkBSpline2:
+        return 3
+    elif val == sitk.sitkBSpline3:
+        return 4
+    else:
+        return 5
+    
+    

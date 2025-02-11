@@ -19,6 +19,13 @@ class SpatialDataLoaderException(Exception):
 
 @dataclass
 class SpatialBaseDataLoader:
+    """SpatialBaseDataLoader is used to load BaseImage and BasePointset data.
+
+    Raises:
+        SpatialDataLoaderException: 
+        SpatialDataLoaderException: 
+
+    """
     
     class_map: dict = field(init=False)
     
