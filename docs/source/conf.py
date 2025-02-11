@@ -22,6 +22,23 @@ release = '11/02/2025'
 # sys.path.insert(0, os.path.abspath('../miit'))
 sys.path.insert(0, os.path.abspath('../../miit'))
 
+# import sys
+from unittest.mock import MagicMock
+
+# class Mock(MagicMock):
+#     @classmethod
+#     def __getattr__(cls, name):
+#             return Mock()
+
+# MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'pandas']
+MOCK_MODULES = ['pyvips']
+
+# sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+from unittest import mock
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
+
+
 extensions = [
     "hoverxref.extension",
     "notfound.extension",
@@ -87,14 +104,3 @@ exclude_patterns = ['build']
 exclude_trees = ['.build']
 pygments_style = "sphinx"
 
-import sys
-from unittest.mock import MagicMock
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-            return Mock()
-
-# MOCK_MODULES = ['pygtk', 'gtk', 'gobject', 'argparse', 'numpy', 'pandas']
-MOCK_MODULES = ['pyvips']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
