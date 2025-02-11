@@ -79,7 +79,7 @@ class GreedyFHistExt(Registerer):
                         segmentation: Callable[[numpy.ndarray], numpy.ndarray] | None = None):
         registerer = gfh.registration.GreedyFHist(path_to_greedy=path_to_greedy,
                                                   use_docker_container=use_docker_container,
-                                                  segmentation_function=segmentation)
+                                                  segmentation=segmentation)
         return cls(registerer=registerer)
 
     def groupwise_registration(self,
