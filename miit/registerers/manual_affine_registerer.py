@@ -22,8 +22,13 @@ class ManualAffineRegisterer(Registerer):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: numpy.ndarray, 
-                        interpolation_mode: int, 
+                        interpolation_mode: int | str, 
                         **kwargs: dict) -> numpy.ndarray:
+        if isinstance(interpolation_mode, str):
+            if interpolation_mode == 'NN':
+                int_mode = sitk.sitkNearestNeighbor
+            elif interpolation_mode == 'LINEAR':
+                int_mode = sitk.sitkLinear
         transform = sitk.AffineTransform(2)
         transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
         transform.SetTranslation((transformation[0,2], transformation[1,2]))
@@ -32,7 +37,7 @@ class ManualAffineRegisterer(Registerer):
         sitk_image = sitk.GetImageFromArray(image, True)
         resampler = sitk.ResampleImageFilter()
         resampler.SetReferenceImage(ref_img)
-        resampler.SetInterpolator(interpolation_mode)
+        resampler.SetInterpolator(int_mode)
         resampler.SetDefaultPixelValue(0)
         resampler.SetTransform(transform)
         transformed_image_sitk = resampler.Execute(sitk_image)
