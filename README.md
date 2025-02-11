@@ -54,7 +54,7 @@ MIIT can be used fully in a docker environment and external directories can be e
 ```
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/home/maxi/applications/miit,dst=/external_directory \
-mwess89/miit:0.0.2-rc2
+mwess89/miit:0.0.3
 ```
 
 This example mounts the local directory `/home/maxi/applications/miit` to the path 
