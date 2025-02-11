@@ -124,7 +124,7 @@ def derive_unique_directory(directory: str, limit: int = 1000) -> str:
     return target_path
 
 
-def simpleitk_to_skimage_interpolation(val: int) -> int:
+def simpleitk_to_skimage_interpolation(val: int | str) -> int:
     """Maps the interpolation from SimpleITK to Scikit Image.
 
     Args:
@@ -133,6 +133,11 @@ def simpleitk_to_skimage_interpolation(val: int) -> int:
     Returns:
         int: Scikit Image Interpolation mode
     """
+    if isinstance(val, str):
+        if val == 'NN':
+            return 0
+        elif val == 'LINEAR':
+            return 1
     if val == sitk.sitkNearestNeighbor:
         return 0
     elif val == sitk.sitkLinear:

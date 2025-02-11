@@ -11,12 +11,18 @@ from .base_registerer import Registerer, RegistrationResult
 
 @dataclass
 class GreedyFHistRegistrationResult(RegistrationResult):
+    """
+    Wrapper class for pairwise registration result.
+    """
 
     registration_result: GFHRegResult
 
 
 @dataclass
 class GreedyFHistGroupRegistrationResult(RegistrationResult):
+    """
+    Wrapper class for groupwise registration result.
+    """
     
     registration_result: GroupwiseRegResult
 
@@ -59,7 +65,7 @@ class GreedyFHistExt(Registerer):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: GreedyFHistRegistrationResult, 
-                        interpolat_description_ion_mode: int, 
+                        interpolation_mode: int, 
                         do_reverse_transform: bool = False,
                         **kwargs: dict) -> numpy.ndarray:
         reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration
@@ -70,10 +76,10 @@ class GreedyFHistExt(Registerer):
     def init_registerer(cls, 
                         path_to_greedy: str = '',
                         use_docker_container: bool = False,
-                        segmentation_function: Callable[[numpy.ndarray], numpy.ndarray] | None = None):
+                        segmentation: Callable[[numpy.ndarray], numpy.ndarray] | None = None):
         registerer = gfh.registration.GreedyFHist(path_to_greedy=path_to_greedy,
                                                   use_docker_container=use_docker_container,
-                                                  segmentation_function=segmentation_function)
+                                                  segmentation_function=segmentation)
         return cls(registerer=registerer)
 
     def groupwise_registration(self,

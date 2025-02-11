@@ -31,7 +31,7 @@ class MSItoHistMetaRegisterer(Registerer):
             if isinstance(self.registerer, MSItoHistMetaRegisterer):
                 raise Exception("MSItoHistMetaRegisterer cannot use itself as registerer.")
         if self.registerer is None:
-            self.registerer = NiftyRegWrapper.load_from_config()
+            self.registerer = NiftyRegWrapper.init_registerer()
 
 
     def register_images(self, 

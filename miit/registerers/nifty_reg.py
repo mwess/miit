@@ -172,7 +172,7 @@ class NiftyRegWrapper(Registerer):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: RegistrationResult, 
-                        interpolation_mode: int, 
+                        interpolation_mode: int | str, 
                         tmp_directory: str = 'tmp', 
                         keep_src_dtype: bool = True,
                         **kwargs: dict) -> numpy.ndarray:
@@ -189,16 +189,23 @@ class NiftyRegWrapper(Registerer):
             sitk_image_half_res = sitk_image
         transform = transformation.transform
         
+        if isinstance(interpolation_mode, str):
+            if interpolation_mode == 'NN':
+                int_mode = sitk.sitkNearestNeighbor
+            elif interpolation_mode == 'LINEAR':
+                int_mode = sitk.sitkLinear
+        else:
+            int_mode = interpolation_mode
         ref_img = sitk.GetImageFromArray(np.zeros((transformation.target_size[0], transformation.target_size[1])), True)
         sitk_image = sitk.GetImageFromArray(image, True)
         resampler = sitk.ResampleImageFilter()
         resampler.SetReferenceImage(ref_img)
-        resampler.SetInterpolator(interpolation_mode)
+        resampler.SetInterpolator(int_mode)
         resampler.SetDefaultPixelValue(0)
         resampler.SetTransform(transform)
         warped_image_sitk = resampler.Execute(sitk_image_half_res)
         warped_image = sitk.GetArrayFromImage(warped_image_sitk)
-        warped_image = _resize_image_simple_sitk(warped_image, transformation.orig_target_size, interpolation=interpolation)
+        warped_image = _resize_image_simple_sitk(warped_image, transformation.orig_target_size, interpolation=int_mode)
 
         if os.path.exists(tmp_directory):
             shutil.rmtree(tmp_directory)

@@ -76,8 +76,8 @@ def load_sections(root_dir, skip_so_data=False):
         sections[sub_dir] = section
 
     # Annotations for section 6 need to cleaned from some faulty pixel information.
-    pos_ann = sections['6'].get_annotations_by_names('tissue_classes')
-    tissue_mat = sections['6'].get_annotations_by_names('tissue_mask').data.copy()
+    pos_ann = sections['6'].get_annotation_by_name('tissue_classes')
+    tissue_mat = sections['6'].get_annotation_by_name('tissue_mask').data.copy()
     new_mat = np.zeros_like(tissue_mat)
     for idx, label in enumerate(pos_ann.labels):
         if label in ['Tissue', 'Stroma']:
@@ -90,7 +90,7 @@ def load_sections(root_dir, skip_so_data=False):
     new_stroma[new_stroma > 10] = 0
     new_stroma[new_stroma < 0] = 0
     index = pos_ann.labels.index('Tissue')
-    pos_ann.data[:,:,index] = sections['6'].get_annotations_by_names('tissue_mask').data.copy()
+    pos_ann.data[:,:,index] = sections['6'].get_annotation_by_name('tissue_mask').data.copy()
     index = pos_ann.labels.index('Stroma')
     pos_ann.data[:,:,index] = new_stroma
     data = pos_ann.data.copy()
@@ -108,7 +108,7 @@ def load_sections(root_dir, skip_so_data=False):
         
         msi_pos = Imzml.init_msi_data(msi_pos_imzml_path, name='msi_pos', target_resolution=1)
         msi_pos_pca = msi_pos.get_pca_img()
-        warped_msi_pos, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer())
+        warped_msi_pos, _, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer())
         sections['6'].so_data.append(warped_msi_pos)
     
     
@@ -120,11 +120,11 @@ def load_sections(root_dir, skip_so_data=False):
 
         msi_neg = Imzml.init_msi_data(msi_neg_imzml_path, name='msi_neg', target_resolution=1)
         msi_neg_pca = msi_neg.get_pca_img()
-        warped_msi_neg, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer())
+        warped_msi_neg, _, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer())
         sections['7'].so_data.append(warped_msi_neg)    
     
         st = Visium.from_spcrng(join(root_dir, '2', 'spatial_transcriptomics'))
-        warped_st_data, registered_st_image = register_to_ref_image(target_image=sections['2'].reference_image.data,
+        warped_st_data, _, registered_st_image = register_to_ref_image(target_image=sections['2'].reference_image.data,
                                                                     source_image=st.image.data,
                                                                     data=st)
         sections['2'].so_data.append(warped_st_data)
@@ -148,10 +148,10 @@ def plot_sections(sections,
         axs[idx, 0].imshow(section.reference_image.data)
         axs[idx, 0].set_title('Histology')
         if with_landmarks:
-            lms = section.get_annotations_by_names('landmarks')
+            lms = section.get_annotation_by_name('landmarks')
             if lms is not None:
                 axs[idx, 0].plot(lms.data[lms.x_axis], lms.data[lms.y_axis], '.')
-        tissue_mask = section.get_annotations_by_names('tissue_mask')
+        tissue_mask = section.get_annotation_by_name('tissue_mask')
         if tissue_mask is not None:
             mask = tissue_mask.data
             axs[idx, 1].axis('off')
@@ -169,6 +169,9 @@ def plot_registration_summary(moving_image: numpy.array,
                               fixed_lms: Optional[pandas.core.frame.DataFrame] = None,
                               warped_lms: Optional[pandas.core.frame.DataFrame] = None,
                               plot_lm_distance: bool = True):
+    """
+    Plots moving, fixed and warped image and optional landmarks.
+    """
     fig ,axs = plt.subplots(1, 3, figsize=(6 * 3, 6 * 1))
     for ax in axs:
         ax.axis('off')

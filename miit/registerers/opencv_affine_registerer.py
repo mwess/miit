@@ -179,6 +179,7 @@ class OpenCVAffineRegisterer(Registerer):
                            transformation: OpenCVAffineTransformation, 
                            **kwargs: dict) -> numpy.ndarray:
         transformed_pointset = (transformation.transformation_matrix @ np.hstack((pointset, np.ones((pointset.shape[0], 1)))).T).T
+        transformed_pointset = transformed_pointset[:,:2]
         return transformed_pointset
 
     def transform_image(self, 
@@ -188,5 +189,5 @@ class OpenCVAffineRegisterer(Registerer):
                         **kwargs: dict) -> numpy.ndarray:
         order = simpleitk_to_skimage_interpolation(interpolation_mode)
         tform = transform.AffineTransform(transformation.transformation_matrix)
-        transformed_image = transform.warp(image, tform.inverse, output_shape=(transformation.height, transformation.width), order=interpolation_mode, cval=0)
+        transformed_image = transform.warp(image, tform.inverse, output_shape=(transformation.height, transformation.width), order=order, cval=0)
         return transformed_image

@@ -7,6 +7,9 @@ import SimpleITK as sitk
 from .base_registerer import Registerer, RegistrationResult
 
 class ManualAffineRegisterer(Registerer):
+    """
+    Registration class that transforms spatial data using a transformation matrix.
+    """
 
     name = 'ManualAffineRegisterer'
     

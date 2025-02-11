@@ -41,6 +41,7 @@ seaborn = "0.13.2"
 h5py = "^3.12.1"
 pydicom = "^3.0.1"
 torch = "^2.6.0"
+torchvision = "^0.21.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"

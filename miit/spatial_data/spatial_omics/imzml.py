@@ -210,44 +210,44 @@ def get_metabolite_intensities(
     return intensities_per_spectrum
 
 
-# def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser,
-#                                                   spectra_idxs: list[int], 
-#                                                   mz_intervals: tuple[float, float, float],
-#                                                   norm_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None,
-#                                                   baseline_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None) -> dict:
-#     """Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
-#     used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
-#     Only spectra within `spectra_idxs` will be processed.
+def get_metabolite_intensities_from_full_spectrum(msi: pyimzml.ImzMLParser.ImzMLParser,
+                                                  spectra_idxs: list[int], 
+                                                  mz_intervals: tuple[float, float, float],
+                                                  norm_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None,
+                                                  baseline_f: Callable[[numpy.ndarray], numpy.ndarray] | None = None) -> dict:
+    """Identifies intensity peaks based on the list of provided `mz_intervals` in `msi`. `baseline_f` can be
+    used to preprocess intensities, `norm_f` is used to determine the intensity value within the given mz_interval. 
+    Only spectra within `spectra_idxs` will be processed.
 
-#     Args:
-#         msi (pyimzml.ImzMLParser.ImzMLParser): _description_
-#         spectra_idxs (list[int]): _description_
-#         mz_intervals (tuple[float, float, float]): _description_
-#         norm_f (Callable[[numpy.ndarray], numpy.ndarray] | None, optional): _description_. Defaults to None.
-#         baseline_f (Callable[[numpy.ndarray], numpy.ndarray] | None, optional): _description_. Defaults to None.
+    Args:
+        msi (pyimzml.ImzMLParser.ImzMLParser): _description_
+        spectra_idxs (list[int]): _description_
+        mz_intervals (tuple[float, float, float]): _description_
+        norm_f (Callable[[numpy.ndarray], numpy.ndarray] | None, optional): _description_. Defaults to None.
+        baseline_f (Callable[[numpy.ndarray], numpy.ndarray] | None, optional): _description_. Defaults to None.
 
-#     Returns:
-#         dict: _description_
-#     """
-#     if norm_f is None:
-#         norm_f = tic_trapz
-#     if intensity_f is None:
-#         intensity_f = np.max
-#     if baseline_f is None:
-#         baseline_f = simple_baseline
+    Returns:
+        dict: _description_
+    """
+    if norm_f is None:
+        norm_f = tic_trapz
+    if intensity_f is None:
+        intensity_f = np.max
+    if baseline_f is None:
+        baseline_f = simple_baseline
     
-#     intensities_per_spot = {}
-#     for spectrum_idx in spectra_idxs:
-#         if spectrum_idx not in intensities_per_spot:
-#             intensities_per_spot[spectrum_idx] = []
-#         mzs, intensities = msi.getspectrum(spectrum_idx)
-#         intensities = baseline_f(intensities)
-#         for start, end, _ in mz_intervals:
-#             lower_bound = find_nearest(mzs, start)
-#             upper_bound = find_nearest(mzs, end)        
-#             intensity = norm_f(intensity_f(intensities[lower_bound[1]:upper_bound[1]]), intensities)        
-#             intensities_per_spot[spectrum_idx].append(intensity)
-#     return intensities_per_spot
+    intensities_per_spot = {}
+    for spectrum_idx in spectra_idxs:
+        if spectrum_idx not in intensities_per_spot:
+            intensities_per_spot[spectrum_idx] = []
+        mzs, intensities = msi.getspectrum(spectrum_idx)
+        intensities = baseline_f(intensities)
+        for start, end, _ in mz_intervals:
+            lower_bound = find_nearest(mzs, start)
+            upper_bound = find_nearest(mzs, end)        
+            intensity = norm_f(intensity_f(intensities[lower_bound[1]:upper_bound[1]]), intensities)        
+            intensities_per_spot[spectrum_idx].append(intensity)
+    return intensities_per_spot
 
 
 # TODO: Functions for getting metabolites can be merged together.
