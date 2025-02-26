@@ -80,7 +80,7 @@ Download some test data from zenodo, extract and start the docker container and 
 
 ```
 # Download and extract test data
-wget https://zenodo.org/records/13984509/files/test_data.tar.gz
+wget https://zenodo.org/records/14931377/files/test_data.tar.gz
 tar xfvz examples/notebooks/test_data.tar.gz
 rm examples/notebooks/test_data.tar.gz
 
@@ -100,7 +100,7 @@ After starting the docker environment has started and the jupyterlab has been op
 
 Download some test data from zenodo:
 ```
-wget https://zenodo.org/records/13984509/files/test_data.tar.gz -P examples/notebooks/
+wget https://zenodo.org/records/14931377/files/test_data.tar.gz -P examples/notebooks/
 tar xfvz examples/notebooks/test_data.tar.gz -C examples/notebooks/
 rm examples/notebooks/test_data.tar.gz
 ```
