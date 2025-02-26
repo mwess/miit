@@ -15,6 +15,11 @@ For examples and tutorials see: https://github.com/miit/examples
 
   api
 
+.. toctree::
+  :caption: LICENSE
+  :hidden:
+
+  license
 
 ------
 Citing
