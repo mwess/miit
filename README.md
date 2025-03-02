@@ -1,6 +1,6 @@
 # MIIT (the Multi-omics Imaging Integration Toolset)
 
-MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolved multi-omics data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
+MIIT (pronounce: `meet`) is a Python framework for integratig spatially resolved multi-omcis data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
 (through Visium) and MSI (ImzML). There is additional_data support for various types of annotations (pointset valued data, geojson data, and masks).
 
 ## Installation
@@ -8,7 +8,7 @@ MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolve
 MIIT can be installed using pip:
 
 ```
-pip install --user git+https://github.com/mwess/miit@v0.0.3
+pip install --user git+https://github.com/mwess/miit@v0.0.2-rc2
 ```
 
 
@@ -23,13 +23,13 @@ MIIT is also available as a docker image. It comes along with GreedyFHist's exte
 The docker image can be loaded as follows:
 
 ```
-docker pull mwess89/miit:0.0.3
+docker pull mwess89/miit:0.0.2-rc2
 ```
 
 It should then be available to run as follows:
 
 ```
-docker run -it -p 8888:8888 mwess89/miit:0.0.3
+docker run -it -p 8888:8888 mwess89/miit:0.0.2-rc2
 ```
 
 ### Building docker image locally
@@ -54,7 +54,7 @@ MIIT can be used fully in a docker environment and external directories can be e
 ```
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/home/maxi/applications/miit,dst=/external_directory \
-mwess89/miit:0.0.3
+mwess89/miit:0.0.2-rc2
 ```
 
 This example mounts the local directory `/home/maxi/applications/miit` to the path 
@@ -80,7 +80,7 @@ Download some test data from zenodo, extract and start the docker container and 
 
 ```
 # Download and extract test data
-wget https://zenodo.org/records/14931377/files/test_data.tar.gz
+wget https://zenodo.org/records/13984509/files/test_data.tar.gz
 tar xfvz examples/notebooks/test_data.tar.gz
 rm examples/notebooks/test_data.tar.gz
 
@@ -100,7 +100,7 @@ After starting the docker environment has started and the jupyterlab has been op
 
 Download some test data from zenodo:
 ```
-wget https://zenodo.org/records/14931377/files/test_data.tar.gz -P examples/notebooks/
+wget https://zenodo.org/records/13984509/files/test_data.tar.gz -P examples/notebooks/
 tar xfvz examples/notebooks/test_data.tar.gz -C examples/notebooks/
 rm examples/notebooks/test_data.tar.gz
 ```
