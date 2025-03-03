@@ -1,6 +1,6 @@
 # MIIT (the Multi-omics Imaging Integration Toolset)
 
-MIIT (pronounce: `meet`) is a Python framework for integratig spatially resolved multi-omcis data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
+MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolved multi-omics data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
 (through Visium) and MSI (ImzML). There is additional_data support for various types of annotations (pointset valued data, geojson data, and masks).
 
 ## Installation
@@ -53,6 +53,7 @@ MIIT can be used fully in a docker environment and external directories can be e
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/home/user/applications/miit,dst=/external_directory \
 mwess89/miit:0.0.3-rc1
+
 ```
 
 This example mounts the local directory `/home/user/applications/miit` to the path 
