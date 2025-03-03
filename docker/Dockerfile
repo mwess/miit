@@ -1,4 +1,4 @@
-FROM mwess89/greedyfhist:0.0.3
+FROM mwess89/greedyfhist:0.0.3-rc1
 
 RUN pip install git+https://github.com/mwess/miit@v0.0.3-rc1
 
