@@ -11,8 +11,6 @@ MIIT can be installed using pip:
 pip install --user git+https://github.com/mwess/miit@v0.0.3-rc1
 ```
 
-
-
 ## Docker
 
 MIIT is also available as a docker image. It comes along with GreedyFHist's external dependency 
@@ -53,11 +51,11 @@ MIIT can be used fully in a docker environment and external directories can be e
 
 ```
 docker run -it -p 8888:8888 \
---mount type=bind,src=/home/maxi/applications/miit,dst=/external_directory \
+--mount type=bind,src=/home/user/applications/miit,dst=/external_directory \
 mwess89/miit:0.0.3-rc1
 ```
 
-This example mounts the local directory `/home/maxi/applications/miit` to the path 
+This example mounts the local directory `/home/user/applications/miit` to the path 
 `/external_directory` inside the docker container.
 
 ## Running example data
@@ -80,9 +78,8 @@ Download some test data from zenodo, extract and start the docker container and 
 
 ```
 # Download and extract test data
-wget https://zenodo.org/records/13984509/files/test_data.tar.gz
+wget https://zenodo.org/records/14931377/files/test_data.tar.gz
 tar xfvz examples/notebooks/test_data.tar.gz
-rm examples/notebooks/test_data.tar.gz
 
 # Load docker image and connect to 
 docker run -it -p 8888:8888 \
@@ -100,9 +97,8 @@ After starting the docker environment has started and the jupyterlab has been op
 
 Download some test data from zenodo:
 ```
-wget https://zenodo.org/records/14931377/files/test_data.tar.gz -P examples/notebooks/
+wget https://zenodo.org/records/14931377/files/test_data.tar.gz
 tar xfvz examples/notebooks/test_data.tar.gz -C examples/notebooks/
-rm examples/notebooks/test_data.tar.gz
 ```
 
 The notebooks should be runnable now.
