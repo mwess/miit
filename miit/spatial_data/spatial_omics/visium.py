@@ -395,6 +395,20 @@ class Visium(BaseSpatialOmics):
         else:
             map_ = self.spec_to_ref_map.copy()
         return map_
+    
+    def get_visium_data(self, 
+                        name: str = 'filtered_feature_bc_matrix',
+                        directory: str | None = None,
+                        row_feature: str | list[str] | None = None):
+        if not name.endswith('.h5'):
+            name = f'{name}.h5'
+        if name not in ['filtered_feature_bc_matrix.h5', 'raw_feature_bc_matrix.h5']:
+            raise Exception(f'Invalid name supplied: {name}.')
+        if directory is None and self.config is not None and 'directory' in self.config:
+            directory = self.config('directory')
+        path = join(directory, name)
+        data = load_visium_data_matrix(path=path, row_feature=row_feature)
+        return data
 
     @classmethod
     def from_spcrng(cls, 
@@ -414,7 +428,7 @@ class Visium(BaseSpatialOmics):
             Visium: _description_
         """
         if not exists(directory):
-            # Throw nice custom exception here.
+            # TODO: Throw nice custom exception here.
             pass
         path_to_scalefactors = join(directory, 'spatial', 'scalefactors_json.json')
         path_to_tissue_positions = join(directory, 'spatial', 'tissue_positions_list.csv')
@@ -424,6 +438,10 @@ class Visium(BaseSpatialOmics):
             path_to_image = join(directory, 'spatial', 'tissue_hires_image.png')
         else:
             path_to_image = fullres_image_path
+        if config is None:
+            config = {}
+        config['directory'] = directory
+        config['image_scale'] = image_scale
         return Visium.from_spcrng_files(path_to_scalefactors,
                                            path_to_tissue_positions,
                                            path_to_image,
@@ -449,8 +467,7 @@ class Visium(BaseSpatialOmics):
         """
         # Select right scaling from scalefactors based on the supplied image.
         if image_scale not in ['lowres', 'hires', 'fullres']:
-            pass
-            # Throw exception.
+            raise Exception(f'Image scale invalid: {image_scale}')
         image = Image(data=cv2.imread(path_to_image))
         with open(path_to_scalefactors) as f:
             scalefactors = json.load(f)
