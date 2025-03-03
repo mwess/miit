@@ -43,7 +43,7 @@ docker build -t miit -f Dockerfile .
 In this case, miit can then be started similarly:
 
 ```
-docker run -it -p 8888:8888 miit:-rc1
+docker run -it -p 8888:8888 miit:0.0.3-rc1
 ```
 
 ### Binding external directories to the docker instance
