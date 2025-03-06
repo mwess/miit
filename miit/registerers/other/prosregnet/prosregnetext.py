@@ -268,6 +268,10 @@ class ProsRegNetTransformation:
 
 @dataclass(kw_only=True)
 class ProsRegNetExt:
+    """Wrapper class around the ProsRegNet registration algorithm. If you use this code, please cite the authors:
+    
+    Shao, Wei, et al. "ProsRegNet: A Deep Learning Framework for Registration of MRI and Histopathology Images of the Prostate.
+    
 
     use_cuda: bool
     affine_model: nn.Module | None = None
