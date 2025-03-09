@@ -90,8 +90,8 @@ class OpenCVAffineRegisterer(Registerer):
                   n_features: int = 1000,
                   verbose: bool = False) -> 'OpenCVAffineTransformation':
         """
-        co-registers two images and returns the moving image warped to fit target_img and the respective transform matrix
-        Script is very close to OpenCV2 image co-registration tutorial:
+        Co-registers two images and returns the moving image warped to fit target_img and the respective transform matrix
+        Script is very close to OpenCV2 image co-registration tutorial (no longer available):
         https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_feature2d/py_feature_homography/py_feature_homography.html
         only addition/change here: rigid transform & no rotation option
         

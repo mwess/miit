@@ -31,6 +31,9 @@ class GreedyFHistGroupRegistrationResult(RegistrationResult):
 class GreedyFHistExt(Registerer):
     """
     Wrapper for GreedyFHist algorithm.
+
+    Source: https://github.com/mwess/GreedyFHist
+    Documentation for using GreedyFHist can be found here: https://greedyfhist.readthedocs.io/en/latest/
     """
 
     name: ClassVar[str] = 'GreedyFHist'
