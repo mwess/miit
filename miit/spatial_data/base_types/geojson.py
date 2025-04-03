@@ -61,7 +61,12 @@ class GeoJSONData(BasePointset):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
         for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
+            # map_tuples seems to remove some keys such as isEllipse. 
+            # Make a backup and overwrite every other feature except 
+            # coordinates later.
+            feature_new = feature.copy()
+            feature_backup = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
+            feature_new['geometry']['coordinates'] = feature_backup['geometry']['coordinates']
             features_new.append(feature_new)
         if 'features' in self.data:
             self.data['features'] = features_new
@@ -76,6 +81,7 @@ class GeoJSONData(BasePointset):
             scaling_factor = (scaling_factor, scaling_factor)
         self.resize(scaling_factor[0], scaling_factor[1])
 
+    # TODO: Check error from resize as well
     def pad(self, padding: tuple[int, int, int, int]):
         left, right, top, bottom = padding
         features = self.data['features'] if 'features' in self.data else self.data

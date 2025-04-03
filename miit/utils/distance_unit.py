@@ -201,13 +201,16 @@ class DUnit:
     
     def to_json(self) -> dict[str, float | str]:
         return {
-            'value': self.value,
+            'value': str(self.value),
             'symbol': self.symbol
         }
     
     @classmethod
     def from_dict(cls, dct: dict[str, float | str]) -> 'DUnit':
+        value = dct['value']
+        if isinstance(value, str):
+            value = Decimal(value)
         return cls(
-            value = dct['value'],
+            value = value,
             symbol= dct['symbol']
         )

@@ -189,6 +189,7 @@ def geojson_to_annotation(geojson_data: GeoJSONData | geojson.FeatureCollection 
             masks[inds] = mask[inds]
             labels[label] = idx + 1
         else:
+            mask[mask > 0] = 1
             masks.append(mask)
             labels.append(label)
         if keep_properties:
