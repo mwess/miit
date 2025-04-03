@@ -35,3 +35,6 @@ examples/notebooks/test_data
 
 # Data from Tutorials
 examples/notebooks/output_directory
+
+
+docs/source/build
