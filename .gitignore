@@ -35,3 +35,5 @@ examples/notebooks/test_data
 
 # Data from Tutorials
 examples/notebooks/output_directory
+
+secret_scripts/
