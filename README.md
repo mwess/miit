@@ -3,6 +3,8 @@
 MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolved multi-omcis data. The main spatial-omics technologies that we focus on are Spatial Transcriptomics 
 (through Visium) and MSI (ImzML). There is additional_data support for various types of annotations (pointset valued data, geojson data, and masks).
 
+The most current version of Greedy is `v0.0.3-rc4`.
+
 ## Installation
 
 MIIT can be installed using pip:
