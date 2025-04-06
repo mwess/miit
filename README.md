@@ -8,7 +8,7 @@ MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolve
 MIIT can be installed using pip:
 
 ```
-pip install --user git+https://github.com/mwess/miit@v0.0.3-rc3
+pip install --user git+https://github.com/mwess/miit@v0.0.3-rc4
 ```
 
 ## Docker
@@ -21,13 +21,13 @@ MIIT is also available as a docker image. It comes along with GreedyFHist's exte
 The docker image can be loaded as follows:
 
 ```
-docker pull mwess89/miit:0.0.3-rc3
+docker pull mwess89/miit:0.0.3-rc4
 ```
 
 It should then be available to run as follows:
 
 ```
-docker run -it -p 8888:8888 mwess89/miit:0.0.3-rc3
+docker run -it -p 8888:8888 mwess89/miit:0.0.3-rc4
 ```
 
 ### Building docker image locally
@@ -41,7 +41,7 @@ docker build -t miit -f Dockerfile .
 In this case, miit can then be started similarly:
 
 ```
-docker run -it -p 8888:8888 miit:0.0.3-rc3
+docker run -it -p 8888:8888 miit:0.0.3-rc4
 ```
 
 ### Binding external directories to the docker instance
@@ -52,7 +52,7 @@ MIIT can be used fully in a docker environment and external directories can be e
 ```
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/home/user/applications/miit,dst=/external_directory \
-mwess89/miit:0.0.3-rc3
+mwess89/miit:0.0.3-rc4
 ```
 
 This example mounts the local directory `/home/user/applications/miit` to the path 
@@ -84,7 +84,7 @@ tar xfvz examples/notebooks/test_data.tar.gz
 # Load docker image and connect to 
 docker run -it -p 8888:8888 \
 --mount type=bind,src=/path/to/test_data,dst=/external_directory \
-mwess89/miit:0.0.3-rc3
+mwess89/miit:0.0.3-rc4
 ```
 
 Important: The `ROOT_DIR` variable in the notebooks needs to be set to `/external_directory`.

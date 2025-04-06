@@ -7,7 +7,7 @@ import subprocess
 from typing import Any
 
 import cv2
-import niftyreg
+#import niftyreg
 import numpy, numpy as np
 import SimpleITK, SimpleITK as sitk
 
@@ -237,7 +237,8 @@ class NiftyRegWrapper(Registerer):
     @classmethod
     def init_registerer(cls, nifty_directory: str | None = None) -> Registerer:
         if nifty_directory is None:
-            nifty_directory = str(niftyreg.bin_path)
+            #nifty_directory = str(niftyreg.bin_path)
+            nifty_directory = ''
         path_to_nifty_reg_aladin = join(nifty_directory, 'reg_aladin')
         path_to_nifty_reg_f3d = join(nifty_directory, 'reg_f3d')
         path_to_nifty_reg_resample = join(nifty_directory, 'reg_resample')
