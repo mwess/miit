@@ -276,7 +276,7 @@ class Section:
             width (int): 
             height (int):
         """
-        w, h = self.reference_image.data[:2]
+        w, h = self.reference_image.data.shape[:2]
         ws = w // width
         hs = h // height
         self.reference_image.resize(width, height)
