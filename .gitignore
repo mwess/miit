@@ -37,3 +37,5 @@ examples/notebooks/test_data
 examples/notebooks/output_directory
 
 secret_scripts/
+
+docs/source/build

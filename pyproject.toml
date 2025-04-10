@@ -7,7 +7,7 @@ line-length = 79
 
 [tool.poetry]
 name = "miit"
-version = "0.0.3-rc1"
+version = "0.0.3-rc4"
 description = "Integration of spatially resolved multi-omics data."
 authors = ["Maximilian Wess <maximilian.wess@ntnu.no>"]
 
@@ -35,13 +35,11 @@ tqdm = "^4.66.1"
 onnxruntime = "1.17.0"
 toml = "0.10.2"
 pyimzML = "1.5.3"
-greedyfhist = { git = "https://github.com/mwess/greedyfhist", tag= "v0.0.3-rc1" }
-niftyreg = "1.5.70rc1"
+greedyfhist = { git = "https://github.com/mwess/greedyfhist", tag= "v0.0.3-rc2" }
+#niftyreg = "1.5.70rc1"
 seaborn = "0.13.2"
 h5py = "^3.12.1"
 pydicom = "^3.0.1"
-torch = "^2.6.0"
-torchvision = "^0.21.0"
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.812"
