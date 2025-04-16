@@ -48,9 +48,11 @@ class ManualAffineRegisterer(Registerer):
                            pointset: numpy.ndarray, 
                            transformation: RegistrationResult, 
                            **kwargs: dict) -> numpy.ndarray:
+        "Applies transformation to a pointset. Note, that the inverse of the transformation will be computed."
         transform = sitk.AffineTransform(2)
         transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
         transform.SetTranslation((transformation[0,2], transformation[1,2]))
+        transform = transform.GetInverse()
         offset = 0.5
         warped_points = []
         for i in range(pointset.shape[0]):

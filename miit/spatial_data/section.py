@@ -277,8 +277,8 @@ class Section:
             height (int):
         """
         w, h = self.reference_image.data.shape[:2]
-        ws = w // width
-        hs = h // height
+        ws = width / w
+        hs = height / h
         self.reference_image.resize(width, height)
         for annotation in self.annotations:
             if isinstance(annotation, BasePointset):
