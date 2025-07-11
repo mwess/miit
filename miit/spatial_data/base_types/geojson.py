@@ -42,7 +42,9 @@ class GeoJSONData(BasePointset):
             warped_data['features'] = warped_geometries
         else:
             warped_data = warped_geometries
-        warped_geojson = GeoJSONData(data=warped_data, name=self.name)
+        warped_geojson = GeoJSONData(data=warped_data, 
+                                     name=self.name, 
+                                     resolution=self.resolution)
         return warped_geojson
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):

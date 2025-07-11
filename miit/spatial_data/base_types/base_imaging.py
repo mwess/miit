@@ -156,7 +156,9 @@ class BasePointset(abc.ABC):
         dst_w, dst_h = resolution
         conv_rate_w = 1 / res_w.get_conversion_factor(dst_w)
         conv_rate_h = 1 / res_h.get_conversion_factor(dst_h)
-        self.rescale((conv_rate_w, conv_rate_h))
+        conv_rate_w_f = float(conv_rate_w)
+        conv_rate_h_f = float(conv_rate_h)
+        self.rescale((conv_rate_w_f, conv_rate_h_f))
         if align_units:
             rw, rh = self.resolution
             self.resolution = (rw.convert_to_unit(dst_w.symbol), rh.convert_to_unit(dst_h.symbol))
