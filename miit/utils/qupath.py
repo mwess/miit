@@ -1,6 +1,7 @@
 from typing import Callable
 
 import cv2
+import json
 import geojson
 import numpy, numpy as np
 import shapely
@@ -159,7 +160,7 @@ def geojson_to_annotation(geojson_data: GeoJSONData | geojson.FeatureCollection 
     for idx, feature in enumerate(geojson_data['features']):
         if select_object_type and feature['properties']['objectType'] not in select_object_type:
             continue
-        geom = shapely.from_geojson(str(feature[geometry]))
+        geom = shapely.from_geojson(json.dumps(feature[geometry]))
         if geom.is_empty:
             print(f"""Feature of type {feature[geometry]['type']} is empty.""")
             continue
