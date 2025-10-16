@@ -3,7 +3,7 @@ import pandas
 
 
 def eucl(src: numpy.ndarray, dst: numpy.ndarray) -> float:
-    return np.sqrt(np.square(src[:, 0] - dst[:, 0]) + np.square(src[:, 1] - dst[:, 1]))
+    return np.sqrt(np.square(src[:, 0] - dst[:, 0]) + np.square(src[:, 1] - dst[:, 1])) # type: ignore
 
 
 def compute_distance_for_lm(warped_df: pandas.DataFrame, 
@@ -33,8 +33,8 @@ def compute_tre(target_lms: pandas.DataFrame,
     unified_lms = compute_distance_for_lm(warped_lms, target_lms)
     diag = np.sqrt(np.square(shape[0]) + np.square(shape[1]))
     unified_lms['rtre'] = unified_lms['tre']/diag
-    mean_rtre = np.mean(unified_lms['rtre'])
-    median_rtre = np.median(unified_lms['rtre'])
-    median_tre = np.median(unified_lms['tre'])
-    mean_tre = np.mean(unified_lms['tre'])
+    mean_rtre = float(np.mean(unified_lms['rtre']))
+    median_rtre = float(np.median(unified_lms['rtre']))
+    median_tre = float(np.median(unified_lms['tre']))
+    mean_tre = float(np.mean(unified_lms['tre']))
     return mean_rtre, median_rtre, mean_tre, median_tre

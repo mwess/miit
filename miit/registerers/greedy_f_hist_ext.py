@@ -67,7 +67,7 @@ class GreedyFHistExt(Registerer):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: GreedyFHistRegistrationResult, 
-                        interpolation_mode: int, 
+                        interpolation_mode: int | str, 
                         do_reverse_transform: bool = False,
                         **kwargs: dict) -> numpy.ndarray:
         reg_transform = transformation.registration_result.registration if not do_reverse_transform else transformation.registration_result.reverse_registration

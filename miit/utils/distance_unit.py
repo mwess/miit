@@ -30,7 +30,8 @@ unit_to_factor = {
     'ym': -24,
     'rm': -27,
     'qm': -30,
-    'px': None
+    'px': None,
+    'pixel': None
 }
 
 
@@ -49,8 +50,6 @@ class DUnit:
     """
 
     value: Decimal
-    symbol: str = field(init=False, default='px')
-    factor: int | None = field(init=False, default=None)
 
     @property
     def symbol(self) -> str:
@@ -85,13 +84,15 @@ class DUnit:
     def equal_instance(self, other: 'DUnit') -> bool:
         return self.value == other.value and self.symbol == other.symbol
 
-    def __eq__(self, other: 'DUnit') -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, DUnit):
+            return False
         if self.factor == other.factor:
             return self.value == other.value
         return self.to_dec() == other.to_dec()
 
     def __gt__(self, other: 'DUnit') -> bool:
-        return self.to_dec().__gt__(other.to_dec)
+        return self.to_dec().__gt__(other.to_dec())
 
     def __ge__(self, other: 'DUnit') -> bool:
         if self.__eq__(other):
@@ -114,13 +115,13 @@ class DUnit:
         Returns:
             Decimal:
         """
-        if isinstance(value, float):
+        if isinstance(value, float) or isinstance(value, int):
             value = str(value)
         if isinstance(value, str):
             value = Decimal(value)
         return value
 
-    def scale(self, scale_factor: float | Decimal, inplace: bool = True) -> 'DUnit' | None:
+    def scale(self, scale_factor: float | Decimal, inplace: bool = True) -> 'DUnit | None':
         """Scale a dunit by a given factor.
 
         Returns:
@@ -210,7 +211,8 @@ class DUnit:
         value = dct['value']
         if isinstance(value, str):
             value = Decimal(value)
+        symbol: str = dct.get('symbol', 'px') # type: ignore
         return cls(
-            value = value,
-            symbol= dct['symbol']
+            value =value,
+            symbol=symbol
         )

@@ -58,7 +58,7 @@ class Pointset(BasePointset):
         self.scale_resolution((rate_w, rate_h))
 
     def rescale(self, scaling_factor: float | tuple[float, float]):
-        if isinstance(scaling_factor, float):
+        if not isinstance(scaling_factor, tuple):
             scaling_factor = (scaling_factor, scaling_factor)
         self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor[0]
         self.data[self.y_axis] = self.data[self.y_axis] * scaling_factor[1]
@@ -80,7 +80,7 @@ class Pointset(BasePointset):
             self.data.y = self.data.y + 2 * (center_y - self.data.y)
         else:
             pass
-        self.resolution = self.resolution[::-1]
+        self.resolution = (self.resolution[1], self.resolution[0])
 
     def copy(self):
         return Pointset(data=self.data.copy(),

@@ -1,13 +1,13 @@
 import os
 from os.path import join
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy, numpy as np
 import SimpleITK as sitk
 
         
-def run_fun_if_not_none(fun: callable, obj: Any | None = None) -> Any | None:
+def run_fun_if_not_none(fun: Callable, obj: Any | None = None) -> Any | None:
     """Executes function if object is not None.
 
     Args:

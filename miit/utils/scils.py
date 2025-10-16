@@ -5,12 +5,13 @@ import json
 
 import numpy as np
 import pyimzml
+from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.spatial_data.base_types import Annotation
 
 def read_srd_with_msi(path: str, 
-                      msi: pyimzml.ImzMLParser.ImzMLParser, 
-                      target_resolution: float = 1) -> Annotation:
+                      msi: ImzMLParser, 
+                      target_resolution: float = 1) -> list[Annotation]:
     """Read srd file using spatial information encoded in 
 
     Args:
@@ -31,7 +32,7 @@ def read_srd_with_msi(path: str,
 
 def read_srd(path: str, 
              dims: tuple[int, int],
-             scale: tuple[float, float] = None 
+             scale: tuple[float, float] | None = None 
              ) -> list[Annotation]:
     """Read srd file and translate into image format.
 

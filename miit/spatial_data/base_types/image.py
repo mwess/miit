@@ -14,6 +14,10 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_types.base_imaging import BaseImage
 from miit.utils.utils import create_if_not_exists
 from miit.utils.distance_unit import DUnit
+from miit.utils.image_utils import (
+    pad,
+    crop
+)
 
 
 @dataclass(kw_only=True)
@@ -22,7 +26,7 @@ class Image(BaseImage):
     interpolation_mode: ClassVar[str] = 'LINEAR'
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
-        self.data = self.data[xmin:xmax, ymin:ymax]
+        self.data = crop(self.data, xmin, xmax, ymin, ymax)
 
     def resize(self, width: int, height: int):
         # Use opencv's resize function here, because it typically works a lot faster and for now
@@ -34,19 +38,18 @@ class Image(BaseImage):
         self.scale_resolution((rate_w, rate_h))
 
     def rescale(self, scaling_factor: float | tuple[float, float]):
-        if isinstance(scaling_factor, float):
+        if not isinstance(scaling_factor, tuple):
             scaling_factor = (scaling_factor, scaling_factor)
         w, h = self.data.shape[:2]
         w_n, h_n = int(w*scaling_factor[0]), int(h*scaling_factor[1])
         self.resize(w_n, h_n)
 
     def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
-        left, right, top, bottom = padding
-        self.data = cv2.copyMakeBorder(self.data, top, bottom, left, right, cv2.BORDER_CONSTANT, constant_values)
+        self.data = pad(self.data, padding, constant_values)
 
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
-        self.resolution = self.resolution[::-1]
+        self.resolution = (self.resolution[1], self.resolution[0])
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)

@@ -11,15 +11,15 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.distance_unit import DUnit
 
 
-@dataclass(kw_only=True)
+@dataclass
 class BaseImage(abc.ABC):
 
-    data: numpy.ndarray
+    data: numpy.ndarray = field(default_factory=lambda: numpy.array(0))
     interpolation_mode: ClassVar[str]
     name: str = ''
     _id:uuid.UUID = field(init=False)
     meta_information: dict = field(default_factory=lambda: defaultdict(dict))
-    resolution: tuple[DUnit, DUnit] = field(default_factory=lambda: [DUnit.default_dunit(), DUnit.default_dunit()])
+    resolution: tuple[DUnit, DUnit] = field(default_factory=lambda: (DUnit.default_dunit(), DUnit.default_dunit()))
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
@@ -55,9 +55,14 @@ class BaseImage(abc.ABC):
     @abc.abstractmethod
     def store(self, path: str):
         pass
-
+    
     @abc.abstractmethod
-    def get_type(self) -> str:
+    def copy(self) -> 'BaseImage':
+        pass
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_type() -> str:
         pass
 
     def scale_resolution(self, scale_factors: tuple[float, float]):
@@ -72,8 +77,8 @@ class BaseImage(abc.ABC):
             resolution = (resolution, resolution)    
         res_w, res_h = self.resolution
         dst_w, dst_h = resolution
-        conv_rate_w = 1 / res_w.get_conversion_factor(dst_w)
-        conv_rate_h = 1 / res_h.get_conversion_factor(dst_h)
+        conv_rate_w = float(1 / res_w.get_conversion_factor(dst_w))
+        conv_rate_h = float(1 / res_h.get_conversion_factor(dst_h))
         self.rescale((conv_rate_w, conv_rate_h))
         if align_units:
             rw, rh = self.resolution
@@ -82,25 +87,25 @@ class BaseImage(abc.ABC):
     def align_resolution(self, target: BaseImage | BasePointset, align_units: bool = True):
         self.scale_to_resolution(target.resolution)
 
-    def set_resolution(self, resolution: DUnit | tuple[DUnit]):
+    def set_resolution(self, resolution: DUnit | tuple[DUnit, DUnit]):
         if isinstance(resolution, DUnit):
-            resolution = [resolution, resolution]
+            resolution = (resolution, resolution)
         self.resolution = resolution            
 
     @classmethod
     @abc.abstractmethod
-    def load(path: str) -> 'BaseImage':
+    def load(cls, path: str) -> 'BaseImage':
         pass
 
 
-@dataclass(kw_only=True)
+@dataclass
 class BasePointset(abc.ABC):
 
     data: Any
     name: str = ''
     _id:uuid.UUID = field(init=False)
     meta_information: dict = field(default_factory=lambda: defaultdict(dict))
-    resolution: tuple[DUnit, DUnit] = field(default_factory=lambda: [DUnit.default_dunit(), DUnit.default_dunit()])
+    resolution: tuple[DUnit, DUnit] = field(default_factory=lambda: (DUnit.default_dunit(), DUnit.default_dunit()))
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
@@ -110,7 +115,7 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def resize(self, height: int, width: int):
+    def resize(self, width: int, height: int):
         pass
 
     @abc.abstractmethod
@@ -118,11 +123,11 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def pad(self, padding: tuple[int, int, int, int], constant_values: int = 0):
+    def pad(self, padding: tuple[int, int, int, int]):
         pass
 
     @abc.abstractmethod
-    def flip(self, axis: int = 0):
+    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
         pass
 
     @abc.abstractmethod
@@ -133,13 +138,14 @@ class BasePointset(abc.ABC):
     def store(self, path: str):
         pass
 
+    @staticmethod
     @abc.abstractmethod
-    def get_type(self) -> str:
+    def get_type() -> str:
         pass
 
     @classmethod
     @abc.abstractmethod
-    def load(path: str) -> 'BasePointset':
+    def load(cls, path: str) -> 'BasePointset':
         pass
 
     def scale_resolution(self, scale_factors: tuple[float, float]):
@@ -173,7 +179,7 @@ class BasePointset(abc.ABC):
         self.rescale((conv_rate_w, conv_rate_h))
         self.resolution = target.resolution
         
-    def set_resolution(self, resolution: DUnit | tuple[DUnit]):
+    def set_resolution(self, resolution: DUnit | tuple[DUnit, DUnit]):
         if isinstance(resolution, DUnit):
-            resolution = [resolution, resolution]
+            resolution = (resolution, resolution)
         self.resolution = resolution              

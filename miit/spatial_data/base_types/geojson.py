@@ -99,12 +99,12 @@ class GeoJSONData(BasePointset):
     def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
         features = self.data['features'] if 'features' in self.data else self.data
         features_new = []
-        if axis == 0:
+        if axis == 1:
             center_x = ref_img_shape[1] // 2
             for feature in features:
                 feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + 2 * (center_x - coords[0]), coords[1]], feature)
                 features_new.append(feature_new)
-        elif axis == 1:
+        elif axis == 0:
             center_y = ref_img_shape[0] // 2
             for feature in features:
                 feature_new = geojson.utils.map_tuples(lambda coords: [coords[0], coords[1] + 2 * (center_y - coords[1])], feature)

@@ -8,8 +8,7 @@ from miit.spatial_data.base_types import (
     BasePointset,
     Pointset,
     GeoJSONData,
-    OMETIFFImage,
-    OMETIFFAnnotation
+    OMEImage
 )
 
 
@@ -35,8 +34,7 @@ class SpatialBaseDataLoader:
         self.class_map[Annotation.get_type()] = Annotation
         self.class_map[Pointset.get_type()] = Pointset
         self.class_map[GeoJSONData.get_type()] = GeoJSONData
-        self.class_map[OMETIFFImage.get_type()] = OMETIFFImage
-        self.class_map[OMETIFFAnnotation.get_type()] = OMETIFFAnnotation
+        self.class_map[OMEImage.get_type()] = OMEImage
 
     def load(self, 
              data_type: str, 

@@ -2,8 +2,7 @@ from .section import Section
 from .base_types import (
     Image,
     Annotation,
-    OMETIFFImage,
-    OMETIFFAnnotation,
+    OMEImage,
     GeoJSONData,
     Pointset,
     BaseImage,
