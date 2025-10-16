@@ -7,8 +7,8 @@ from .annotation import Annotation
 from .image import Image
 from .geojson import GeoJSONData
 from .pointset import Pointset
-from .ometiff_image import OMETIFFImage
-from .ometiff_annotation import OMETIFFAnnotation
+from .ome_image import OMEImage
+from .ome_image import OMEImage
 from .base_type_loader import SpatialBaseDataLoader
 
 

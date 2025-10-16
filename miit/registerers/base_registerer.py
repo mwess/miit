@@ -37,5 +37,6 @@ class Registerer(abc.ABC):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: 'RegistrationResult', 
-                        interpolation_mode: int, **kwargs: dict) -> numpy.ndarray:
+                        interpolation_mode: int | str, 
+                        **kwargs: dict) -> numpy.ndarray:
         pass

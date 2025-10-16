@@ -58,8 +58,8 @@ class PointsetRegisterer(Registerer):
     
     def transform_image(self, 
                         image: numpy.ndarray, 
-                        transformation: RegistrationResult, 
-                        interpolation_mode: int, 
+                        transformation: PointsetRegistrationResult, 
+                        interpolation_mode: int | str, 
                         **kwargs: dict) -> numpy.ndarray:
         order = simpleitk_to_skimage_interpolation(interpolation_mode)
         warped_image = self._transform_image_affine(

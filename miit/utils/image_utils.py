@@ -2,6 +2,12 @@ import cv2
 import numpy, numpy as np
 
 
+interpolation_str_to_int: dict[str, int] = {
+    'linear': 1,
+    'nn': 0,
+    'nearestneighbor': 0
+}
+
 def remove_padding(image: numpy.ndarray, 
                    padding: tuple[int, int, int, int]) -> numpy.ndarray:
     """Removes padding from image.
@@ -45,6 +51,27 @@ def pad_asym(image: numpy.ndarray, padding: tuple[int, int, int, int], constant_
         image = np.pad(image, ((top, bottom), (left, right), (0, 0)), constant_values=constant_values)
     return image
 
+
+def pad(data: numpy.ndarray, padding: tuple[int, int, int, int], constant_values: int = 0) -> numpy.ndarray:
+    """Pads image
+
+    Args:
+        data (numpy.ndarray): _description_
+        padding (tuple[int, int, int, int]): _description_
+        constant_values (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        numpy.ndarray: Padded image.
+    """
+    left, right, top, bottom = padding
+    data = cv2.copyMakeBorder(data, top, bottom, left, right, cv2.BORDER_CONSTANT, constant_values) # type: ignore
+    return data
+
+
+def crop(data, xmin: int, xmax: int, ymin: int, ymax: int):
+    data = data[xmin:xmax, ymin:ymax]
+    return data
+    
 
 def get_padding_params(img: numpy.ndarray, shape: int) -> tuple[int, int, int, int]:
     """Computes padding parameters to pad image to given shape.
@@ -97,7 +124,7 @@ def write_affine_to_file(mat: numpy.ndarray, path: str):
         f.write(output_str)
 
 
-def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value: int = 0) -> numpy.ndarray:
+def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value: int = 0) -> tuple[numpy.ndarray, dict[str, int]]:
     """
     Pads source image symmetrically to the same shape as target.
 
@@ -125,4 +152,4 @@ def pad_to_image(source: numpy.ndarray, target: numpy.ndarray, background_value:
         'pad_x_left': pad_x_left,
         'pad_x_right': pad_x_right
     }
-    return cv2.copyMakeBorder(source, pad_x_right, pad_x_left, pad_y_left, pad_y_right, cv2.BORDER_CONSTANT, background_value), padding
+    return cv2.copyMakeBorder(source, pad_x_right, pad_x_left, pad_y_left, pad_y_right, cv2.BORDER_CONSTANT, background_value), padding # type: ignore

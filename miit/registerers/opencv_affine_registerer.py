@@ -185,7 +185,7 @@ class OpenCVAffineRegisterer(Registerer):
     def transform_image(self, 
                         image: numpy.ndarray, 
                         transformation: OpenCVAffineTransformation, 
-                        interpolation_mode: int, 
+                        interpolation_mode: int | str, 
                         **kwargs: dict) -> numpy.ndarray:
         order = simpleitk_to_skimage_interpolation(interpolation_mode)
         tform = transform.AffineTransform(transformation.transformation_matrix)

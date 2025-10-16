@@ -39,3 +39,6 @@ examples/notebooks/output_directory
 secret_scripts/
 
 docs/source/build
+
+
+*.code-workspace
