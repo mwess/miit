@@ -1,22 +1,22 @@
-FROM mwess89/greedyfhist:0.0.3-rc3
+FROM mwess89/greedyfhist:0.0.3-rc6
 
-RUN pip install git+https://github.com/mwess/miit@v0.0.3-rc5
+RUN uv pip install git+https://github.com/mwess/miit@v0.0.3-rc6
 
-RUN pip install jupyterlab
+RUN uv pip install jupyterlab
 
-RUN git clone --depth 1 --branch v0.0.3-rc3 https://github.com/mwess/greedyfhist
-RUN git clone --depth 1 --branch v0.0.3-rc5 https://github.com/mwess/miit
+RUN git clone --depth 1 --branch v0.0.3-rc6 https://github.com/mwess/greedyfhist
+RUN git clone --depth 1 --branch v0.0.3-rc6 https://github.com/mwess/miit
 
 # Install NiftyReg
 RUN git clone https://github.com/KCL-BMEIS/niftyreg
 
-WORKDIR "/niftyreg"
+WORKDIR "/app/niftyreg"
 RUN mkdir build
-WORKDIR "/niftyreg/build"
+WORKDIR "/app/niftyreg/build"
 RUN cmake ..
 RUN make
 RUN make install
-WORKDIR "/"
+WORKDIR "/app"
 # RUN cd niftyreg && \
 #         mkdir build && cd build \
 #         cmake .. && \
