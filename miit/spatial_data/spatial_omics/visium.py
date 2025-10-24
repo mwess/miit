@@ -15,8 +15,8 @@ import h5py
 import numpy, numpy as np
 import pandas, pandas as pd
 
-from miit.spatial_data.base_types import Annotation, Image, Pointset, BaseImage
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_types import Annotation, Image, Pointset
+from miit.spatial_data.base_classes import BaseImage, BaseSpatialOmics, MIITobject
 from miit.registerers.base_registerer import Registerer
 
 
@@ -177,6 +177,7 @@ def scale_tissue_positions(tissue_positions: pandas.DataFrame,
     return tissue_positions
 
 
+@MIITobject
 @dataclass(kw_only=True)
 class Visium(BaseSpatialOmics):
     
@@ -287,7 +288,8 @@ class Visium(BaseSpatialOmics):
         spot_positions['int_idx'] = range(1, spot_positions.shape[0] + 1)
         ref_mat = np.zeros((image_shape[0], image_shape[1]), dtype=np.int64)
         for tbl_idx, row in spot_positions.iterrows():
-            x, y = row['x'], row['y']
+            x: float = row['x'] # type: ignore
+            y: float = row['y'] # type: ignore
             int_idx = spec_to_ref_map[tbl_idx]
             xl = max(math.floor(x - spot_radius), 0)
             xh = min(math.ceil(x + spot_radius), image_shape[0])
@@ -303,7 +305,7 @@ class Visium(BaseSpatialOmics):
 
     @staticmethod
     def get_type() -> str:
-        return 'visium'
+        return 'Visium'
         
     def pad(self, padding: tuple[int, int, int, int]):
         if self.image is not None:
@@ -326,6 +328,7 @@ class Visium(BaseSpatialOmics):
         self.table.rescale(scaling_factor)
         self.ref_mat.rescale(scaling_factor)
 
+    # TODO: Add an option on whether to filter out points that are not in the image space after cropping.
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         if self.image is not None:
             self.image.crop(x1, x2, y1, y2)

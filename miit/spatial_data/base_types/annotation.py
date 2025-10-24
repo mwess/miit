@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
-from miit.spatial_data.base_types.base_imaging import BaseImage
+from miit.spatial_data.base_classes.base_imaging import BaseImage
 from miit.utils.utils import create_if_not_exists
 from miit.utils.distance_unit import DUnit
+from miit.spatial_data.base_classes import MIITobject
 
 
+@MIITobject
 @dataclass(kw_only=True)
 class Annotation(BaseImage):
     """
@@ -33,7 +35,7 @@ class Annotation(BaseImage):
     """
 
     interpolation_mode: ClassVar[str] = 'NN'
-    labels: list[str] | dict[str, int] | None = None
+    labels: list[str | int] | dict[str | int, int] | None = None
     is_multichannel: bool = False
 
     def __post_init__(self) -> None:
@@ -46,7 +48,7 @@ class Annotation(BaseImage):
                     labels = [1]
                 else:
                     labels = list(range(1, self.data.shape[-1] + 1))
-            self.labels = labels 
+            self.labels = labels
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         # TODO: Add check for image bounds
@@ -72,7 +74,7 @@ class Annotation(BaseImage):
         self.scale_resolution((rate_w, rate_h))            
 
     def rescale(self, scaling_factor: float | tuple[float, float]):
-        if isinstance(scaling_factor, float):
+        if not isinstance(scaling_factor, tuple):
             scaling_factor = (scaling_factor, scaling_factor)
         w, h = self.data.shape[:2]
         w_n, h_n = int(w*scaling_factor[0]), int(h*scaling_factor[1])
@@ -88,8 +90,7 @@ class Annotation(BaseImage):
 
     def flip(self, axis: int = 0):
         self.data = np.flip(self.data, axis=axis)
-        self.resolution = self.resolution[::-1]
-
+        self.resolution = (self.resolution[1], self.resolution[0])
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
@@ -290,7 +291,7 @@ class Annotation(BaseImage):
 
     @staticmethod
     def get_type() -> str:
-        return 'annotation'
+        return 'Annotation'
 
     @classmethod
     def load(cls, path: str) -> 'Annotation':

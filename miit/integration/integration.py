@@ -4,7 +4,7 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.spatial_data.base_types.annotation import Annotation
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_classes.base_imaging import BaseSpatialOmics
 from miit.spatial_data.spatial_omics.imzml import Imzml
 
 

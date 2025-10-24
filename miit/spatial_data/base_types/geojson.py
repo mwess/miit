@@ -15,11 +15,11 @@ import skimage
 
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
-from miit.spatial_data.base_types.annotation import Annotation
-from miit.spatial_data.base_types.base_imaging import BasePointset
+from miit.spatial_data.base_classes.base_imaging import BasePointset
+from miit.spatial_data.base_classes import MIITobject
 from miit.utils.utils import create_if_not_exists
 
-
+@MIITobject
 @dataclass(kw_only=True)
 class GeoJSONData(BasePointset):
 
@@ -136,7 +136,7 @@ class GeoJSONData(BasePointset):
 
     @staticmethod
     def get_type() -> str:
-        return 'geojson'
+        return 'GeoJSONData'
 
     @classmethod
     def load(cls, path: str) -> 'GeoJSONData':

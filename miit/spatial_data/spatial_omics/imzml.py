@@ -26,12 +26,15 @@ from pyimzml.ImzMLWriter import ImzMLWriter
 
 from miit.spatial_data.base_types import (
     Annotation,
-    BaseImage,
     Image,
-    BasePointset,
     SpatialBaseDataLoader
 )
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_classes import (
+    BaseImage,
+    BasePointset,
+    BaseSpatialOmics,
+    MIITobject
+)
 from miit.registerers.base_registerer import Registerer
 from miit.utils.imzml import (
     get_mode,
@@ -579,6 +582,7 @@ def flatten_to_row(df: pandas.DataFrame) -> pandas.DataFrame:
 
 
 # TODO: Use ref_mat labels instead of spec_to_ref_map, but everything needs to be reverted then.
+@MIITobject
 @dataclass(kw_only=True)
 class Imzml(BaseSpatialOmics):
 

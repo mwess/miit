@@ -6,7 +6,7 @@ from typing import Any
 
 from miit.spatial_data.spatial_omics.imzml import Imzml
 from miit.spatial_data.spatial_omics.visium import Visium
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_classes.base_imaging import BaseSpatialOmics
 
 
 class SpatialDataLoaderException(Exception):

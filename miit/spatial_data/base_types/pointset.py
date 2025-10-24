@@ -10,11 +10,12 @@ import pandas, pandas as pd
 
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
-from miit.spatial_data.base_types.base_imaging import BasePointset
+from miit.spatial_data.base_classes.base_imaging import BasePointset
+from miit.spatial_data.base_classes import MIITobject
 from miit.utils.utils import create_if_not_exists
 from miit.utils.distance_unit import DUnit
 
-
+@MIITobject
 @dataclass(kw_only=True)
 class Pointset(BasePointset):
 
@@ -96,7 +97,7 @@ class Pointset(BasePointset):
 
     @staticmethod
     def get_type() -> str:
-        return 'pointset'
+        return 'Pointset'
 
     def store(self,
               path: str):

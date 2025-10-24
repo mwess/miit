@@ -6,12 +6,12 @@ import numpy, numpy as np
 import pandas as pd
 from skimage import transform
 
-from .base_registerer import Registerer
+from .base_registerer import Registerer, RegistrationResult
 
 from miit.utils.utils import simpleitk_to_skimage_interpolation
 
 @dataclass
-class OpenCVAffineTransformation:
+class OpenCVAffineTransformation(RegistrationResult):
     
     transformation_matrix: numpy.ndarray
     height: int

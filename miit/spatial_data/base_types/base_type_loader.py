@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from miit.spatial_data.base_classes.base_imaging import (
+    BaseImage,
+    BasePointset
+)
+
 from miit.spatial_data.base_types import (
     Annotation,
     Image,
-    BaseImage,
-    BasePointset,
     Pointset,
     GeoJSONData,
     OMEImage

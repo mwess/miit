@@ -6,7 +6,7 @@ build-backend = "poetry.masonry.api"
 line-length = 79
 
 [tool.poetry]
-version = "0.0.3-rc4"
+version = "0.0.3-rc6"
 readme = "README.md"
 
 [project]
@@ -44,7 +44,7 @@ dependencies = [
     "seaborn (>=0.13.2)",
     "h5py (>=3.12.1)",
     "pydicom (>=3.0.1)",
-    "greedyfhist @ git+https://github.com/mwess/greedyfhist@v0.0.3-rc6"
+#    "greedyfhist @ git+https://github.com/mwess/greedyfhist@v0.0.3-rc6"
 ]
 
 [tool.poetry.dev-dependencies]

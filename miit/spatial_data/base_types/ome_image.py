@@ -22,6 +22,7 @@ from greedyfhist.data_types.image import (
     INTERPOLATION_TYPE
 )
 from miit.spatial_data.base_types.image import Image
+from miit.spatial_data.base_classes import MIITobject
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.utils.distance_unit import DUnit
 from miit.utils.image_utils import (
@@ -119,6 +120,7 @@ EXTRA_TIF_TAGS: dict[str, int] = {
 
 
 # It should be that pages need to have the same resolution, otherwise we only use the first page.
+@MIITobject
 @dataclass(kw_only=True)
 class OMEImage(Image):
     """

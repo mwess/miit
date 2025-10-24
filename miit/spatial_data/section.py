@@ -8,13 +8,18 @@ import shutil
 
 import numpy, numpy as np
 
-from miit.spatial_data.base_types import (
-    Image,
+from miit.spatial_data.base_classes.base_imaging import (
     BaseImage,
     BasePointset,
+    BaseSpatialOmics
+)
+
+from miit.spatial_data.base_types import (
+    Image,
     SpatialBaseDataLoader
 )
-from miit.spatial_data.spatial_omics import BaseSpatialOmics, SpatialOmicsDataLoader
+
+from miit.spatial_data.spatial_omics.spatial_omics_loader import SpatialOmicsDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
@@ -117,6 +122,8 @@ def groupwise_registration(sections: list['Section'],
     # Setup list with images
     images_with_mask_list = []
     for idx, section in enumerate(sections):
+        if section.reference_image is None:
+            raise Exception('Section misses a reference image.')
         image = section.reference_image.data
         # mask_annotation = section.segmentation_mask
         mask_annotation = section.get_annotation_by_name('tissue_mask')
@@ -135,10 +142,10 @@ def groupwise_registration(sections: list['Section'],
 
 def register_to_ref_image(target_image: numpy.ndarray | BaseImage, 
                           source_image: numpy.ndarray | BaseImage, 
-                          data: BaseImage | BasePointset,
-                          registerer: Registerer = None,
+                          data: BaseImage | BasePointset | BaseSpatialOmics,
+                          registerer: Registerer | None = None,
                           reg_opts: dict | None = None,
-                          **args) -> tuple[BaseImage | BasePointset, RegistrationResult, Image]:
+                          **args) -> tuple[BaseImage | BasePointset | BaseSpatialOmics, RegistrationResult, Image]:
     """
     Utility function to register some spatial data to a target image space.
     Registers the source to the target image and applies the transformation to additionally supplied data.
@@ -151,7 +158,7 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
         reg_opts (dict | None, optional): Options parsed to the registerer.. Defaults to None.
 
     Returns:
-        tuple[BaseImage | BasePointset, RegistrationResult, Image]: 
+        tuple[BaseImage | BasePointset, RegistrationResult, Image]: Tuple of warped data, computed transformation, and warped source image
     """
     if isinstance(target_image, BaseImage):
         target_image = target_image.data
@@ -161,10 +168,10 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
         registerer = OpenCVAffineRegisterer()
     if reg_opts is None:
         reg_opts = {}
-    transformation = registerer.register_images(source_image, target_image, **reg_opts)
+    transformation: RegistrationResult = registerer.register_images(source_image, target_image, **reg_opts)
     warped_data = data.apply_transform(registerer, transformation)
-    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
-    return warped_data, transformation, warped_ref_image
+    warped_source_image = Image(data=source_image).apply_transform(registerer, transformation)
+    return warped_data, transformation, warped_source_image
 
 
 @dataclass
@@ -201,11 +208,13 @@ class Section:
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
+    # This can probably just be a reference to somethign in so_data
     reference_image: BaseImage | None = None
     name: str | None = None
     _id: uuid.UUID = field(init=False) 
+    # TODO: Remove
     so_data: list[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: list[BaseImage | BasePointset] = field(default_factory=lambda: [])
+    annotations: list[BaseImage | BasePointset | BaseSpatialOmics] = field(default_factory=lambda: [])
     meta_information: dict[Any, Any] | None = None
 
     def __post_init__(self):
@@ -220,7 +229,10 @@ class Section:
         Returns:
             Section:
         """
-        image = self.reference_image.copy()
+        if self.reference_image is not None:
+            image = self.reference_image.copy()
+        else:
+            image = None
         config = copy_if_not_none(self.meta_information)
         annotations = self.annotations.copy()
         so_data = self.so_data.copy()
@@ -242,7 +254,8 @@ class Section:
             ymin (int):
             ymax (int):
         """
-        self.reference_image.crop(xmin, xmax, ymin, ymax)
+        if self.reference_image is not None:
+            self.reference_image.crop(xmin, xmax, ymin, ymax)
         for annotation in self.annotations:
             annotation.crop(xmin, xmax, ymin, ymax)
         for so_data_ in self.so_data:
@@ -263,7 +276,8 @@ class Section:
         Args:
             padding (tuple[int, int, int, int]):
         """
-        self.reference_image.pad(padding)
+        if self.reference_image is not None:
+            self.reference_image.pad(padding)
         for annotation in self.annotations:
             annotation.pad(padding)
         for so_data_ in self.so_data:
@@ -276,12 +290,18 @@ class Section:
             width (int): 
             height (int):
         """
-        w, h = self.reference_image.data.shape[:2]
-        ws = width / w
-        hs = height / h
-        self.reference_image.resize(width, height)
+        if self.reference_image is None:
+            does_reference_image_exist = False
+        else:
+            does_reference_image_exist = True
+            w, h = self.reference_image.data.shape[:2]
+            ws = width / w
+            hs = height / h
+            self.reference_image.resize(width, height)
         for annotation in self.annotations:
             if isinstance(annotation, BasePointset):
+                if not does_reference_image_exist:
+                    raise Exception('BasePointsets cannot be transformed, since no reference image exists.')
                 annotation.resize(ws, hs)
             else:
                 annotation.resize(width, height)
@@ -306,8 +326,10 @@ class Section:
         Returns:
             Section: Wapred section.
         """
-
-        image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
+        if self.reference_image is not None:
+            image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
+        else:
+            image_transformed = None
         annotations_transformed = []
         for annotation in self.annotations:
             annotation_transformed = annotation.apply_transform(registerer, transformation, **kwargs)
@@ -340,11 +362,12 @@ class Section:
         f_dict = {}
         f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        self.reference_image.store(join(directory, str(self.reference_image._id)))
-        f_dict['reference_image'] = {
-            'id': str(self.reference_image._id),
-            'type': self.reference_image.get_type()
-        }
+        if self.reference_image is not None:
+            self.reference_image.store(join(directory, str(self.reference_image._id)))
+            f_dict['reference_image'] = {
+                'id': str(self.reference_image._id),
+                'type': self.reference_image.get_type()
+            }
         meta_information_path = join(directory, 'meta_information.json')
         with open(meta_information_path, 'w') as f:
             json.dump(self.meta_information, f)
@@ -373,7 +396,7 @@ class Section:
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
-    def get_annotation_by_name(self, name: str) -> BaseImage | None:
+    def get_annotation_by_name(self, name: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Finds an annotation by matching Annotation.name with name.
         Returns None, if annotation could not be found.
 
@@ -384,11 +407,13 @@ class Section:
             BaseImage | None:
         """
         for annotation in self.annotations:
+            if not hasattr(annotation, 'name'):
+                continue
             if annotation.name == name:
                 return annotation
         return None
     
-    def get_annotation_by_id(self, id_: str) -> BaseImage | None:
+    def get_annotation_by_id(self, id_: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Gets annotation by matching Annotation._id with id_.
         Returns None, if annotation can not be found.
 
@@ -465,7 +490,7 @@ class Section:
 
     def add_molecular_imaging_data(self,
                                    mi: BaseSpatialOmics,
-                                   register_to_primary_image=True,
+                                   do_register_to_ref_image=True,
                                    reference_image: numpy.ndarray = None,
                                    registerer: Registerer | None = None):
         """
@@ -482,17 +507,20 @@ class Section:
         """
 
         # TODO: Add this function to loading from config!
-        if register_to_primary_image:
-            warped_mi = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
+        if self.reference_image is None:
+            raise Exception('add_molecular_imaging_data requires a reference image')
+        if do_register_to_ref_image:
+            warped_mi, _, _ = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
         else:
             warped_mi = mi
-        self.so_data.append(warped_mi)
+        self.annotations.append(warped_mi)
 
     def flip(self, axis: int = 0):
         """
         Flip all spatial data in this section.
         """
-        self.reference_image.flip(axis=axis)
+        if self.reference_image is not None:
+            self.reference_image.flip(axis=axis)
         for annotation in self.annotations:
             if isinstance(annotation, BasePointset):
                 annotation.flip(self.reference_image.data.shape[:2], axis=axis)
