@@ -32,4 +32,3 @@ def compute_reference_matrix_mappings(ref_mat1: numpy.ndarray,
     for key in spots:
         spots[key] = np.unique(spots[key], return_counts=True)
     return spots
-

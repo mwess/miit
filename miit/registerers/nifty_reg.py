@@ -7,7 +7,6 @@ import subprocess
 from typing import Any
 
 import cv2
-#import niftyreg
 import numpy, numpy as np
 import SimpleITK, SimpleITK as sitk
 
@@ -30,6 +29,11 @@ def _resize_image_simple_sitk(image: numpy.ndarray | sitk.Image,
         img_np = image
     new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=interpolation)
     return sitk.GetImageFromArray(new_img_np.astype(np.float32))
+
+
+def _string_mat_to_mat(str_mat: str) -> numpy.ndarray:
+    mat = [[float(y) for y in x.split()] for x in str_mat]
+    return np.array(mat)
 
 
 @dataclass
@@ -249,8 +253,3 @@ class NiftyRegWrapper(Registerer):
                   path_to_nifty_reg_f3d=path_to_nifty_reg_f3d,
                   path_to_nifty_reg_resample=path_to_nifty_reg_resample,
                   path_to_nifty_reg_transform=path_to_nifty_reg_transform)            
-    
-
-def _string_mat_to_mat(str_mat: str) -> numpy.ndarray:
-    mat = [[float(y) for y in x.split()] for x in str_mat]
-    return np.array(mat)
