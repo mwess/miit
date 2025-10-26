@@ -119,7 +119,6 @@ EXTRA_TIF_TAGS: dict[str, int] = {
 }
 
 
-# It should be that pages need to have the same resolution, otherwise we only use the first page.
 @MIITobject
 @dataclass(kw_only=True)
 class OMEImage(Image):

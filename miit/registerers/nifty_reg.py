@@ -40,7 +40,9 @@ class NiftyRegRegistrationResult(RegistrationResult):
     orig_target_size: tuple[int, int]
     cmdln_returns: list[Any]
 
+
 NIFTY_MAX_DIM_SIZE: int = 2048
+
 
 @dataclass
 class NiftyRegWrapper(Registerer):

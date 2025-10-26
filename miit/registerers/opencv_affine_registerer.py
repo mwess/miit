@@ -10,6 +10,7 @@ from .base_registerer import Registerer, RegistrationResult
 
 from miit.utils.utils import simpleitk_to_skimage_interpolation
 
+
 @dataclass
 class OpenCVAffineTransformation(RegistrationResult):
     

@@ -7,17 +7,16 @@ from os.path import join
 from typing import Any
 from zipfile import ZipFile
 
-
 import geojson
 import numpy, numpy as np
 import shapely
 import skimage
 
-
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_classes.base_imaging import BasePointset
 from miit.spatial_data.base_classes import MIITobject
 from miit.utils.utils import create_if_not_exists
+
 
 @MIITobject
 @dataclass(kw_only=True)

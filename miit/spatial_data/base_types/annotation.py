@@ -98,10 +98,6 @@ class Annotation(BaseImage):
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
-        # print(transformed_image.shape)
-        # print(type(self.labels))
-        # print(self.is_multichannel)
-        # print()
         return Annotation(data=transformed_image,
                           labels=self.labels,
                           name=self.name,

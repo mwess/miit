@@ -4,11 +4,9 @@ from dataclasses import dataclass
 from os.path import join
 from typing import Any, ClassVar
 
-
 import cv2
 import numpy as np
 import SimpleITK as sitk
-
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_classes.base_imaging import BaseImage

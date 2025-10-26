@@ -193,24 +193,5 @@ def map_annotations_to_table(spec_to_ref_map: dict,
                     index={idx: name for (idx, name) in zip(range(len(labels)), labels)}, 
                     inplace=True)
     count_df = count_df.transpose()
-    return count_df
-
-    
-# TODO: Can this function be removed. Duplicate in imzml.py?
-def map_accumulated_data_to_imzml(target_bmi: Imzml,
-                                  accumulated_df: pandas.DataFrame,
-                                  output_path: str,
-                                  mzs: numpy.ndarray | None = None):
-    spec_to_ref_map = target_bmi.get_spec_to_ref_map()
-    template_imzml = ImzMLParser(target_bmi.config['imzml'])
-    if mzs is None:
-        mzs = np.array([float(x) for x in accumulated_df.columns])
-    imzml_writer = ImzMLWriter(output_path)
-    spec_to_ref_map = target_bmi.get_spec_to_ref_map()
-    for msi_idx, coords in enumerate(template_imzml.coordinates):
-        acc_df_idx = spec_to_ref_map[msi_idx]
-        intensities = accumulated_df.loc[acc_df_idx].to_numpy()
-        imzml_writer.addSpectrum(mzs, intensities, coords)
-    imzml_writer.finish()
-    
+    return count_df   
     

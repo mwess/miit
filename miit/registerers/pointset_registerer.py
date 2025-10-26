@@ -83,5 +83,4 @@ class PointsetRegisterer(Registerer):
             warped_ps_ = affine_transform(ps_, transformation.tform.params).squeeze()
             warped_pointset.append(warped_ps_)
         warped_pointset = np.array(warped_pointset)
-        # warped_pointset = affine_transform(pointset, transformation.tform.params) 
         return warped_pointset
