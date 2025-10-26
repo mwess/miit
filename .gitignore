@@ -41,3 +41,5 @@ secret_scripts/
 docs/source/build
 
 *.code-workspace
+
+secret_scripts/*
