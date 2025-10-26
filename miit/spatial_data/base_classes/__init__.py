@@ -24,12 +24,12 @@ from miit.spatial_data.base_classes.base_imaging import (
 # #     return wrapper_singleton 
 
 
-class ImagingDataLoaderException(Exception):
+class ImagingDataIOException(Exception):
     pass
 
 
 @dataclass
-class ImagingDataLoader:
+class ImagingDataIO:
     """
     Class that handles loading of spatial omics data from stored data.
 
@@ -55,8 +55,18 @@ class ImagingDataLoader:
             path (str): Path to data.
         """
         if data_type not in self.class_map:
-            raise ImagingDataLoaderException(f'data_type {data_type} not found in loader.')
+            raise ImagingDataIOException(f'data_type {data_type} not found in loader.')
         return self.class_map[data_type].load(path, **kwargs)
+    
+    def store(self,
+              data_type: Any,
+              path: str,
+              **kwargs: dict):
+        """
+        """
+        if data_type not in self.class_map:
+            raise ImagingDataIOException(f'data_type {data_type} cannot be stored.')
+        return self.class_map[data_type].store(path, **kwargs)
 
     def add_class(self, 
                   clazz,
@@ -74,18 +84,17 @@ class ImagingDataLoader:
 
     @staticmethod
     def load_default_loader():
-        return ImagingDataLoader()
+        return ImagingDataIO()
 
 
-IMAGING_DATA_LOADER = ImagingDataLoader.load_default_loader()
+IMAGING_DATA_IO = ImagingDataIO.load_default_loader()
 
 
 T = TypeVar('T', covariant=True)
 
 
-# @wrapt.decorator
 def MIITobject(cls: T) -> T:
     if not (issubclass(cls, BaseImage) or issubclass(cls, BasePointset) or issubclass(cls, BaseSpatialOmics)):
         raise Exception(f'Object type {type(cls)} cannot be registered.')
-    IMAGING_DATA_LOADER.add_class(cls)
+    IMAGING_DATA_IO.add_class(cls)
     return cls

@@ -8,10 +8,12 @@ import shutil
 
 import numpy, numpy as np
 
-from miit.spatial_data.base_classes.base_imaging import (
+from miit.spatial_data.base_classes import (
     BaseImage,
     BasePointset,
-    BaseSpatialOmics
+    BaseSpatialOmics,
+    ImagingDataIO,
+    IMAGING_DATA_IO
 )
 
 from miit.spatial_data.base_types import (
@@ -24,7 +26,6 @@ from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
-
 
 # TODO: Refactor this out. This can probably be easily replaced using OpenCV.
 def get_boundary_box(image: numpy.ndarray, background_value: float = 0) -> tuple[int, int, int, int]:
@@ -57,17 +58,17 @@ def get_table_summary_string(section: 'Section') -> str:
     max_name_len = len('Name')
     max_id_len = len('ID')
     max_type_len = len('Type')
-    for annotation in section.annotations + section.so_data:
-        name_len = len(annotation.name)
+    for layer in section.layers:
+        name_len = len(layer.name)
         if max_name_len < name_len:
             max_name_len = name_len
-        id_len = len(str(annotation._id))
+        id_len = len(str(layer._id))
         if max_id_len < id_len:
             max_id_len = id_len
-        type_len = len(annotation.get_type())
+        type_len = len(layer.get_type())
         if max_type_len < type_len:
             max_type_len = type_len
-        identifiers.append((annotation.name, str(annotation._id), annotation.get_type()))
+        identifiers.append((layer.name, str(layer._id), layer.get_type()))
 
     name_cell_len = max_name_len + 2
     id_cell_len = max_id_len + 2
@@ -202,8 +203,8 @@ class Section:
     so_data: List[BaseMolecularImaging] = field(default_factory=lambda: [])
         Contains additional more complex spatial omics types (e.g. MSI, ST).
         
-    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
-        List of additional annotations. 
+    layers: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
+        List of additional layers. 
     
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
@@ -212,9 +213,7 @@ class Section:
     reference_image: BaseImage | None = None
     name: str | None = None
     _id: uuid.UUID = field(init=False) 
-    # TODO: Remove
-    so_data: list[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: list[BaseImage | BasePointset | BaseSpatialOmics] = field(default_factory=lambda: [])
+    layers: list[BaseImage | BasePointset | BaseSpatialOmics] = field(default_factory=lambda: [])
     meta_information: dict[Any, Any] | None = None
 
     def __post_init__(self):
@@ -234,13 +233,11 @@ class Section:
         else:
             image = None
         config = copy_if_not_none(self.meta_information)
-        annotations = self.annotations.copy()
-        so_data = self.so_data.copy()
+        layers = self.layers.copy()
         copied_section = Section(
             reference_image=image,
             name=self.name,
-            annotations=annotations,
-            so_data=so_data,
+            layers=layers,
             meta_information=config)
         copied_section._id = self._id
         return copied_section
@@ -256,10 +253,8 @@ class Section:
         """
         if self.reference_image is not None:
             self.reference_image.crop(xmin, xmax, ymin, ymax)
-        for annotation in self.annotations:
-            annotation.crop(xmin, xmax, ymin, ymax)
-        for so_data_ in self.so_data:
-            so_data_.crop(xmin, xmax, ymin, ymax)
+        for layer in self.layers:
+            layer.crop(xmin, xmax, ymin, ymax)
 
     def crop_by_mask(self, mask: numpy.ndarray):
         """Crops every datatype within the section based on the mask boundaries.
@@ -278,10 +273,8 @@ class Section:
         """
         if self.reference_image is not None:
             self.reference_image.pad(padding)
-        for annotation in self.annotations:
-            annotation.pad(padding)
-        for so_data_ in self.so_data:
-            so_data_.pad(padding)
+        for layer in self.layers:
+            layer.pad(padding)
 
     def resize(self, width: int, height: int):
         """Applies `resize` to each datatype within a Section.
@@ -298,15 +291,13 @@ class Section:
             ws = width / w
             hs = height / h
             self.reference_image.resize(width, height)
-        for annotation in self.annotations:
-            if isinstance(annotation, BasePointset):
+        for layer in self.layers:
+            if isinstance(layer, BasePointset):
                 if not does_reference_image_exist:
                     raise Exception('BasePointsets cannot be transformed, since no reference image exists.')
-                annotation.resize(ws, hs)
+                layer.resize(ws, hs)
             else:
-                annotation.resize(width, height)
-        for so_data_ in self.so_data:
-            so_data_.resize(width, height)
+                layer.resize(width, height)
 
     # TODO: Implement function
     def rescale(self, scaling_factor: float):
@@ -330,31 +321,29 @@ class Section:
             image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
         else:
             image_transformed = None
-        annotations_transformed = []
-        for annotation in self.annotations:
-            annotation_transformed = annotation.apply_transform(registerer, transformation, **kwargs)
-            annotations_transformed.append(annotation_transformed)
-        so_data_transformed_list = []
-        for so_data_ in self.so_data:
-            so_data_transformed = so_data_.apply_transform(registerer, transformation, **kwargs)
-            so_data_transformed_list.append(so_data_transformed)
-        
+        layers_transformed = []
+        for layer in self.layers:
+            layer_transformed = layer.apply_transform(registerer, transformation, **kwargs)
+            layers_transformed.append(layer_transformed)
         config = self.meta_information.copy() if self.meta_information is not None else None
         transformed_section = Section(reference_image=image_transformed,
                        name=self.name,
-                       annotations=annotations_transformed,
-                       so_data=so_data_transformed_list,
+                       layers=layers_transformed,
                        meta_information=config)
         transformed_section._id = self._id
         return transformed_section
 
-    def store(self, directory: str):
+    def store(self, 
+              directory: str,
+              imaging_data_io: ImagingDataIO | None = None):
         # TODO: Rewrite that function.
         """
         Should look like this:
             File with mapping what attribute in what subfolder.
             Each subfolder is marked with their id.
         """
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         if exists(directory):
             shutil.rmtree(directory)
         if not exists(directory):
@@ -372,26 +361,16 @@ class Section:
         with open(meta_information_path, 'w') as f:
             json.dump(self.meta_information, f)
             f_dict['meta_information_path'] = 'meta_information.json' 
-        annotation_ids = []
-        for annotation in self.annotations:
-            annotation.store(join(directory, str(annotation._id)))
-            annotation_ids.append(
+        layer_ids = []
+        for layer in self.layers:
+            layer.store(join(directory, str(layer._id)))
+            layer_ids.append(
                 {
-                    'id': str(annotation._id),
-                    'type': annotation.get_type()
+                    'id': str(layer._id),
+                    'type': layer.get_type()
                 }
             )
-        f_dict['annotations'] = annotation_ids
-        so_data_ids = []
-        for so_data in self.so_data:
-            so_dir = join(directory, str(so_data._id))
-            so_data.store(so_dir)
-            so_data_ids.append({
-                'id': str(so_data._id),
-                'type': so_data.get_type()
-                }
-            )
-        f_dict['so_datas'] = so_data_ids
+        f_dict['layers'] = layer_ids
             
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
@@ -406,11 +385,11 @@ class Section:
         Returns:
             BaseImage | None:
         """
-        for annotation in self.annotations:
-            if not hasattr(annotation, 'name'):
+        for layer in self.layers:
+            if not hasattr(layer, 'name'):
                 continue
-            if annotation.name == name:
-                return annotation
+            if layer.name == name:
+                return layer
         return None
     
     def get_annotation_by_id(self, id_: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
@@ -423,9 +402,9 @@ class Section:
         Returns:
             BaseImage | None: 
         """
-        for annotation in self.annotations:
-            if str(annotation._id) == id_:
-                return annotation
+        for layer in self.layers:
+            if str(layer._id) == id_:
+                return layer
         return None
     
     def print_additional_data_summary(self):
@@ -435,6 +414,7 @@ class Section:
             
     @classmethod
     def load(cls, directory: str, 
+             imaging_data_io: ImagingDataIO | None = None,
              base_type_loader: SpatialBaseDataLoader | None = None,
              so_type_loader: SpatialOmicsDataLoader | None = None) -> 'Section':
         """Loads a Section object from directory. 
@@ -456,33 +436,29 @@ class Section:
             base_type_loader = SpatialBaseDataLoader.load_default_loader()
         if so_type_loader is None:
             so_type_loader = SpatialOmicsDataLoader.load_default_loader()
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         ref_image_dict = attributes['reference_image']
         ref_image_path = join(directory, ref_image_dict['id'])
-        reference_image = base_type_loader.load(ref_image_dict['type'], ref_image_path)
+        reference_image = imaging_data_io.load(ref_image_dict['type'], ref_image_path)
         if 'meta_information_path' in attributes:
             meta_information_path = join(directory, attributes['meta_information_path'])
             with open(meta_information_path) as f:
                 meta_information = json.load(f)
         else:
             meta_information = None
-        annotations = []
-        for annotation_dict in attributes['annotations']:
-            sub_dir = annotation_dict['id']
-            annotation = base_type_loader.load(annotation_dict['type'], join(directory, sub_dir))
-            annotations.append(annotation)
-        so_datas = []
-        for so_dict in attributes['so_datas']:
-            sub_dir = so_dict['id']
-            so_data = so_type_loader.load(so_dict['type'],
-                                  join(directory, sub_dir))
-            so_datas.append(so_data)
+        layers = []
+        for layer_dict in attributes['layers']:
+            sub_dir = layer_dict['id']
+            layer = imaging_data_io.load(layer_dict['type'], 
+                                         join(directory, sub_dir))
+            layers.append(layer)
         obj = cls(
             reference_image=reference_image,
             name=attributes['name'],
-            annotations=annotations,
-            so_data=so_datas,
+            layers=layers,
             meta_information=meta_information
         )
         obj._id = uuid.UUID(attributes['id'])
@@ -513,7 +489,7 @@ class Section:
             warped_mi, _, _ = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
         else:
             warped_mi = mi
-        self.annotations.append(warped_mi)
+        self.layers.append(warped_mi)
 
     def flip(self, axis: int = 0):
         """
@@ -521,10 +497,8 @@ class Section:
         """
         if self.reference_image is not None:
             self.reference_image.flip(axis=axis)
-        for annotation in self.annotations:
-            if isinstance(annotation, BasePointset):
-                annotation.flip(self.reference_image.data.shape[:2], axis=axis)
+        for layer in self.layers:
+            if isinstance(layer, BasePointset):
+                layer.flip(self.reference_image.data.shape[:2], axis=axis)
             else:
-                annotation.flip(axis=axis)
-        for so_data_ in self.so_data:
-            so_data_.flip(axis=axis)
+                layer.flip(axis=axis)

@@ -49,6 +49,10 @@ class Annotation(BaseImage):
                 else:
                     labels = list(range(1, self.data.shape[-1] + 1))
             self.labels = labels
+        if isinstance(self.labels, list) and self.is_multichannel:
+            raise Exception('Multichannel annotation cannot have lists as labels. Pass labels as dictionaries instead.')
+        if isinstance(self.labels, dict) and not self.is_multichannel:
+            raise Exception('Singlechannel annotation cannot have dicts as labels. Pass labels as lists instead.')
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         # TODO: Add check for image bounds
@@ -94,10 +98,15 @@ class Annotation(BaseImage):
 
     def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
         transformed_image = self.transform(registerer, transformation, **kwargs)
+        # print(transformed_image.shape)
+        # print(type(self.labels))
+        # print(self.is_multichannel)
+        # print()
         return Annotation(data=transformed_image,
                           labels=self.labels,
                           name=self.name,
-                          resolution=self.resolution)
+                          resolution=self.resolution,
+                          is_multichannel=self.is_multichannel)
 
     def copy(self):
         return Annotation(data=self.data.copy(),
@@ -118,7 +127,8 @@ class Annotation(BaseImage):
             'resolution': {
                 'width': self.resolution[0].to_json(),
                 'height': self.resolution[1].to_json()
-            }            
+            },
+            'is_multichannel': self.is_multichannel            
         }
         with open(join(path, 'additional_attributes.json'), 'w') as f:
             json.dump(additional_attributes, f)
@@ -126,9 +136,8 @@ class Annotation(BaseImage):
             with open(join(path, 'labels.json'), 'w') as f:
                 json.dump(self.labels, f)            
 
-    # TODO: Return Annotation
     def get_by_labels(self, 
-                      labels: list[str] | str) -> numpy.ndarray | None:
+                      labels: list[str] | str) -> 'Annotation | None':
         if isinstance(labels, str):
             labels = [labels]
         if len(labels) == 0:
@@ -141,7 +150,12 @@ class Annotation(BaseImage):
             mats.append(mat)
         if len(mats) == 1:
             return mats[0]
-        return np.dstack(mats)
+        mat = np.dstack(mats)
+        ann = Annotation(data=mat, 
+                         labels=labels, 
+                         resolution=self.resolution,
+                         is_multichannel=False)
+        return ann
     
     def __get_by_label(self, label: str) -> numpy.ndarray | None:
         """Returns a mask for the specified label.
@@ -309,10 +323,14 @@ class Annotation(BaseImage):
         resolution = additional_attributes['resolution']
         res_w = DUnit.from_dict(resolution['width'])
         res_h = DUnit.from_dict(resolution['height'])
+        is_multichannel = additional_attributes['is_multichannel']
+        if not isinstance(is_multichannel, bool):
+            is_multichannel = bool(is_multichannel)
         annotation = cls(data=annotation, 
                          labels=labels, 
                          name=name,
-                         resolution=(res_w, res_h))
+                         resolution=(res_w, res_h),
+                         is_multichannel=is_multichannel)
         annotation._id = id_
         return annotation
 

@@ -1,7 +1,7 @@
 import numpy, numpy as np
 import pandas
 
-from miit.spatial_data.base_classes.base_imaging import BaseSpatialOmics
+from miit.spatial_data import BaseSpatialOmics
 
 
 def map_counts_to_ref_mat(counts: pandas.DataFrame, bmi: BaseSpatialOmics) -> numpy.ndarray:

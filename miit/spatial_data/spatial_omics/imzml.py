@@ -341,7 +341,7 @@ def convert_msi_to_reference_matrix(msi: ImzMLParser,
         ref_mat[y_s:y_e,x_s:x_e] = idx + 1
         spec_to_ref_map[idx] = idx + 1
         ref_map_to_spec[idx + 1] = idx
-    ann = Annotation(data=ref_mat, labels=ref_map_to_spec)
+    ann = Annotation(data=ref_mat, labels=ref_map_to_spec, is_multichannel=True)
     return ann, spec_to_ref_map
 
 
@@ -899,7 +899,8 @@ class Imzml(BaseSpatialOmics):
         rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
         composed_dict = compose_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
         composed_dict[background_value] = np.zeros(n_ints)
-        indexer = np.array([composed_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        indexer = np.array([composed_dict.get(i, np.zeros(n_ints)) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        # indexer = np.array([composed_dict[i] for i in np.unique(ref_mat)])
         ion_cube = indexer[(ref_mat - ref_mat.min())]
         ion_cube_annotation = Annotation(data=ion_cube,
                                         labels=table.index.to_list())

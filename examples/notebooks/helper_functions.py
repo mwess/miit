@@ -55,7 +55,7 @@ def load_section(directory, section_number=None):
     tissue_mask.data = tissue_mask.data / tissue_mask.data.max()
     landmarks = Pointset.load_from_path(lm_path, name='landmarks')
 
-    section = Section(reference_image=reference_image, annotations=[tissue_mask, landmarks])
+    section = Section(reference_image=reference_image, layers=[tissue_mask, landmarks])
     if len(ann_path) > 0:
         annotation_paths = [x for x in ann_path if x.endswith('.nii.gz')]
         if len(annotation_paths) > 0:
@@ -63,7 +63,7 @@ def load_section(directory, section_number=None):
             labels_path = [x for x in ann_path if x.endswith('.txt')][0]
             annotation = Annotation.load_from_path(annotation_path, path_to_labels=labels_path, name='tissue_classes', channel_idx=0)
             annotation.data = annotation.data/annotation.data.max()
-            section.annotations.append(annotation)
+            section.layers.append(annotation)
     return section
 
 
@@ -109,7 +109,7 @@ def load_sections(root_dir, skip_so_data=False):
         msi_pos = Imzml.init_msi_data(msi_pos_imzml_path, name='msi_pos', target_resolution=1)
         msi_pos_pca = msi_pos.get_pca_img()
         warped_msi_pos, _, _ = register_to_ref_image(msi_pos_section.reference_image.data, msi_pos_pca.data, msi_pos, MSItoHistMetaRegisterer())
-        sections['6'].so_data.append(warped_msi_pos)
+        sections['6'].layers.append(warped_msi_pos)
     
     
         msi_neg_paths = glob.glob(join(root_dir, '7', 'imzml', '*'))
@@ -121,13 +121,13 @@ def load_sections(root_dir, skip_so_data=False):
         msi_neg = Imzml.init_msi_data(msi_neg_imzml_path, name='msi_neg', target_resolution=1)
         msi_neg_pca = msi_neg.get_pca_img()
         warped_msi_neg, _, _ = register_to_ref_image(msi_neg_section.reference_image.data, msi_neg_pca.data, msi_neg, MSItoHistMetaRegisterer())
-        sections['7'].so_data.append(warped_msi_neg)    
+        sections['7'].layers.append(warped_msi_neg)    
     
         st = Visium.from_spcrng(join(root_dir, '2', 'spatial_transcriptomics'))
         warped_st_data, _, registered_st_image = register_to_ref_image(target_image=sections['2'].reference_image.data,
                                                                     source_image=st.image.data,
                                                                     data=st)
-        sections['2'].so_data.append(warped_st_data)
+        sections['2'].layers.append(warped_st_data)
     return sections
 
 

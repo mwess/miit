@@ -1,4 +1,11 @@
 
+from miit.spatial_data.base_classes import (
+    BaseImage, 
+    BasePointset, 
+    BaseSpatialOmics, 
+    ImagingDataIO
+)
+from miit.spatial_data.base_types.image import Image
 from miit.spatial_data.base_types.annotation import Annotation
 from miit.spatial_data.base_types.pointset import Pointset
 from miit.spatial_data.base_types.geojson import GeoJSONData

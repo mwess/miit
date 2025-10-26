@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from miit.spatial_data.base_types import BaseImage
+from miit.spatial_data import BaseImage
 from miit.spatial_data.section import Section
 
 
