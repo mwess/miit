@@ -4,8 +4,8 @@ RUN uv pip install git+https://github.com/mwess/miit@v0.0.4
 
 RUN uv pip install jupyterlab
 
-RUN git clone --depth 1 --branch v0.0.3-rc7 https://github.com/mwess/greedyfhist
-RUN git clone --depth 1 --branch v0.0.3-rc7 https://github.com/mwess/miit
+RUN git clone --depth 1 --branch v0.0.3-rc6 https://github.com/mwess/greedyfhist
+RUN git clone --depth 1 --branch v0.0.4 https://github.com/mwess/miit
 
 # Install NiftyReg
 RUN git clone https://github.com/KCL-BMEIS/niftyreg
