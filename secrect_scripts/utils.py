@@ -187,3 +187,21 @@ def plot_sections_with_landmark_distance(image: BaseImage, unified_lms):
         x_values = [x1, x2]
         y_values = [y1, y2]
         plt.plot(x_values, y_values, 'k', linestyle="-")
+
+
+# TODO: Can this function be removed. Duplicate in imzml.py?
+def map_accumulated_data_to_imzml(target_bmi: Imzml,
+                                  accumulated_df: pandas.DataFrame,
+                                  output_path: str,
+                                  mzs: numpy.ndarray | None = None):
+    spec_to_ref_map = target_bmi.get_spec_to_ref_map()
+    template_imzml = ImzMLParser(target_bmi.config['imzml'])
+    if mzs is None:
+        mzs = np.array([float(x) for x in accumulated_df.columns])
+    imzml_writer = ImzMLWriter(output_path)
+    spec_to_ref_map = target_bmi.get_spec_to_ref_map()
+    for msi_idx, coords in enumerate(template_imzml.coordinates):
+        acc_df_idx = spec_to_ref_map[msi_idx]
+        intensities = accumulated_df.loc[acc_df_idx].to_numpy()
+        imzml_writer.addSpectrum(mzs, intensities, coords)
+    imzml_writer.finish()

@@ -9,6 +9,7 @@ from pyimzml.ImzMLParser import ImzMLParser
 
 from miit.spatial_data.base_types import Annotation
 
+
 def read_srd_with_msi(path: str, 
                       msi: ImzMLParser, 
                       target_resolution: float = 1) -> list[Annotation]:
@@ -29,6 +30,7 @@ def read_srd_with_msi(path: str,
     max_x = int(msi.imzmldict['max dimension x']/target_resolution)
     max_y = int(msi.imzmldict['max dimension y']/target_resolution)
     return read_srd(path, (max_x, max_y), (scale_x, scale_y))
+
 
 def read_srd(path: str, 
              dims: tuple[int, int],
@@ -53,7 +55,6 @@ def read_srd(path: str,
         points = []
         for source in region['Sources']:
             for point in source['Spots']:
-        # for _, point in enumerate(srd['Regions'][0]['Sources'][0]['Spots']):
                 x = point['X']
                 y = point['Y']
                 points.append((x,y))
