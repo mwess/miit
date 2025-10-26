@@ -4,6 +4,7 @@ import os
 from os.path import join, exists
 from typing import Any
 import uuid
+from uuid import UUID
 import shutil
 
 import numpy, numpy as np
@@ -173,7 +174,7 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
     return warped_data, transformation, warped_source_image
 
 
-@dataclass
+@dataclass(init=False)
 class Section:
     """
     Composite object that contains all spatial data belonging to one 
@@ -207,16 +208,76 @@ class Section:
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
-    # This can probably just be a reference to somethign in so_data
-    reference_image: BaseImage | None = None
+    __ref_img_idx__: int | None = field(init=False, repr=False)
     name: str | None = None
     _id: uuid.UUID = field(init=False) 
     layers: list[BaseImage | BasePointset | BaseSpatialOmics] = field(default_factory=lambda: [])
     meta_information: dict[Any, Any] | None = None
 
-    def __post_init__(self):
-        self._id = uuid.uuid1()
+    def __init__(self,
+                reference_image: int | str | UUID | BaseImage | BaseSpatialOmics | None = None,
+                name: str | None = None,
+                layers: list[BaseImage | BasePointset | BaseSpatialOmics] | None = None,
+                meta_information: dict[Any, Any] | None = None,
+                id_: uuid.UUID | str | None = None):
+        self.name = name
+        if id_ is None:
+            self._id = uuid.uuid1()
+        elif isinstance(id_, str):
+            self._id = uuid.UUID(id_)
+        else:
+            self._id = id_
+        if layers is None:
+            layers = []
+        self.layers = layers
+        self.meta_information = meta_information
+        if reference_image is not None:
+            self.reference_image = reference_image
 
+    @property
+    def reference_image(self):
+        if self.__ref_img_idx__ is not None:
+            return self.layers[self.__ref_img_idx__]
+
+    @reference_image.setter
+    def reference_image(self, 
+                        ref_image: int | str | UUID | BaseImage | BaseSpatialOmics):
+        """Setter method for reference image. 
+
+        Args:
+        
+            ref_image (int | str | UUID | BaseImage | BaseSpatialOmics):
+                If `ref_image` is an int, `ref_image` is treated as an index for the spatial objects in `layers`. If `ref_image` is 
+                out-of-bounds, nothing happens.
+
+                If `ref_image` is a str or UUID, the spatial data with the corresponding `id` is searched in `layers`. If `ref_image` 
+                canot be found, nothing happens. 
+
+                If `ref_image` is a `BaseImage` or `BaseSpatialOmics`, the behaviour depends on whether `ref_image` is 
+                already in `layers`. If `ref_image` already exists, no new image will be added and `reference_image` will return
+                the existing spatial object. Otherwise, `ref_image` will be added to `layers`.
+
+        """
+        if isinstance(ref_image, int):
+            if len(self.layers) > ref_image:
+                self.__ref_img_idx__ = ref_image
+        elif isinstance(ref_image, UUID):
+            ref_image = str(ref_image)
+        elif isinstance(ref_image, str):
+            layer_idx = self.find_layer_index_by_name(ref_image)
+            if layer_idx is not None:
+                self.__ref_img_idx__ = layer_idx
+        elif isinstance(ref_image, BaseImage) or isinstance(ref_image, BaseSpatialOmics):
+            # First find out, if we already have this image.
+            layer_idx = self.find_layer_index_by_id(ref_image._id)
+            if layer_idx is not None:
+                self.__ref_img_idx__ = ref_image
+            else:
+                self.layers.append(ref_image)
+                self.__ref_img_idx__ = len(self.layers) - 1
+        else:
+            raise Exception('Tried to set an unknown data type.')
+        
     def __hash__(self) -> int:
         return self._id
 
@@ -226,14 +287,10 @@ class Section:
         Returns:
             Section:
         """
-        if self.reference_image is not None:
-            image = self.reference_image.copy()
-        else:
-            image = None
         config = copy_if_not_none(self.meta_information)
         layers = self.layers.copy()
         copied_section = Section(
-            reference_image=image,
+            reference_image=self.__ref_img_idx__,
             name=self.name,
             layers=layers,
             meta_information=config)
@@ -249,8 +306,6 @@ class Section:
             ymin (int):
             ymax (int):
         """
-        if self.reference_image is not None:
-            self.reference_image.crop(xmin, xmax, ymin, ymax)
         for layer in self.layers:
             layer.crop(xmin, xmax, ymin, ymax)
 
@@ -269,8 +324,6 @@ class Section:
         Args:
             padding (tuple[int, int, int, int]):
         """
-        if self.reference_image is not None:
-            self.reference_image.pad(padding)
         for layer in self.layers:
             layer.pad(padding)
 
@@ -281,14 +334,13 @@ class Section:
             width (int): 
             height (int):
         """
-        if self.reference_image is None:
+        if self.__ref_img_idx__ is None:
             does_reference_image_exist = False
         else:
             does_reference_image_exist = True
             w, h = self.reference_image.data.shape[:2]
             ws = width / w
             hs = height / h
-            self.reference_image.resize(width, height)
         for layer in self.layers:
             if isinstance(layer, BasePointset):
                 if not does_reference_image_exist:
@@ -315,16 +367,12 @@ class Section:
         Returns:
             Section: Wapred section.
         """
-        if self.reference_image is not None:
-            image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
-        else:
-            image_transformed = None
         layers_transformed = []
         for layer in self.layers:
             layer_transformed = layer.apply_transform(registerer, transformation, **kwargs)
             layers_transformed.append(layer_transformed)
         config = self.meta_information.copy() if self.meta_information is not None else None
-        transformed_section = Section(reference_image=image_transformed,
+        transformed_section = Section(reference_image=self.__ref_img_idx__,
                        name=self.name,
                        layers=layers_transformed,
                        meta_information=config)
@@ -349,12 +397,8 @@ class Section:
         f_dict = {}
         f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        if self.reference_image is not None:
-            self.reference_image.store(join(directory, str(self.reference_image._id)))
-            f_dict['reference_image'] = {
-                'id': str(self.reference_image._id),
-                'type': self.reference_image.get_type()
-            }
+        if self.__ref_img_idx__ is not None:
+            f_dict['ref_img_idx'] = self.__ref_img_idx__
         meta_information_path = join(directory, 'meta_information.json')
         with open(meta_information_path, 'w') as f:
             json.dump(self.meta_information, f)
@@ -373,6 +417,22 @@ class Section:
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
+    def find_layer_index_by_name(self, name: str) -> int | None:
+        """Find the index of the layer based on the name.
+
+        Args:
+            name (str):
+
+        Returns:
+            int | None: Index of layer or None if image cannot be found.
+        """
+        for idx, layer in enumerate(self.layers):
+            if not hasattr(layer, 'name'):
+                continue
+            if layer.name == name:
+                return idx
+        return None
+
     def get_annotation_by_name(self, name: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Finds an annotation by matching Annotation.name with name.
         Returns None, if annotation could not be found.
@@ -383,13 +443,27 @@ class Section:
         Returns:
             BaseImage | None:
         """
-        for layer in self.layers:
-            if not hasattr(layer, 'name'):
-                continue
-            if layer.name == name:
-                return layer
-        return None
+        layer_idx = self.find_layer_index_by_name(name)
+        if layer_idx is None:
+            return None
+        return self.layers[layer_idx]
     
+    def find_layer_index_by_id(self, id_: str | UUID) -> int | None:
+        """Find the index of the layer based on the name.
+
+        Args:
+            id_ (str | UUID):
+
+        Returns:
+            int | None: Index of layer or None if image cannot be found.
+        """
+        if isinstance(id_, UUID):
+            id_ = str(id_)
+        for idx, layer in enumerate(self.layers):
+            if str(layer._id) == id_:
+                return idx
+        return None
+
     def get_annotation_by_id(self, id_: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Gets annotation by matching Annotation._id with id_.
         Returns None, if annotation can not be found.
@@ -400,12 +474,12 @@ class Section:
         Returns:
             BaseImage | None: 
         """
-        for layer in self.layers:
-            if str(layer._id) == id_:
-                return layer
-        return None
+        layer_idx = self.find_layer_index_by_id(id_)
+        if layer_idx is None:
+            return None
+        return self.layers[layer_idx]
     
-    def print_additional_data_summary(self):
+    def print_data_summary(self):
         """Prints a summary of data.
         """
         print(get_table_summary_string(self))
@@ -430,9 +504,7 @@ class Section:
             imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
-        ref_image_dict = attributes['reference_image']
-        ref_image_path = join(directory, ref_image_dict['id'])
-        reference_image = imaging_data_io.load(ref_image_dict['type'], ref_image_path)
+        reference_image = attributes.get('ref_img_idx', None)
         if 'meta_information_path' in attributes:
             meta_information_path = join(directory, attributes['meta_information_path'])
             with open(meta_information_path) as f:
@@ -473,7 +545,7 @@ class Section:
         """
 
         # TODO: Add this function to loading from config!
-        if self.reference_image is None:
+        if self.__ref_img_idx__ is None:
             raise Exception('add_molecular_imaging_data requires a reference image')
         if do_register_to_ref_image:
             warped_mi, _, _ = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
@@ -485,8 +557,6 @@ class Section:
         """
         Flip all spatial data in this section.
         """
-        if self.reference_image is not None:
-            self.reference_image.flip(axis=axis)
         for layer in self.layers:
             if isinstance(layer, BasePointset):
                 layer.flip(self.reference_image.data.shape[:2], axis=axis)
