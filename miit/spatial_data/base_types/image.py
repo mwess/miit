@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from os.path import join
 from typing import Any, ClassVar
 
-
 import cv2
 import numpy as np
 import SimpleITK as sitk
 
-
 from miit.registerers.base_registerer import Registerer, RegistrationResult
-from miit.spatial_data.base_types.base_imaging import BaseImage
+from miit.spatial_data.base_classes.base_imaging import BaseImage
+from miit.spatial_data.base_classes import MIITobject
 from miit.utils.utils import create_if_not_exists
 from miit.utils.distance_unit import DUnit
 from miit.utils.image_utils import (
@@ -20,6 +19,7 @@ from miit.utils.image_utils import (
 )
 
 
+@MIITobject
 @dataclass(kw_only=True)
 class Image(BaseImage):
 
@@ -76,7 +76,7 @@ class Image(BaseImage):
 
     @staticmethod
     def get_type() -> str:
-        return 'image'
+        return 'Image'
 
     @classmethod
     def load(cls, path: str) -> 'Image':

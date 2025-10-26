@@ -150,5 +150,3 @@ def simpleitk_to_skimage_interpolation(val: int | str) -> int:
         return 4
     else:
         return 5
-    
-    

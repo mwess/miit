@@ -8,6 +8,7 @@ interpolation_str_to_int: dict[str, int] = {
     'nearestneighbor': 0
 }
 
+
 def remove_padding(image: numpy.ndarray, 
                    padding: tuple[int, int, int, int]) -> numpy.ndarray:
     """Removes padding from image.

@@ -1,11 +1,11 @@
-FROM mwess89/greedyfhist:0.0.3-rc6
+FROM mwess89/greedyfhist:0.0.3-rc7
 
-RUN uv pip install git+https://github.com/mwess/miit@v0.0.3-rc6
+RUN uv pip install git+https://github.com/mwess/miit@v0.0.3-rc7
 
 RUN uv pip install jupyterlab
 
-RUN git clone --depth 1 --branch v0.0.3-rc6 https://github.com/mwess/greedyfhist
-RUN git clone --depth 1 --branch v0.0.3-rc6 https://github.com/mwess/miit
+RUN git clone --depth 1 --branch v0.0.3-rc7 https://github.com/mwess/greedyfhist
+RUN git clone --depth 1 --branch v0.0.3-rc7 https://github.com/mwess/miit
 
 # Install NiftyReg
 RUN git clone https://github.com/KCL-BMEIS/niftyreg
@@ -17,11 +17,6 @@ RUN cmake ..
 RUN make
 RUN make install
 WORKDIR "/app"
-# RUN cd niftyreg && \
-#         mkdir build && cd build \
-#         cmake .. && \
-#         make && \
-#         make install
 
 EXPOSE 8888
 ENTRYPOINT ["jupyter", "lab"]

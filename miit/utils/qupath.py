@@ -6,7 +6,7 @@ import geojson
 import numpy, numpy as np
 import shapely
 
-from miit.spatial_data.base_types import Annotation, GeoJSONData, BaseImage
+from miit.spatial_data import Annotation, GeoJSONData, BaseImage
 
 
 def convert_linestring_to_polygon(geom: shapely.LineString) -> shapely.Polygon:

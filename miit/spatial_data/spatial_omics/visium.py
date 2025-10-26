@@ -15,8 +15,9 @@ import h5py
 import numpy, numpy as np
 import pandas, pandas as pd
 
-from miit.spatial_data.base_types import Annotation, Image, Pointset, BaseImage
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_classes import ImagingDataIO, IMAGING_DATA_IO
+from miit.spatial_data.base_types import Annotation, Image, Pointset
+from miit.spatial_data.base_classes import BaseImage, BaseSpatialOmics, MIITobject
 from miit.registerers.base_registerer import Registerer
 
 
@@ -177,6 +178,7 @@ def scale_tissue_positions(tissue_positions: pandas.DataFrame,
     return tissue_positions
 
 
+@MIITobject
 @dataclass(kw_only=True)
 class Visium(BaseSpatialOmics):
     
@@ -196,12 +198,18 @@ class Visium(BaseSpatialOmics):
     def store(self, directory: str):
         Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
+            #         image_dict = attributes['image']
+            # image = imaging_data_io.load(image_dict['type'], image_dict['path'])
         if self.image is not None:
             image_path = join(directory, 'image')
             if not exists(image_path):
                 os.mkdir(image_path)
             self.image.store(image_path)
-            f_dict['image'] = image_path
+            image_dict = {
+                'type': self.image.get_type(),
+                'path': image_path
+            }
+            f_dict['image'] = image_dict
         table_path = join(directory, 'table')
         if not exists(table_path):
             os.mkdir(table_path)
@@ -231,12 +239,18 @@ class Visium(BaseSpatialOmics):
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory: str) -> 'Visium':
+    def load(cls, 
+             directory: str,
+             imaging_data_io: ImagingDataIO | None = None) -> 'Visium':
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
         if 'image' in attributes:
-            image = Image.load(attributes['image'])
+            image_dict = attributes['image']
+            image = imaging_data_io.load(image_dict['type'], image_dict['path'])
+            # image = Image.load(attributes['image'])
         else:
             image = None
         table = Pointset.load(attributes['table'])
@@ -287,7 +301,8 @@ class Visium(BaseSpatialOmics):
         spot_positions['int_idx'] = range(1, spot_positions.shape[0] + 1)
         ref_mat = np.zeros((image_shape[0], image_shape[1]), dtype=np.int64)
         for tbl_idx, row in spot_positions.iterrows():
-            x, y = row['x'], row['y']
+            x: float = row['x'] # type: ignore
+            y: float = row['y'] # type: ignore
             int_idx = spec_to_ref_map[tbl_idx]
             xl = max(math.floor(x - spot_radius), 0)
             xh = min(math.ceil(x + spot_radius), image_shape[0])
@@ -303,7 +318,7 @@ class Visium(BaseSpatialOmics):
 
     @staticmethod
     def get_type() -> str:
-        return 'visium'
+        return 'Visium'
         
     def pad(self, padding: tuple[int, int, int, int]):
         if self.image is not None:
@@ -326,6 +341,7 @@ class Visium(BaseSpatialOmics):
         self.table.rescale(scaling_factor)
         self.ref_mat.rescale(scaling_factor)
 
+    # TODO: Add an option on whether to filter out points that are not in the image space after cropping.
     def crop(self, x1: int, x2: int, y1: int, y2: int):
         if self.image is not None:
             self.image.crop(x1, x2, y1, y2)

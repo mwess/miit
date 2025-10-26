@@ -24,14 +24,18 @@ import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
 
+
+from miit.spatial_data.base_classes import ImagingDataIO, IMAGING_DATA_IO
 from miit.spatial_data.base_types import (
     Annotation,
-    BaseImage,
-    Image,
-    BasePointset,
-    SpatialBaseDataLoader
+    Image
 )
-from miit.spatial_data.spatial_omics.imaging_data import BaseSpatialOmics
+from miit.spatial_data.base_classes import (
+    BaseImage,
+    BasePointset,
+    BaseSpatialOmics,
+    MIITobject
+)
 from miit.registerers.base_registerer import Registerer
 from miit.utils.imzml import (
     get_mode,
@@ -338,7 +342,7 @@ def convert_msi_to_reference_matrix(msi: ImzMLParser,
         ref_mat[y_s:y_e,x_s:x_e] = idx + 1
         spec_to_ref_map[idx] = idx + 1
         ref_map_to_spec[idx + 1] = idx
-    ann = Annotation(data=ref_mat, labels=ref_map_to_spec)
+    ann = Annotation(data=ref_mat, labels=ref_map_to_spec, is_multichannel=True)
     return ann, spec_to_ref_map
 
 
@@ -405,81 +409,8 @@ def compute_mean_spectrum(msi: ImzMLParser) -> numpy.ndarray:
     """
     # total_intensities: numpy.ndarray | None = None
     total_intensities = reduce(lambda x, y: x + y, [msi.getspectrum(i)[1] for i in range(len(msi.coordinates))])
-    # for i in range(len(msi.coordinates)):
-    #     mzs, intensities = msi.getspectrum(i)
-    #     if total_intensities is None:
-    #         total_intensities: numpy.ndarray = intensities.copy()
-    #     else:
-    #         total_intensities += intensities
     avg_spec = total_intensities/len(msi.coordinates)
     return avg_spec
-
-
-# # TODO: Remove. This is just custom code.
-# def load_metabolites(table_path: str, 
-#                      imzml_path: str) -> tuple[dict, pandas.DataFrame]:
-#     # NEDC_peak_table = pd.read_csv('Peaklist_136_NEDC_figshare.txt', sep='\t')
-#     NEDC_peak_table = pd.read_csv(table_path, sep='\t')
-#     NEDC_peak_table_IDed = NEDC_peak_table[NEDC_peak_table['ID'].notna()][['m/z', 'ID', 'ID in OPLSDA']].reset_index(drop=True)
-#     msi = ImzMLParser(imzml_path)
-#     peaks = get_peaks(msi, rel_percentage=0.00005)
-#     peak_dict, peak_intervals = get_one_peak_dict_and_interval_list(find_ided_peaks(peaks, NEDC_peak_table_IDed))
-#     return peak_dict, NEDC_peak_table_IDed
-
-
-# TODO: Remove function.
-def get_peaks(msi: ImzMLParser, rel_percentage=0.00025):
-    mzs = msi.getspectrum(0)[0]
-    mean_intensities = compute_mean_spectrum(msi)
-    norm_intensities = mean_intensities / trapezoid(y=mean_intensities, x=None)
-    norm_intensities = 100 * norm_intensities /  norm_intensities.max()
-    peaks, _ = find_peaks(norm_intensities, height=rel_percentage)
-    p_m = [(mean_intensities, mzs)]
-    return p_m
-
-
-# TODO: Remove function.
-def find_ided_peaks(peaks, peak_table, mass_error_mz=2.00000):
-    peak_max_diffs = np.abs(peak_table['m/z'] - peak_table['m/z'] * (1 + mass_error_mz))
-    _ret = []
-    for _idxs, _mzs in peaks:
-        _t_idx = []
-        _t_mz = []
-        _t_id = []
-        for _idx, _mz in zip(_idxs, _mzs):
-            peak_table_val = peak_table['m/z']
-            diffs = np.abs(peak_table_val - _mz)
-            sub_table = peak_table[diffs < peak_max_diffs]
-            if sub_table.shape[0] > 0:
-                _t_idx.append(_idx)
-                _t_mz.append(_mz)
-                _t_id.append(peak_table['ID'].iloc[(np.abs(peak_table['m/z'] - _mz)).argmin()])
-        _ret.append((_t_idx, _t_mz, _t_id))
-    return _ret
-
-
-# # TODO: Remove
-# def get_one_peak_dict_and_interval_list(peaks_id: tuple[int, float, float], 
-#                                         delta_factor: int = 2,
-#                                         default_interval_delta: float = 0.00025):
-#     _ret = {}
-#     _ret_ints = []
-#     for _idxs, _mzs, _ids in peaks_id:
-#         for _idx, _mz, _id in zip(_idxs, _mzs, _ids):
-#             if not _id in _ret:
-#                 _ret[_id] = {}
-#                 _ret[_id]['mzs'] = []
-#                 _ret[_id]['interval'] = None
-#             _ret[_id]['mzs'].append(_mz)
-#     for _id, _data in _ret.items():
-#         _d = np.max(_ret[_id]['mzs']) - np.min(_ret[_id]['mzs'])
-#         if _d > 0:
-#             _int_delta = delta_factor * _d / np.mean(_ret[_id]['mzs'])
-#         else:
-#             _int_delta = default_interval_delta
-#         _ret[_id]['interval'] = (np.mean(_ret[_id]['mzs']), _int_delta)
-#         _ret_ints.append(_ret[_id]['interval'])
-#     return _ret, _ret_ints
 
 
 def compute_weighted_average(measurements: pandas.DataFrame | numpy.ndarray,
@@ -579,6 +510,7 @@ def flatten_to_row(df: pandas.DataFrame) -> pandas.DataFrame:
 
 
 # TODO: Use ref_mat labels instead of spec_to_ref_map, but everything needs to be reverted then.
+@MIITobject
 @dataclass(kw_only=True)
 class Imzml(BaseSpatialOmics):
 
@@ -702,9 +634,9 @@ class Imzml(BaseSpatialOmics):
     @classmethod
     def load(cls, 
              directory: str,
-             spatial_base_data_loader: SpatialBaseDataLoader | None = None) -> 'Imzml':
-        if spatial_base_data_loader is None:
-            spatial_base_data_loader = SpatialBaseDataLoader.load_default_loader()
+             imaging_data_io: ImagingDataIO | None = None) -> 'Imzml':
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
@@ -717,7 +649,7 @@ class Imzml(BaseSpatialOmics):
         additional_spatial_data = []
         for spatial_data_dict in attributes['additional_spatial_data']:
             sub_dir = spatial_data_dict['id']
-            spatial_data = spatial_base_data_loader.load(spatial_data_dict['type'], join(directory, sub_dir))
+            spatial_data = imaging_data_io.load(spatial_data_dict['type'], join(directory, sub_dir))
             additional_spatial_data.append(spatial_data)            
         name = attributes.get('name', '')
         msi = ImzMLParser(config['imzml'])
@@ -763,24 +695,6 @@ class Imzml(BaseSpatialOmics):
             name=name,
             msi=msi
         )
-            
-    # TODO: Can this be removed
-    def convert_mappings_and_unique_ids_back(self, 
-                                             mappings: dict, 
-                                             unique_ids: set) -> tuple[dict, set]:
-        """Helper function to convert internal and external ids. 
-
-        Args:
-            mappings (dict): 
-            unique_ids (set): 
-
-        Returns:
-            tuple[dict, set]: 
-        """
-        for key in mappings:
-            mappings[key] = mappings[key] - 1
-        unique_ids = {x - 1 for x in unique_ids}
-        return mappings, unique_ids
 
     def get_map_to_msi_pixel_idxs(self, ref_mat_values: set | None = None) -> set:
         """Retrieves spectra ids.
@@ -796,16 +710,6 @@ class Imzml(BaseSpatialOmics):
         if ref_mat_values is None:
             ref_mat_values = set(ref_to_spec_map.keys())
         return {int(ref_to_spec_map[x]) for x in ref_mat_values}
-
-    # TODO: Is this needed?
-    def mappings_map_to_msi_pixel_idxs(self, mappings: dict) -> dict:
-        ref_to_spec_map = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
-        mapped_mappings = {}
-        for key in mappings:
-            idx_arr = mappings[key][0]
-            idx_arr_mapped = np.array([int(ref_to_spec_map[x]) for x in idx_arr])
-            mapped_mappings[key] = (idx_arr_mapped, mappings[key][1].copy())
-        return mapped_mappings
     
     def get_pca_img(self,
                     int_threshold: float | None = None) -> Image:
@@ -823,7 +727,6 @@ class Imzml(BaseSpatialOmics):
             self.spec_to_ref_map,
             int_threshold
         ))
-
     
     def extract_ion_image(self, 
                           mz_value: float, 
@@ -895,7 +798,8 @@ class Imzml(BaseSpatialOmics):
         rev_spec_to_ref_map = self.get_spec_to_ref_map(reverse=True)
         composed_dict = compose_dicts(rev_spec_to_ref_map, local_idx_measurement_dict)
         composed_dict[background_value] = np.zeros(n_ints)
-        indexer = np.array([composed_dict.get(i) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        indexer = np.array([composed_dict.get(i, np.zeros(n_ints)) for i in range(ref_mat.min(), ref_mat.max() + 1)])
+        # indexer = np.array([composed_dict[i] for i in np.unique(ref_mat)])
         ion_cube = indexer[(ref_mat - ref_mat.min())]
         ion_cube_annotation = Annotation(data=ion_cube,
                                         labels=table.index.to_list())

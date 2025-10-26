@@ -44,7 +44,8 @@ class GreedyFHistExt(Registerer):
                         fixed_img: numpy.ndarray, 
                         moving_img_mask: numpy.ndarray | None = None,
                         fixed_img_mask: numpy.ndarray | None = None,
-                        options: RegistrationOptions | None = None) -> GreedyFHistRegistrationResult:
+                        options: RegistrationOptions | None = None,
+                        **kwargs) -> GreedyFHistRegistrationResult:
         if options is None:
             options = RegistrationOptions()
         reg_result = self.registerer.register(moving_img=moving_img,

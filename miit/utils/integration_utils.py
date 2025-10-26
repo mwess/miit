@@ -1,5 +1,6 @@
 import numpy, numpy as np
 
+
 def get_mappings(ref_mat1: numpy.ndarray, 
                  ref_mat2: numpy.ndarray, 
                  background1: float, 
@@ -31,4 +32,3 @@ def compute_reference_matrix_mappings(ref_mat1: numpy.ndarray,
     for key in spots:
         spots[key] = np.unique(spots[key], return_counts=True)
     return spots
-

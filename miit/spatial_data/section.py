@@ -4,22 +4,27 @@ import os
 from os.path import join, exists
 from typing import Any
 import uuid
+from uuid import UUID
 import shutil
 
 import numpy, numpy as np
 
-from miit.spatial_data.base_types import (
-    Image,
+from miit.spatial_data.base_classes import (
     BaseImage,
     BasePointset,
-    SpatialBaseDataLoader
+    BaseSpatialOmics,
+    ImagingDataIO,
+    IMAGING_DATA_IO
 )
-from miit.spatial_data.spatial_omics import BaseSpatialOmics, SpatialOmicsDataLoader
+
+from miit.spatial_data.base_types import (
+    Image
+)
+
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
-
 
 # TODO: Refactor this out. This can probably be easily replaced using OpenCV.
 def get_boundary_box(image: numpy.ndarray, background_value: float = 0) -> tuple[int, int, int, int]:
@@ -52,17 +57,17 @@ def get_table_summary_string(section: 'Section') -> str:
     max_name_len = len('Name')
     max_id_len = len('ID')
     max_type_len = len('Type')
-    for annotation in section.annotations + section.so_data:
-        name_len = len(annotation.name)
+    for layer in section.layers:
+        name_len = len(layer.name)
         if max_name_len < name_len:
             max_name_len = name_len
-        id_len = len(str(annotation._id))
+        id_len = len(str(layer._id))
         if max_id_len < id_len:
             max_id_len = id_len
-        type_len = len(annotation.get_type())
+        type_len = len(layer.get_type())
         if max_type_len < type_len:
             max_type_len = type_len
-        identifiers.append((annotation.name, str(annotation._id), annotation.get_type()))
+        identifiers.append((layer.name, str(layer._id), layer.get_type()))
 
     name_cell_len = max_name_len + 2
     id_cell_len = max_id_len + 2
@@ -117,6 +122,8 @@ def groupwise_registration(sections: list['Section'],
     # Setup list with images
     images_with_mask_list = []
     for idx, section in enumerate(sections):
+        if section.reference_image is None:
+            raise Exception('Section misses a reference image.')
         image = section.reference_image.data
         # mask_annotation = section.segmentation_mask
         mask_annotation = section.get_annotation_by_name('tissue_mask')
@@ -135,10 +142,10 @@ def groupwise_registration(sections: list['Section'],
 
 def register_to_ref_image(target_image: numpy.ndarray | BaseImage, 
                           source_image: numpy.ndarray | BaseImage, 
-                          data: BaseImage | BasePointset,
-                          registerer: Registerer = None,
+                          data: BaseImage | BasePointset | BaseSpatialOmics,
+                          registerer: Registerer | None = None,
                           reg_opts: dict | None = None,
-                          **args) -> tuple[BaseImage | BasePointset, RegistrationResult, Image]:
+                          **args) -> tuple[BaseImage | BasePointset | BaseSpatialOmics, RegistrationResult, Image]:
     """
     Utility function to register some spatial data to a target image space.
     Registers the source to the target image and applies the transformation to additionally supplied data.
@@ -151,7 +158,7 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
         reg_opts (dict | None, optional): Options parsed to the registerer.. Defaults to None.
 
     Returns:
-        tuple[BaseImage | BasePointset, RegistrationResult, Image]: 
+        tuple[BaseImage | BasePointset, RegistrationResult, Image]: Tuple of warped data, computed transformation, and warped source image
     """
     if isinstance(target_image, BaseImage):
         target_image = target_image.data
@@ -161,13 +168,13 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
         registerer = OpenCVAffineRegisterer()
     if reg_opts is None:
         reg_opts = {}
-    transformation = registerer.register_images(source_image, target_image, **reg_opts)
+    transformation: RegistrationResult = registerer.register_images(source_image, target_image, **reg_opts)
     warped_data = data.apply_transform(registerer, transformation)
-    warped_ref_image = Image(data=source_image).apply_transform(registerer, transformation)
-    return warped_data, transformation, warped_ref_image
+    warped_source_image = Image(data=source_image).apply_transform(registerer, transformation)
+    return warped_data, transformation, warped_source_image
 
 
-@dataclass
+@dataclass(init=False)
 class Section:
     """
     Composite object that contains all spatial data belonging to one 
@@ -195,22 +202,82 @@ class Section:
     so_data: List[BaseMolecularImaging] = field(default_factory=lambda: [])
         Contains additional more complex spatial omics types (e.g. MSI, ST).
         
-    annotations: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
-        List of additional annotations. 
+    layers: List[Union[BaseImage, BasePointset]] = field(default_factory=lambda: [])
+        List of additional layers. 
     
     meta_information: Optional[Dict[Any, Any]] = None
         Additional meta information.
     """
-    reference_image: BaseImage | None = None
+    __ref_img_idx__: int | None = field(init=False, repr=False)
     name: str | None = None
     _id: uuid.UUID = field(init=False) 
-    so_data: list[BaseSpatialOmics] = field(default_factory=lambda: [])
-    annotations: list[BaseImage | BasePointset] = field(default_factory=lambda: [])
+    layers: list[BaseImage | BasePointset | BaseSpatialOmics] = field(default_factory=lambda: [])
     meta_information: dict[Any, Any] | None = None
 
-    def __post_init__(self):
-        self._id = uuid.uuid1()
+    def __init__(self,
+                reference_image: int | str | UUID | BaseImage | BaseSpatialOmics | None = None,
+                name: str | None = None,
+                layers: list[BaseImage | BasePointset | BaseSpatialOmics] | None = None,
+                meta_information: dict[Any, Any] | None = None,
+                id_: uuid.UUID | str | None = None):
+        self.name = name
+        if id_ is None:
+            self._id = uuid.uuid1()
+        elif isinstance(id_, str):
+            self._id = uuid.UUID(id_)
+        else:
+            self._id = id_
+        if layers is None:
+            layers = []
+        self.layers = layers
+        self.meta_information = meta_information
+        if reference_image is not None:
+            self.reference_image = reference_image
 
+    @property
+    def reference_image(self):
+        if self.__ref_img_idx__ is not None:
+            return self.layers[self.__ref_img_idx__]
+
+    @reference_image.setter
+    def reference_image(self, 
+                        ref_image: int | str | UUID | BaseImage | BaseSpatialOmics):
+        """Setter method for reference image. 
+
+        Args:
+        
+            ref_image (int | str | UUID | BaseImage | BaseSpatialOmics):
+                If `ref_image` is an int, `ref_image` is treated as an index for the spatial objects in `layers`. If `ref_image` is 
+                out-of-bounds, nothing happens.
+
+                If `ref_image` is a str or UUID, the spatial data with the corresponding `id` is searched in `layers`. If `ref_image` 
+                canot be found, nothing happens. 
+
+                If `ref_image` is a `BaseImage` or `BaseSpatialOmics`, the behaviour depends on whether `ref_image` is 
+                already in `layers`. If `ref_image` already exists, no new image will be added and `reference_image` will return
+                the existing spatial object. Otherwise, `ref_image` will be added to `layers`.
+
+        """
+        if isinstance(ref_image, int):
+            if len(self.layers) > ref_image:
+                self.__ref_img_idx__ = ref_image
+        elif isinstance(ref_image, UUID):
+            ref_image = str(ref_image)
+        elif isinstance(ref_image, str):
+            layer_idx = self.find_layer_index_by_name(ref_image)
+            if layer_idx is not None:
+                self.__ref_img_idx__ = layer_idx
+        elif isinstance(ref_image, BaseImage) or isinstance(ref_image, BaseSpatialOmics):
+            # First find out, if we already have this image.
+            layer_idx = self.find_layer_index_by_id(ref_image._id)
+            if layer_idx is not None:
+                self.__ref_img_idx__ = ref_image
+            else:
+                self.layers.append(ref_image)
+                self.__ref_img_idx__ = len(self.layers) - 1
+        else:
+            raise Exception('Tried to set an unknown data type.')
+        
     def __hash__(self) -> int:
         return self._id
 
@@ -220,15 +287,12 @@ class Section:
         Returns:
             Section:
         """
-        image = self.reference_image.copy()
         config = copy_if_not_none(self.meta_information)
-        annotations = self.annotations.copy()
-        so_data = self.so_data.copy()
+        layers = self.layers.copy()
         copied_section = Section(
-            reference_image=image,
+            reference_image=self.__ref_img_idx__,
             name=self.name,
-            annotations=annotations,
-            so_data=so_data,
+            layers=layers,
             meta_information=config)
         copied_section._id = self._id
         return copied_section
@@ -242,11 +306,8 @@ class Section:
             ymin (int):
             ymax (int):
         """
-        self.reference_image.crop(xmin, xmax, ymin, ymax)
-        for annotation in self.annotations:
-            annotation.crop(xmin, xmax, ymin, ymax)
-        for so_data_ in self.so_data:
-            so_data_.crop(xmin, xmax, ymin, ymax)
+        for layer in self.layers:
+            layer.crop(xmin, xmax, ymin, ymax)
 
     def crop_by_mask(self, mask: numpy.ndarray):
         """Crops every datatype within the section based on the mask boundaries.
@@ -263,11 +324,8 @@ class Section:
         Args:
             padding (tuple[int, int, int, int]):
         """
-        self.reference_image.pad(padding)
-        for annotation in self.annotations:
-            annotation.pad(padding)
-        for so_data_ in self.so_data:
-            so_data_.pad(padding)
+        for layer in self.layers:
+            layer.pad(padding)
 
     def resize(self, width: int, height: int):
         """Applies `resize` to each datatype within a Section.
@@ -276,17 +334,20 @@ class Section:
             width (int): 
             height (int):
         """
-        w, h = self.reference_image.data.shape[:2]
-        ws = width / w
-        hs = height / h
-        self.reference_image.resize(width, height)
-        for annotation in self.annotations:
-            if isinstance(annotation, BasePointset):
-                annotation.resize(ws, hs)
+        if self.__ref_img_idx__ is None:
+            does_reference_image_exist = False
+        else:
+            does_reference_image_exist = True
+            w, h = self.reference_image.data.shape[:2]
+            ws = width / w
+            hs = height / h
+        for layer in self.layers:
+            if isinstance(layer, BasePointset):
+                if not does_reference_image_exist:
+                    raise Exception('BasePointsets cannot be transformed, since no reference image exists.')
+                layer.resize(ws, hs)
             else:
-                annotation.resize(width, height)
-        for so_data_ in self.so_data:
-            so_data_.resize(width, height)
+                layer.resize(width, height)
 
     # TODO: Implement function
     def rescale(self, scaling_factor: float):
@@ -306,33 +367,29 @@ class Section:
         Returns:
             Section: Wapred section.
         """
-
-        image_transformed = self.reference_image.apply_transform(registerer, transformation, **kwargs)
-        annotations_transformed = []
-        for annotation in self.annotations:
-            annotation_transformed = annotation.apply_transform(registerer, transformation, **kwargs)
-            annotations_transformed.append(annotation_transformed)
-        so_data_transformed_list = []
-        for so_data_ in self.so_data:
-            so_data_transformed = so_data_.apply_transform(registerer, transformation, **kwargs)
-            so_data_transformed_list.append(so_data_transformed)
-        
+        layers_transformed = []
+        for layer in self.layers:
+            layer_transformed = layer.apply_transform(registerer, transformation, **kwargs)
+            layers_transformed.append(layer_transformed)
         config = self.meta_information.copy() if self.meta_information is not None else None
-        transformed_section = Section(reference_image=image_transformed,
+        transformed_section = Section(reference_image=self.__ref_img_idx__,
                        name=self.name,
-                       annotations=annotations_transformed,
-                       so_data=so_data_transformed_list,
+                       layers=layers_transformed,
                        meta_information=config)
         transformed_section._id = self._id
         return transformed_section
 
-    def store(self, directory: str):
+    def store(self, 
+              directory: str,
+              imaging_data_io: ImagingDataIO | None = None):
         # TODO: Rewrite that function.
         """
         Should look like this:
             File with mapping what attribute in what subfolder.
             Each subfolder is marked with their id.
         """
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         if exists(directory):
             shutil.rmtree(directory)
         if not exists(directory):
@@ -340,40 +397,43 @@ class Section:
         f_dict = {}
         f_dict['id'] = str(self._id)
         f_dict['name'] = self.name
-        self.reference_image.store(join(directory, str(self.reference_image._id)))
-        f_dict['reference_image'] = {
-            'id': str(self.reference_image._id),
-            'type': self.reference_image.get_type()
-        }
+        if self.__ref_img_idx__ is not None:
+            f_dict['ref_img_idx'] = self.__ref_img_idx__
         meta_information_path = join(directory, 'meta_information.json')
         with open(meta_information_path, 'w') as f:
             json.dump(self.meta_information, f)
             f_dict['meta_information_path'] = 'meta_information.json' 
-        annotation_ids = []
-        for annotation in self.annotations:
-            annotation.store(join(directory, str(annotation._id)))
-            annotation_ids.append(
+        layer_ids = []
+        for layer in self.layers:
+            layer.store(join(directory, str(layer._id)))
+            layer_ids.append(
                 {
-                    'id': str(annotation._id),
-                    'type': annotation.get_type()
+                    'id': str(layer._id),
+                    'type': layer.get_type()
                 }
             )
-        f_dict['annotations'] = annotation_ids
-        so_data_ids = []
-        for so_data in self.so_data:
-            so_dir = join(directory, str(so_data._id))
-            so_data.store(so_dir)
-            so_data_ids.append({
-                'id': str(so_data._id),
-                'type': so_data.get_type()
-                }
-            )
-        f_dict['so_datas'] = so_data_ids
+        f_dict['layers'] = layer_ids
             
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
-    def get_annotation_by_name(self, name: str) -> BaseImage | None:
+    def find_layer_index_by_name(self, name: str) -> int | None:
+        """Find the index of the layer based on the name.
+
+        Args:
+            name (str):
+
+        Returns:
+            int | None: Index of layer or None if image cannot be found.
+        """
+        for idx, layer in enumerate(self.layers):
+            if not hasattr(layer, 'name'):
+                continue
+            if layer.name == name:
+                return idx
+        return None
+
+    def get_annotation_by_name(self, name: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Finds an annotation by matching Annotation.name with name.
         Returns None, if annotation could not be found.
 
@@ -383,12 +443,28 @@ class Section:
         Returns:
             BaseImage | None:
         """
-        for annotation in self.annotations:
-            if annotation.name == name:
-                return annotation
-        return None
+        layer_idx = self.find_layer_index_by_name(name)
+        if layer_idx is None:
+            return None
+        return self.layers[layer_idx]
     
-    def get_annotation_by_id(self, id_: str) -> BaseImage | None:
+    def find_layer_index_by_id(self, id_: str | UUID) -> int | None:
+        """Find the index of the layer based on the name.
+
+        Args:
+            id_ (str | UUID):
+
+        Returns:
+            int | None: Index of layer or None if image cannot be found.
+        """
+        if isinstance(id_, UUID):
+            id_ = str(id_)
+        for idx, layer in enumerate(self.layers):
+            if str(layer._id) == id_:
+                return idx
+        return None
+
+    def get_annotation_by_id(self, id_: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Gets annotation by matching Annotation._id with id_.
         Returns None, if annotation can not be found.
 
@@ -398,28 +474,25 @@ class Section:
         Returns:
             BaseImage | None: 
         """
-        for annotation in self.annotations:
-            if str(annotation._id) == id_:
-                return annotation
-        return None
+        layer_idx = self.find_layer_index_by_id(id_)
+        if layer_idx is None:
+            return None
+        return self.layers[layer_idx]
     
-    def print_additional_data_summary(self):
+    def print_data_summary(self):
         """Prints a summary of data.
         """
         print(get_table_summary_string(self))
             
     @classmethod
     def load(cls, directory: str, 
-             base_type_loader: SpatialBaseDataLoader | None = None,
-             so_type_loader: SpatialOmicsDataLoader | None = None) -> 'Section':
+             imaging_data_io: ImagingDataIO | None = None) -> 'Section':
         """Loads a Section object from directory. 
 
         Args:
             directory (str): Source directory.
-            base_type_loader (Optional[SpatialBaseDataLoader], optional): Data loader for base imaging types. 
-                If None, uses a default SpatialBaseDataLoader. Defaults to None.
-            so_type_loader (Optional[SpatialOmicsDataLoader], optional): Data loader for spatial omics data types. 
-                If None, uses a default SpatialOmicsDataLoader. Defaults to None.
+            imaging_data_io (Optional[ImagingDataIO], optional): Data loader for imaging data. 
+                If None, uses a default ImagingDataIO. Defaults to None.
 
         Returns:
             Section: 
@@ -427,37 +500,27 @@ class Section:
         if not exists(directory):
             # TODO: Throw custom error message
             pass
-        if base_type_loader is None:
-            base_type_loader = SpatialBaseDataLoader.load_default_loader()
-        if so_type_loader is None:
-            so_type_loader = SpatialOmicsDataLoader.load_default_loader()
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
-        ref_image_dict = attributes['reference_image']
-        ref_image_path = join(directory, ref_image_dict['id'])
-        reference_image = base_type_loader.load(ref_image_dict['type'], ref_image_path)
+        reference_image = attributes.get('ref_img_idx', None)
         if 'meta_information_path' in attributes:
             meta_information_path = join(directory, attributes['meta_information_path'])
             with open(meta_information_path) as f:
                 meta_information = json.load(f)
         else:
             meta_information = None
-        annotations = []
-        for annotation_dict in attributes['annotations']:
-            sub_dir = annotation_dict['id']
-            annotation = base_type_loader.load(annotation_dict['type'], join(directory, sub_dir))
-            annotations.append(annotation)
-        so_datas = []
-        for so_dict in attributes['so_datas']:
-            sub_dir = so_dict['id']
-            so_data = so_type_loader.load(so_dict['type'],
-                                  join(directory, sub_dir))
-            so_datas.append(so_data)
+        layers = []
+        for layer_dict in attributes['layers']:
+            sub_dir = layer_dict['id']
+            layer = imaging_data_io.load(layer_dict['type'], 
+                                         join(directory, sub_dir))
+            layers.append(layer)
         obj = cls(
             reference_image=reference_image,
             name=attributes['name'],
-            annotations=annotations,
-            so_data=so_datas,
+            layers=layers,
             meta_information=meta_information
         )
         obj._id = uuid.UUID(attributes['id'])
@@ -465,7 +528,7 @@ class Section:
 
     def add_molecular_imaging_data(self,
                                    mi: BaseSpatialOmics,
-                                   register_to_primary_image=True,
+                                   do_register_to_ref_image=True,
                                    reference_image: numpy.ndarray = None,
                                    registerer: Registerer | None = None):
         """
@@ -482,21 +545,20 @@ class Section:
         """
 
         # TODO: Add this function to loading from config!
-        if register_to_primary_image:
-            warped_mi = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
+        if self.__ref_img_idx__ is None:
+            raise Exception('add_molecular_imaging_data requires a reference image')
+        if do_register_to_ref_image:
+            warped_mi, _, _ = register_to_ref_image(self.reference_image.data, reference_image, mi, registerer)
         else:
             warped_mi = mi
-        self.so_data.append(warped_mi)
+        self.layers.append(warped_mi)
 
     def flip(self, axis: int = 0):
         """
         Flip all spatial data in this section.
         """
-        self.reference_image.flip(axis=axis)
-        for annotation in self.annotations:
-            if isinstance(annotation, BasePointset):
-                annotation.flip(self.reference_image.data.shape[:2], axis=axis)
+        for layer in self.layers:
+            if isinstance(layer, BasePointset):
+                layer.flip(self.reference_image.data.shape[:2], axis=axis)
             else:
-                annotation.flip(axis=axis)
-        for so_data_ in self.so_data:
-            so_data_.flip(axis=axis)
+                layer.flip(axis=axis)
