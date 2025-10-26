@@ -1,6 +1,6 @@
-FROM mwess89/greedyfhist:0.0.3-rc7
+FROM mwess89/greedyfhist:0.0.3-rc6
 
-RUN uv pip install git+https://github.com/mwess/miit@v0.0.3-rc7
+RUN uv pip install git+https://github.com/mwess/miit@v0.0.4
 
 RUN uv pip install jupyterlab
 
