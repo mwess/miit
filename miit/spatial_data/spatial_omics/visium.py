@@ -15,6 +15,7 @@ import h5py
 import numpy, numpy as np
 import pandas, pandas as pd
 
+from miit.spatial_data.base_classes import ImagingDataIO, IMAGING_DATA_IO
 from miit.spatial_data.base_types import Annotation, Image, Pointset
 from miit.spatial_data.base_classes import BaseImage, BaseSpatialOmics, MIITobject
 from miit.registerers.base_registerer import Registerer
@@ -197,12 +198,18 @@ class Visium(BaseSpatialOmics):
     def store(self, directory: str):
         Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
+            #         image_dict = attributes['image']
+            # image = imaging_data_io.load(image_dict['type'], image_dict['path'])
         if self.image is not None:
             image_path = join(directory, 'image')
             if not exists(image_path):
                 os.mkdir(image_path)
             self.image.store(image_path)
-            f_dict['image'] = image_path
+            image_dict = {
+                'type': self.image.get_type(),
+                'path': image_path
+            }
+            f_dict['image'] = image_dict
         table_path = join(directory, 'table')
         if not exists(table_path):
             os.mkdir(table_path)
@@ -232,12 +239,18 @@ class Visium(BaseSpatialOmics):
             json.dump(f_dict, f)
 
     @classmethod
-    def load(cls, directory: str) -> 'Visium':
+    def load(cls, 
+             directory: str,
+             imaging_data_io: ImagingDataIO | None = None) -> 'Visium':
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         attributes_path = join(directory, 'attributes.json')
         with open(attributes_path) as f:
             attributes = json.load(f)
         if 'image' in attributes:
-            image = Image.load(attributes['image'])
+            image_dict = attributes['image']
+            image = imaging_data_io.load(image_dict['type'], image_dict['path'])
+            # image = Image.load(attributes['image'])
         else:
             image = None
         table = Pointset.load(attributes['table'])

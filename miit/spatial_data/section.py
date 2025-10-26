@@ -17,11 +17,9 @@ from miit.spatial_data.base_classes import (
 )
 
 from miit.spatial_data.base_types import (
-    Image,
-    SpatialBaseDataLoader
+    Image
 )
 
-from miit.spatial_data.spatial_omics.spatial_omics_loader import SpatialOmicsDataLoader
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
@@ -414,17 +412,13 @@ class Section:
             
     @classmethod
     def load(cls, directory: str, 
-             imaging_data_io: ImagingDataIO | None = None,
-             base_type_loader: SpatialBaseDataLoader | None = None,
-             so_type_loader: SpatialOmicsDataLoader | None = None) -> 'Section':
+             imaging_data_io: ImagingDataIO | None = None) -> 'Section':
         """Loads a Section object from directory. 
 
         Args:
             directory (str): Source directory.
-            base_type_loader (Optional[SpatialBaseDataLoader], optional): Data loader for base imaging types. 
-                If None, uses a default SpatialBaseDataLoader. Defaults to None.
-            so_type_loader (Optional[SpatialOmicsDataLoader], optional): Data loader for spatial omics data types. 
-                If None, uses a default SpatialOmicsDataLoader. Defaults to None.
+            imaging_data_io (Optional[ImagingDataIO], optional): Data loader for imaging data. 
+                If None, uses a default ImagingDataIO. Defaults to None.
 
         Returns:
             Section: 
@@ -432,10 +426,6 @@ class Section:
         if not exists(directory):
             # TODO: Throw custom error message
             pass
-        if base_type_loader is None:
-            base_type_loader = SpatialBaseDataLoader.load_default_loader()
-        if so_type_loader is None:
-            so_type_loader = SpatialOmicsDataLoader.load_default_loader()
         if imaging_data_io is None:
             imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:

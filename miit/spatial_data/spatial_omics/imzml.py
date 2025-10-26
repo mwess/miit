@@ -24,10 +24,11 @@ import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter
 
+
+from miit.spatial_data.base_classes import ImagingDataIO, IMAGING_DATA_IO
 from miit.spatial_data.base_types import (
     Annotation,
-    Image,
-    SpatialBaseDataLoader
+    Image
 )
 from miit.spatial_data.base_classes import (
     BaseImage,
@@ -706,9 +707,9 @@ class Imzml(BaseSpatialOmics):
     @classmethod
     def load(cls, 
              directory: str,
-             spatial_base_data_loader: SpatialBaseDataLoader | None = None) -> 'Imzml':
-        if spatial_base_data_loader is None:
-            spatial_base_data_loader = SpatialBaseDataLoader.load_default_loader()
+             imaging_data_io: ImagingDataIO | None = None) -> 'Imzml':
+        if imaging_data_io is None:
+            imaging_data_io = IMAGING_DATA_IO
         with open(join(directory, 'attributes.json')) as f:
             attributes = json.load(f)
         with open(attributes['config_path']) as f:
@@ -721,7 +722,7 @@ class Imzml(BaseSpatialOmics):
         additional_spatial_data = []
         for spatial_data_dict in attributes['additional_spatial_data']:
             sub_dir = spatial_data_dict['id']
-            spatial_data = spatial_base_data_loader.load(spatial_data_dict['type'], join(directory, sub_dir))
+            spatial_data = imaging_data_io.load(spatial_data_dict['type'], join(directory, sub_dir))
             additional_spatial_data.append(spatial_data)            
         name = attributes.get('name', '')
         msi = ImzMLParser(config['imzml'])

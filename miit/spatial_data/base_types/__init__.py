@@ -8,7 +8,7 @@ from .image import Image
 from .geojson import GeoJSONData
 from .pointset import Pointset
 from .ome_image import OMEImage
-from .base_type_loader import SpatialBaseDataLoader
+# from .base_type_loader import SpatialBaseDataLoader
 
 
 # # Overwrite this function to include greedyfhists read_image functionality
