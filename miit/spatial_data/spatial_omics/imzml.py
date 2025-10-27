@@ -727,7 +727,16 @@ class Imzml(BaseSpatialOmics):
             self.spec_to_ref_map,
             int_threshold
         ))
-    
+
+    def mappings_map_to_msi_pixel_idxs(self, mappings: dict) -> dict:
+        ref_to_spec_map = {self.spec_to_ref_map[x]: x for x in self.spec_to_ref_map}
+        mapped_mappings = {}
+        for key in mappings:
+            idx_arr = mappings[key][0]
+            idx_arr_mapped = np.array([int(ref_to_spec_map[x]) for x in idx_arr])
+            mapped_mappings[key] = (idx_arr_mapped, mappings[key][1].copy())
+        return mapped_mappings
+
     def extract_ion_image(self, 
                           mz_value: float, 
                           tol: float = 0.1, 
