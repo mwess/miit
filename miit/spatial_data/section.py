@@ -289,8 +289,9 @@ class Section:
         """
         config = copy_if_not_none(self.meta_information)
         layers = self.layers.copy()
+        ref_img_idx = self.__ref_img_idx__ if self.__ref_img_idx__ is not None else None
         copied_section = Section(
-            reference_image=self.__ref_img_idx__,
+            reference_image=ref_img_idx,
             name=self.name,
             layers=layers,
             meta_information=config)
