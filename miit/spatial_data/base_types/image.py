@@ -56,7 +56,8 @@ class Image(BaseImage):
         return Image(data=transformed_image, resolution=self.resolution)
     
     def copy(self):
-        return Image(data=self.data.copy(), resolution = self.resolution)
+        resolution = (self.resolution[0].copy(), self.resolution[1].copy())
+        return Image(data=self.data.copy(), resolution = resolution)
 
     def store(self, path: str):
         create_if_not_exists(path)

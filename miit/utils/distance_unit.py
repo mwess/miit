@@ -72,6 +72,11 @@ class DUnit:
         factor_to_unit = {value: key for (key, value) in unit_to_factor.items()}
         self._symbol = factor_to_unit[factor]
 
+    def copy(self):
+        value = self.value.__copy__()
+        symbol = self.symbol
+        return DUnit(value, symbol)
+
     def __init__(self, value: str | float | Decimal, symbol: str = 'px'):
         value = DUnit.to_decimal(value)
         self.value = value

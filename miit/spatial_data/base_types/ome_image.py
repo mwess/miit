@@ -274,6 +274,18 @@ class OMEImage(Image):
             interpolation_mode=self.interpolation_mode
         )
         
+    def copy(self):
+        return OMEImage(
+            img=self.img.copy(),
+            tif_metadata=self.tif_metadata.copy(),
+            name=self.name,
+            main_page=self.main_page,
+            main_channel=self.main_channel,
+            dim_order=self.dim_order,
+            path=self.path,
+            interpolation_mode=self.interpolation_mode
+        )
+        
     @reset_scene_after_use(var_name='img')
     def __apply_transform_along_channels(self,
                                          fun: Callable[[numpy.ndarray], numpy.ndarray]) -> BioImage:

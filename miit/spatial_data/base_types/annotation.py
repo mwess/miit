@@ -105,11 +105,12 @@ class Annotation(BaseImage):
                           is_multichannel=self.is_multichannel)
 
     def copy(self):
+        resolution = (self.resolution[0].copy(), self.resolution[1].copy())
         return Annotation(data=self.data.copy(),
                           labels=self.labels,
                           name=self.name,
                           is_multichannel=self.is_multichannel,
-                          resolution=self.resolution)
+                          resolution=resolution)
 
     def store(self, path: str):
         # Use path as a directory here.

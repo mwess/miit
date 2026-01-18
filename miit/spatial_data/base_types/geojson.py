@@ -117,9 +117,10 @@ class GeoJSONData(BasePointset):
         self.resolution = self.resolution[::-1]
 
     def copy(self):
+        resolution = (self.resolution[0].copy(), self.resolution[1].copy())
         return GeoJSONData(data=self.data.copy(), 
                            name=self.name,
-                           resolution=self.resolution)
+                           resolution=resolution)
 
     def store(self, path: str):
         create_if_not_exists(path)

@@ -83,13 +83,14 @@ class Pointset(BasePointset):
         self.resolution = (self.resolution[1], self.resolution[0])
 
     def copy(self):
+        resolution = (self.resolution[0].copy(), self.resolution[1].copy())
         return Pointset(data=self.data.copy(),
                         name=self.name,
                         x_axis=self.x_axis,
                         y_axis=self.y_axis,
                         index_col=self.index_col,
                         header=self.header,
-                        resolution=self.resolution)
+                        resolution=resolution)
 
     def to_numpy(self) -> numpy.ndarray:
         return self.data[[self.x_axis, self.y_axis]].to_numpy()
