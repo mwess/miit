@@ -276,7 +276,7 @@ class OMEImage(Image):
         
     def copy(self):
         return OMEImage(
-            img=self.img.copy(),
+            img=self.img,
             tif_metadata=self.tif_metadata.copy(),
             name=self.name,
             main_page=self.main_page,
@@ -342,6 +342,12 @@ class OMEImage(Image):
         new_img = self.__apply_transform_along_channels(fun)
         self.img = new_img
         self.scale_resolution((w_rate, h_rate))
+        
+    def flip(self, axis: int = 0):
+        fun = lambda data: np.flip(data, axis=axis)
+        new_img = self.__apply_transform_along_channels(fun)
+        self.img = new_img
+        self.resolution = (self.resolution[1], self.resolution[0])
 
     def rescale(self, scaling_factor: float | tuple[float, float]):
         if not isinstance(scaling_factor, tuple):

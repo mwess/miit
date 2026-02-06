@@ -1,3 +1,4 @@
+import copy
 import gzip
 import json
 import os
@@ -8,6 +9,7 @@ from typing import Any
 from zipfile import ZipFile
 
 import geojson
+from geojson import FeatureCollection
 import numpy, numpy as np
 import shapely
 import skimage
@@ -30,17 +32,55 @@ class GeoJSONData(BasePointset):
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
 
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
-        geometries = self.data['features'] if 'features' in self.data else self.data
-        warped_geometries = []
-        for _, geometry in enumerate(geometries):
-            warped_geometry = geojson.utils.map_tuples(lambda coords: warp_geojson_coord_tuple__(coords, registerer, transformation), geometry)
-            warped_geometries.append(warped_geometry)
-        if 'features' in self.data:
-            warped_data = self.data.copy()
-            warped_data['features'] = warped_geometries
+    @staticmethod
+    def make_deep_feature_copy(feature: geojson.Feature, exclude_features: str | list[str] = 'geometry'):
+        if isinstance(exclude_features, str):
+            exclude_features = [exclude_features]
+        new_feature = geojson.Feature()
+        for key in feature.keys():
+            if key in exclude_features:
+                continue
+            new_feature[key] = copy.deepcopy(feature[key])
+        return new_feature
+        
+
+    def apply_transform(self, 
+                        registerer: Registerer, 
+                        transformation: RegistrationResult, 
+                        fix_warped_geometry: bool = True, 
+                        **kwargs: dict) -> Any:
+        # geometries = self.data['features'] if 'features' in self.data else self.data
+        # geometries = self.data if isinstance(self.data, list) else self.data['features']
+        is_feature_collection = isinstance(self.data, geojson.FeatureCollection)
+        features = self.data['features'] if is_feature_collection else self.data
+        warped_features = []
+        for idx, feature in enumerate(features):
+            # copied_geometry = copy.deepcopy(geometry)
+            try:
+                warped_feature = GeoJSONData.make_deep_feature_copy(feature)
+                warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(x, transformation))
+                if fix_warped_geometry:
+                    if not warped_geometry.is_valid:
+                        warped_geometry = warped_geometry.buffer(0)
+                        if not warped_geometry.is_valid:
+                            # Print a warning here.
+                            pass
+                warped_geometry = geojson.loads(shapely.to_geojson(warped_geometry))
+                warped_feature['geometry'] = warped_geometry
+                # warped_geometry = geojson.utils.map_tuples(lambda coords: warp_geojson_coord_tuple__(coords, registerer, transformation), copied_geometry)
+                warped_features.append(warped_feature)
+            except TypeError as e:
+                print(e)
+                print(f'Index: {idx}')
+                print(feature)
+                raise e
+        if is_feature_collection:
+            warped_data = FeatureCollection(warped_features)
+            for key in self.data:
+                if key != 'features':
+                    warped_data[key] = copy.deepcopy(self.data[key])
         else:
-            warped_data = warped_geometries
+            warped_data = warped_features
         warped_geojson = GeoJSONData(data=warped_data, 
                                      name=self.name, 
                                      resolution=self.resolution)
@@ -65,7 +105,7 @@ class GeoJSONData(BasePointset):
             # map_tuples seems to remove some keys such as isEllipse. 
             # Make a backup and overwrite every other feature except 
             # coordinates later.
-            feature_new = feature.copy()
+            feature_new = copy.deepcopy(feature)
             feature_backup = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
             feature_new['geometry']['coordinates'] = feature_backup['geometry']['coordinates']
             features_new.append(feature_new)
@@ -122,14 +162,17 @@ class GeoJSONData(BasePointset):
                            name=self.name,
                            resolution=resolution)
 
-    def store(self, path: str):
+    def store(self, path: str, use_id_as_subfolder: bool = True):
         create_if_not_exists(path)
-        sub_path = join(path, str(self._id))
-        create_if_not_exists(sub_path)
+        if use_id_as_subfolder:
+            sub_path = join(path, str(self._id))
+            create_if_not_exists(sub_path)
+        else:
+            sub_path = path
         fname = 'geojson_data.geojson'
         fpath = join(sub_path, fname)
         with open(fpath, 'w') as f:
-            geojson.dump(self.data)
+            geojson.dump(self.data, f)
         attributes = {'name': self.name}
         with open(join(sub_path, 'attributes.json'), 'w') as f:
             json.dump(attributes, f)
@@ -141,12 +184,12 @@ class GeoJSONData(BasePointset):
     @classmethod
     def load(cls, path: str) -> 'GeoJSONData':
         id_ = uuid.UUID(os.path.basename(path.rstrip('/')))
-        with open(join(path, 'geojson_data.geojson')) as f:
+        with open(join(path, str(id_), 'geojson_data.geojson')) as f:
             data = geojson.load(f)
         # geojson_data = read_geojson(join(path, 'geojson_data.geojson'))
-        with open(join(path, 'attributes.json')) as f:
+        with open(join(path, str(id_), 'attributes.json')) as f:
             attributes = json.load(f)
-        gdata = cls(geojson_data=data, name=attributes.get('name', ''))
+        gdata = cls(data=data, name=attributes.get('name', ''))
         gdata._id = id_
         return gdata
 
@@ -176,7 +219,7 @@ class GeoJSONData(BasePointset):
                 data = geojson.loads(fcont)
         return cls(data=data, name=name)
     
-def warp_geojson_coord_tuple__(coord: tuple[float, float], 
+def warp_geojson_coord_tuple__(coord: tuple[float, float] | tuple[numpy.float64, numpy.float64], 
                                registerer: Registerer, 
                                transform: RegistrationResult) -> tuple[float, float]:
     """Transforms coordinates from geojson data from moving to fixed image space.
@@ -188,6 +231,7 @@ def warp_geojson_coord_tuple__(coord: tuple[float, float],
     Returns:
         Tuple[float, float]: 
     """
-    ps = np.array([[coord[0], coord[1]]]).astype(float)
+    ps = np.array([(coord[0], coord[1])]).astype(float)
+    # ps = np.array([(float(coord[0]), float(coord[1]))]).astype(float)
     warped_ps = registerer.transform_pointset(ps, transform)
     return (warped_ps[0, 0], warped_ps[0, 1])

@@ -38,7 +38,8 @@ def compose_dicts(dict1: dict, dict2: dict) -> dict:
 
 # TODO: Add example for row_features.
 def load_visium_data_matrix(path: str,
-                            row_feature: list[str] | str | None = None) -> pandas.DataFrame:
+                            row_feature: list[str] | str | None = None,
+                            transpose: bool = True) -> pandas.DataFrame:
     """ Reads Visium data from SpaceRanger output h5 file and convert to a pandas DataFrane. The dataframe
     has the shape (feature, barcode).
 
@@ -78,6 +79,8 @@ def load_visium_data_matrix(path: str,
         row_names = [' - '.join(names) for names in zip(*r_feat_list)]
 
     df = pd.DataFrame(mat, columns=barcodes, index=row_names)
+    if transpose:
+        df = df.transpose()
     return df
 
 

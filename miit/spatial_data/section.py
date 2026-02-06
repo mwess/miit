@@ -372,11 +372,11 @@ class Section:
         for layer in self.layers:
             layer_transformed = layer.apply_transform(registerer, transformation, **kwargs)
             layers_transformed.append(layer_transformed)
-        config = self.meta_information.copy() if self.meta_information is not None else None
+        meta_information = self.meta_information.copy() if self.meta_information is not None else None
         transformed_section = Section(reference_image=self.__ref_img_idx__,
                        name=self.name,
                        layers=layers_transformed,
-                       meta_information=config)
+                       meta_information=meta_information)
         transformed_section._id = self._id
         return transformed_section
 
