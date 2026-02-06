@@ -215,7 +215,7 @@ class Section:
     meta_information: dict[Any, Any] | None = None
 
     def __init__(self,
-                reference_image: int | str | UUID | BaseImage | BaseSpatialOmics | None = None,
+                reference_image: int | str | UUID | BaseImage | BaseSpatialOmics | None = 0,
                 name: str | None = None,
                 layers: list[BaseImage | BasePointset | BaseSpatialOmics] | None = None,
                 meta_information: dict[Any, Any] | None = None,

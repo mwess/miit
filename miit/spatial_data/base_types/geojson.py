@@ -58,18 +58,21 @@ class GeoJSONData(BasePointset):
             # copied_geometry = copy.deepcopy(geometry)
             try:
                 warped_feature = GeoJSONData.make_deep_feature_copy(feature)
-                warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(x, transformation))
-                if fix_warped_geometry:
-                    if not warped_geometry.is_valid:
-                        warped_geometry = warped_geometry.buffer(0)
+                if feature['geometry'] is not None:
+                    warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(x, transformation))
+                    if fix_warped_geometry:
                         if not warped_geometry.is_valid:
-                            # Print a warning here.
-                            pass
-                warped_geometry = geojson.loads(shapely.to_geojson(warped_geometry))
-                warped_feature['geometry'] = warped_geometry
+                            warped_geometry = warped_geometry.buffer(0)
+                            if not warped_geometry.is_valid:
+                                # Print a warning here.
+                                pass
+                    warped_geometry = geojson.loads(shapely.to_geojson(warped_geometry))
+                    warped_feature['geometry'] = warped_geometry
+                else:
+                    warped_feature['geometry'] = None
                 # warped_geometry = geojson.utils.map_tuples(lambda coords: warp_geojson_coord_tuple__(coords, registerer, transformation), copied_geometry)
                 warped_features.append(warped_feature)
-            except TypeError as e:
+            except Exception as e:
                 print(e)
                 print(f'Index: {idx}')
                 print(feature)

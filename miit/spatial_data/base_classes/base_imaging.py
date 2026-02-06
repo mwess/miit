@@ -68,8 +68,8 @@ class BaseImage(abc.ABC):
     def scale_resolution(self, scale_factors: tuple[float, float]):
         res_w, res_h = self.resolution
         scale_w, scale_h = scale_factors
-        res_w.scale(scale_w)
-        res_h.scale(scale_h)
+        res_w = res_w.scale(scale_w)
+        res_h = res_h.scale(scale_h)
         self.resolution = (res_w, res_h)
 
     def scale_to_resolution(self, resolution: DUnit | tuple[DUnit, DUnit], align_units: bool = True):

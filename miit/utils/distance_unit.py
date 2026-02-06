@@ -35,7 +35,38 @@ unit_to_factor = {
 }
 
 
-@dataclass
+factor_to_unit = {
+    30: 'Qm',
+    27: 'Rm',
+    24: 'Ym',
+    21: 'Zm',
+    18: 'Em',
+    15: 'Pm',
+    12: 'Tm',
+    9: 'Gm',
+    6: 'Mm',
+    3: 'km',
+    2: 'hm',
+    1: 'dam',
+    0: 'm',
+    -1: 'dm',
+    -2: 'cm',
+    -3: 'mm',
+    -6: 'µm',
+    -9: 'nm',
+    -12: 'pm',
+    -15: 'fm',
+    -18: 'am',
+    -21: 'zm',
+    -24: 'ym',
+    -27: 'rm',
+    -30: 'qm',
+    None: 'px'
+}
+
+
+@dataclass(frozen=True,
+           init=False)
 class DUnit:
     """Class to keep track of images resolution. Used to denote a space resolution per pixel.
 
@@ -50,38 +81,23 @@ class DUnit:
     """
 
     value: Decimal
-
-    @property
-    def symbol(self) -> str:
-        return self._symbol
+    symbol: str
+    factor: int
     
-    @symbol.setter
-    def symbol(self, symbol: str):
-        self._symbol = symbol
-        self._factor = unit_to_factor[symbol]
-
-    @property
-    def factor(self) -> int:
-        return self._factor
-    
-    @factor.setter
-    def factor(self, factor: int):
-        if factor not in unit_to_factor.values():
-            raise Exception(f'Factor {factor} unkown.')
-        self._factor = factor
-        factor_to_unit = {value: key for (key, value) in unit_to_factor.items()}
-        self._symbol = factor_to_unit[factor]
+    def __init__(self, value: str | float | Decimal, symbol: str | None = 'px', factor: int | None = None):
+        value = DUnit.to_decimal(value)
+        object.__setattr__(self, 'value', value)
+        if symbol is not None:
+            object.__setattr__(self, 'symbol', symbol)
+            object.__setattr__(self, 'factor', unit_to_factor[symbol])
+        if factor is not None:
+            object.__setattr__(self, 'factor', factor)
+            object.__setattr__(self, 'symbol', factor_to_unit[factor])
 
     def copy(self):
         value = self.value.__copy__()
         symbol = self.symbol
         return DUnit(value, symbol)
-
-    def __init__(self, value: str | float | Decimal, symbol: str = 'px'):
-        value = DUnit.to_decimal(value)
-        self.value = value
-        self.symbol = symbol
-        self.factor = unit_to_factor[symbol]
 
     def __str__(self):
         return f'{float(self.value)}{self.symbol}'
@@ -126,17 +142,14 @@ class DUnit:
             value = Decimal(value)
         return value
 
-    def scale(self, scale_factor: float | Decimal, inplace: bool = True) -> 'DUnit | None':
+    def scale(self, scale_factor: float | Decimal) -> 'DUnit':
         """Scale a dunit by a given factor.
 
         Returns:
             DUnit | None: Returns a scaled DUnit if `inplace` == False.
         """
         scale_factor = DUnit.to_decimal(scale_factor)
-        if inplace:
-            self.value = self.value * scale_factor
-        else:
-            return DUnit(self.value * scale_factor, self.symbol)
+        return DUnit(self.value * scale_factor, self.symbol)
 
     def to_dec(self) -> Decimal:
         """Computes resolution as one decimal.
