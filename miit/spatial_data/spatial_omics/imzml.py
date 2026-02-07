@@ -2,14 +2,12 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import reduce
 import json
-import os
-from os.path import join, exists
+from os.path import join
 from pathlib import Path
 from typing import (
     Any, 
     Callable,
     ClassVar, 
-    Optional, 
     Dict
 )
 import uuid
@@ -18,8 +16,6 @@ from lxml import etree
 import pandas, pandas as pd
 import numpy, numpy as np
 from scipy.integrate import trapezoid
-from scipy.signal import find_peaks
-from sklearn.decomposition import PCA
 import pyimzml
 from pyimzml.ImzMLParser import ImzMLParser
 from pyimzml.ImzMLWriter import ImzMLWriter

@@ -5,14 +5,13 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from os.path import join
-from typing import Any
+from typing import Any, Callable
 from zipfile import ZipFile
 
 import geojson
 from geojson import FeatureCollection
 import numpy, numpy as np
 import shapely
-import skimage
 
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.spatial_data.base_classes.base_imaging import BasePointset
@@ -54,7 +53,7 @@ class GeoJSONData(BasePointset):
         return geometry
 
     def _apply_transform(self,
-                         function,
+                         function: Callable,
                          fix_warped_geometry: bool = True,
                          override_feature_fields_to_transform: list[str] | str | None = None
                          ) -> geojson.FeatureCollection | geojson.GeoJSON:

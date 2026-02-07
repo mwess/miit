@@ -24,6 +24,7 @@ from miit.spatial_data.base_types import (
 from miit.registerers.base_registerer import Registerer, RegistrationResult
 from miit.registerers.opencv_affine_registerer import OpenCVAffineRegisterer
 from miit.spatial_data.base_types.geojson import GeoJSONData
+from miit.utils.distance_unit import DUnit
 from miit.utils.utils import copy_if_not_none, get_half_pad_size
 
 # TODO: Refactor this out. This can probably be easily replaced using OpenCV.
@@ -145,7 +146,7 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
                           data: BaseImage | BasePointset | BaseSpatialOmics,
                           registerer: Registerer | None = None,
                           reg_opts: dict | None = None,
-                          **args) -> tuple[BaseImage | BasePointset | BaseSpatialOmics, RegistrationResult, Image]:
+                          **args) -> tuple[BaseImage | BasePointset | BaseSpatialOmics, RegistrationResult, BaseImage]:
     """
     Utility function to register some spatial data to a target image space.
     Registers the source to the target image and applies the transformation to additionally supplied data.
@@ -158,7 +159,7 @@ def register_to_ref_image(target_image: numpy.ndarray | BaseImage,
         reg_opts (dict | None, optional): Options parsed to the registerer.. Defaults to None.
 
     Returns:
-        tuple[BaseImage | BasePointset, RegistrationResult, Image]: Tuple of warped data, computed transformation, and warped source image
+        tuple[BaseImage | BasePointset, RegistrationResult, BaseImage]: Tuple of warped data, computed transformation, and warped source image
     """
     if isinstance(target_image, BaseImage):
         target_image = target_image.data
@@ -278,6 +279,12 @@ class Section:
         else:
             raise Exception('Tried to set an unknown data type.')
         
+    @property
+    def resolution(self) -> tuple[DUnit, DUnit]:
+        if not self.layers:
+            raise Exception('Section has no resolution since not layers are available.')
+        return self.layers[0].resolution
+
     def __hash__(self) -> int:
         return self._id
 
@@ -328,31 +335,36 @@ class Section:
         for layer in self.layers:
             layer.pad(padding)
 
-    def resize(self, width: int, height: int):
+    def resize(self, width: int, height: int, reference_shape: tuple[int, int] | None = None):
         """Applies `resize` to each datatype within a Section.
 
         Args:
             width (int): 
             height (int):
+            reference_shape tuple[int, int]:
         """
-        if self.__ref_img_idx__ is None:
-            does_reference_image_exist = False
+        if self.reference_image is None and reference_shape is None:
+            no_reference_shape_exists = True
+        elif self.reference_image is not None and reference_shape is None:
+            no_reference_shape_exists = False
+            reference_shape = self.reference_image.shape[:2]
         else:
-            does_reference_image_exist = True
-            w, h = self.reference_image.data.shape[:2]
-            ws = width / w
-            hs = height / h
+            no_reference_shape_exists = True
+            # w, h = self.reference_image.data.shape[:2]
+            # ws = width / w
+            # hs = height / h
         for layer in self.layers:
             if isinstance(layer, BasePointset):
-                if not does_reference_image_exist:
+                if no_reference_shape_exists:
                     raise Exception('BasePointsets cannot be transformed, since no reference image exists.')
-                layer.resize(ws, hs)
+                layer.resize(width, height, reference_shape)
             else:
                 layer.resize(width, height)
 
     # TODO: Implement function
-    def rescale(self, scaling_factor: float):
-        pass
+    def rescale(self, scaling_factor: float | tuple[float, float]):
+        for layer in self.layers:
+            layer.rescale(scaling_factor)
 
     def apply_transform(self, 
              registerer: Registerer, 

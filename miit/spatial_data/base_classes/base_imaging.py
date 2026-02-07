@@ -111,7 +111,7 @@ class BasePointset(abc.ABC):
         self._id = uuid.uuid1()
 
     @abc.abstractmethod
-    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int, kwargs**):
         pass
 
     # @abc.abstractmethod
@@ -143,11 +143,14 @@ class BasePointset(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def apply_transform(self, registerer: Registerer, transformation: RegistrationResult, **kwargs: dict) -> Any:
+    def apply_transform(self, 
+                        registerer: Registerer, 
+                        transformation: RegistrationResult, 
+                        **kwargs: dict) -> Any:
         pass
 
     @abc.abstractmethod
-    def store(self, path: str):
+    def store(self, path: str, **kwargs):
         pass
 
     @staticmethod
