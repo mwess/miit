@@ -111,7 +111,7 @@ class BasePointset(abc.ABC):
         self._id = uuid.uuid1()
 
     @abc.abstractmethod
-    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int, kwargs**):
+    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int, **kwargs):
         pass
 
     # @abc.abstractmethod
