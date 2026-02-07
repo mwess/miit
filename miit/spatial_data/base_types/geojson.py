@@ -28,6 +28,7 @@ class GeoJSONData(BasePointset):
     data: geojson.GeoJSON
     _id: uuid.UUID = field(init=False)
     name: str = ''
+    feature_fields_to_transform: list[str] | str = 'geometry'
 
     def __post_init__(self) -> None:
         self._id = uuid.uuid1()
@@ -42,7 +43,53 @@ class GeoJSONData(BasePointset):
                 continue
             new_feature[key] = copy.deepcopy(feature[key])
         return new_feature
-        
+
+    @staticmethod
+    def fix_geometry(geometry, 
+                     throw_exception_for_invalid_geometry: bool = False):
+        if not geometry.is_valid:
+            geometry = geometry.buffer(0)
+            if not geometry.is_valid and throw_exception_for_invalid_geometry:
+                raise Exception('Geometry could not be fixed.')
+        return geometry
+
+    def _apply_transform(self,
+                         function,
+                         fix_warped_geometry: bool = True,
+                         override_feature_fields_to_transform: list[str] | str | None = None
+                         ) -> geojson.FeatureCollection | geojson.GeoJSON:
+        features = self.data['features'] if 'features' in self.data else self.data
+        feature_fields_to_transform = self.feature_fields_to_transform if override_feature_fields_to_transform is None else override_feature_fields_to_transform
+        if isinstance(feature_fields_to_transform, str):
+            feature_fields_to_transform = [feature_fields_to_transform]
+        warped_features = []
+        for idx, feature in enumerate(features):
+            try:
+                warped_feature = GeoJSONData.make_deep_feature_copy(feature, exclude_features=feature_fields_to_transform)
+                for feature_field in feature_fields_to_transform:
+                    geometry = feature[feature_field]
+                    if geometry is not None:
+                        warped_geometry = shapely.transform(shapely.from_geojson(str(geometry)), function)
+                        if fix_warped_geometry:
+                            warped_geometry = GeoJSONData.fix_geometry(warped_geometry)
+                        warped_geometry = geojson.loads(shapely.to_geojson(warped_geometry))
+                        warped_feature[feature_field] = warped_geometry
+                    else:
+                        warped_feature[feature_field] = None
+                warped_features.append(warped_feature)
+            except Exception as e:
+                print(e)
+                print(f'Index: {idx}')
+                print(feature)
+                raise e    
+        if isinstance(self.data, geojson.FeatureCollection):
+            warped_data = FeatureCollection(warped_features)
+            for key in self.data:
+                if key != 'features':
+                    warped_data[key] = copy.deepcopy(self.data[key])
+        else:
+            warped_data = warped_features
+        return warped_data
 
     def apply_transform(self, 
                         registerer: Registerer, 
@@ -89,75 +136,153 @@ class GeoJSONData(BasePointset):
                                      resolution=self.resolution)
         return warped_geojson
 
-    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    # def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    #     # TODO: Should anything outside max be removed?
+    #     features = self.data['features'] if 'features' in self.data else self.data
+    #     features_new = []
+    #     for feature in features:
+    #         feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] - ymin, coords[1] - xmin], feature)
+    #         features_new.append(feature_new)
+    #     if 'features' in self.data:
+    #         self.data['features'] = features_new
+    #     else:
+    #         self.data = features_new
+
+    def crop(self, 
+             xmin: int, 
+             xmax: int, 
+             ymin: int, 
+             ymax: int,
+             override_feature_fields_to_transform: list[str] | str | None = None
+             ):
         # TODO: Should anything outside max be removed?
-        features = self.data['features'] if 'features' in self.data else self.data
-        features_new = []
-        for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] - ymin, coords[1] - xmin], feature)
-            features_new.append(feature_new)
-        if 'features' in self.data:
-            self.data['features'] = features_new
-        else:
-            self.data = features_new
+        transform_function = lambda coords: coords - np.array([ymin, xmin])
+        warped_data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)
+        self.data = warped_data
 
-    def resize(self, width: float, height: float):
-        features = self.data['features'] if 'features' in self.data else self.data
-        features_new = []
-        for feature in features:
-            # map_tuples seems to remove some keys such as isEllipse. 
-            # Make a backup and overwrite every other feature except 
-            # coordinates later.
-            feature_new = copy.deepcopy(feature)
-            feature_backup = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
-            feature_new['geometry']['coordinates'] = feature_backup['geometry']['coordinates']
-            features_new.append(feature_new)
-        if 'features' in self.data:
-            self.data['features'] = features_new
-        else:
-            self.data = features_new
-        rate_w = 1 / width
-        rate_h = 1 / height
-        self.scale_resolution((rate_w, rate_h))        
+    def resize(self, 
+               width: int, 
+               height: int,
+               reference_shape: tuple[int, int],
+               override_feature_fields_to_transform: list[str] | str | None = None):
+        w_scale_factor = width/reference_shape[0]
+        h_scale_factor = height/reference_shape[1]
+        self.rescale((w_scale_factor, h_scale_factor), override_feature_fields_to_transform)
 
-    def rescale(self, scaling_factor: float | tuple[float, float]):
+
+    # def resize(self, width: float, height: float):
+    #     features = self.data['features'] if 'features' in self.data else self.data
+    #     features_new = []
+    #     for feature in features:
+    #         # map_tuples seems to remove some keys such as isEllipse. 
+    #         # Make a backup and overwrite every other feature except 
+    #         # coordinates later.
+    #         feature_new = copy.deepcopy(feature)
+    #         feature_backup = geojson.utils.map_tuples(lambda coords: [coords[0] * width, coords[1] * height], feature)
+    #         feature_new['geometry']['coordinates'] = feature_backup['geometry']['coordinates']
+    #         features_new.append(feature_new)
+    #     if 'features' in self.data:
+    #         self.data['features'] = features_new
+    #     else:
+    #         self.data = features_new
+    #     rate_w = 1 / width
+    #     rate_h = 1 / height
+    #     self.scale_resolution((rate_w, rate_h))        
+
+    # def rescale(self, scaling_factor: float | tuple[float, float]):
+    #     if isinstance(scaling_factor, float):
+    #         scaling_factor = (scaling_factor, scaling_factor)
+    #     w_scale_factor = scaling_factor[0]
+    #     h_scale_factor = scaling_factor[1]
+    #     features = self.data['features'] if 'features' in self.data else self.data
+    #     features_new = []
+    #     for feature in features:
+    #         # map_tuples seems to remove some keys such as isEllipse. 
+    #         # Make a backup and overwrite every other feature except 
+    #         # coordinates later.
+    #         feature_new = copy.deepcopy(feature)
+    #         feature_backup = geojson.utils.map_tuples(lambda coords: [coords[0] * w_scale_factor, coords[1] * h_scale_factor], feature)
+    #         feature_new['geometry']['coordinates'] = feature_backup['geometry']['coordinates']
+    #         features_new.append(feature_new)
+    #     if 'features' in self.data:
+    #         self.data['features'] = features_new
+    #     else:
+    #         self.data = features_new
+    #     rate_w = 1 / w_scale_factor
+    #     rate_h = 1 / h_scale_factor
+    #     self.scale_resolution((rate_w, rate_h))   
+
+    def rescale(self, 
+                scaling_factor: float | tuple[float, float],
+                override_feature_fields_to_transform: list[str] | str | None = None):
         if isinstance(scaling_factor, float):
             scaling_factor = (scaling_factor, scaling_factor)
-        self.resize(scaling_factor[0], scaling_factor[1])
+        w_scale_factor = scaling_factor[0]
+        h_scale_factor = scaling_factor[1]
+        transform_function = lambda coords: coords - np.array([w_scale_factor, h_scale_factor])
+        warped_data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)
+        self.data = warped_data
+        rate_w = 1 / w_scale_factor
+        rate_h = 1 / h_scale_factor
+        self.scale_resolution((rate_w, rate_h))   
+
+    # # TODO: Check error from resize as well
+    # def pad(self, padding: tuple[int, int, int, int]):
+    #     left, right, top, bottom = padding
+    #     features = self.data['features'] if 'features' in self.data else self.data
+    #     features_new = []
+    #     for feature in features:
+    #         feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + left, coords[1] + right], feature)
+    #         features_new.append(feature_new)
+    #     if 'features' in self.data:
+    #         self.data['features'] = features_new
+    #     else:
+    #         self.data = features_new
 
     # TODO: Check error from resize as well
-    def pad(self, padding: tuple[int, int, int, int]):
-        left, right, top, bottom = padding
-        features = self.data['features'] if 'features' in self.data else self.data
-        features_new = []
-        for feature in features:
-            feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + left, coords[1] + right], feature)
-            features_new.append(feature_new)
-        if 'features' in self.data:
-            self.data['features'] = features_new
-        else:
-            self.data = features_new
+    def pad(self, 
+            padding: tuple[int, int, int, int],
+            override_feature_fields_to_transform: list[str] | str | None = None):
+        left, right, _, _ = padding
+        transform_function = lambda coords: coords + np.array([left, right])
+        warped_data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)
+        self.data = warped_data
 
-    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
-        features = self.data['features'] if 'features' in self.data else self.data
-        features_new = []
+    # def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
+    #     features = self.data['features'] if 'features' in self.data else self.data
+    #     features_new = []
+    #     if axis == 1:
+    #         center_x = ref_img_shape[1] // 2
+    #         for feature in features:
+    #             feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + 2 * (center_x - coords[0]), coords[1]], feature)
+    #             features_new.append(feature_new)
+    #     elif axis == 0:
+    #         center_y = ref_img_shape[0] // 2
+    #         for feature in features:
+    #             feature_new = geojson.utils.map_tuples(lambda coords: [coords[0], coords[1] + 2 * (center_y - coords[1])], feature)
+    #             features_new.append(feature_new)
+    #     else:
+    #         raise Exception(f"Cannot work with axis argument: {axis}")
+    #     if 'features' in self.data:
+    #         self.data['features'] = features_new
+    #     else:
+    #         self.data = features_new
+    #     self.resolution = self.resolution[::-1]
+
+    def flip(self, 
+                ref_img_shape: tuple[int, int], 
+                axis: int = 0,
+                override_feature_fields_to_transform: list[str] | str | None = None):
         if axis == 1:
             center_x = ref_img_shape[1] // 2
-            for feature in features:
-                feature_new = geojson.utils.map_tuples(lambda coords: [coords[0] + 2 * (center_x - coords[0]), coords[1]], feature)
-                features_new.append(feature_new)
-        elif axis == 0:
+            transform_function = lambda coords: coords + 2 * (np.array([np.repeat(center_x, coords.shape[1]), coords[:,1]]) - coords)
+        elif axis == 2:
             center_y = ref_img_shape[0] // 2
-            for feature in features:
-                feature_new = geojson.utils.map_tuples(lambda coords: [coords[0], coords[1] + 2 * (center_y - coords[1])], feature)
-                features_new.append(feature_new)
+            transform_function = lambda coords: coords + 2 * (np.array(coords[:,0], [np.repeat(center_y, coords.shape[1])]) - coords)
         else:
-            raise Exception(f"Cannot work with axis argument: {axis}")
-        if 'features' in self.data:
-            self.data['features'] = features_new
-        else:
-            self.data = features_new
-        self.resolution = self.resolution[::-1]
+            raise Exception(f"Invalid axis argument: {axis}")
+        self.data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)
+        self.resolution = (self.resolution[1], self.resolution[0])
 
     def copy(self):
         resolution = (self.resolution[0].copy(), self.resolution[1].copy())

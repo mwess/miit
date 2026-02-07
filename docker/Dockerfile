@@ -18,7 +18,9 @@ RUN make
 RUN make install
 WORKDIR "/app"
 
+# Command to start: jupyter lab --port=8888 --no-browser --ip=0.0.0.0 --allow-root
 EXPOSE 8888
 ENTRYPOINT ["jupyter", "lab"]
 CMD ["--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
+#CMD ["jupyter lab", "--port=8888", "--no-browser", "--ip=0.0.0.0", "--allow-root"]
 

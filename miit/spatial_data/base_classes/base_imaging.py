@@ -114,20 +114,32 @@ class BasePointset(abc.ABC):
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         pass
 
+    # @abc.abstractmethod
+    def resize(self, width: int, 
+               height: int, 
+               reference_shape: tuple[int, int],
+               **kwargs):
+        new_width = width/reference_shape[0]
+        new_height = height/reference_shape[1]
+        self.rescale((new_width, new_height))
+
     @abc.abstractmethod
-    def resize(self, width: int, height: int):
+    def rescale(self, 
+                scaling_factor: float | tuple[float, float],
+                **kwargs):
         pass
 
     @abc.abstractmethod
-    def rescale(self, scaling_factor: float | tuple[float, float]):
+    def pad(self, 
+            padding: tuple[int, int, int, int],
+            **kwargs):
         pass
 
     @abc.abstractmethod
-    def pad(self, padding: tuple[int, int, int, int]):
-        pass
-
-    @abc.abstractmethod
-    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
+    def flip(self, 
+             ref_img_shape: tuple[int, int], 
+             axis: int = 0,
+             **kwargs):
         pass
 
     @abc.abstractmethod
@@ -151,8 +163,8 @@ class BasePointset(abc.ABC):
     def scale_resolution(self, scale_factors: tuple[float, float]):
         res_w, res_h = self.resolution
         scale_w, scale_h = scale_factors
-        res_w.scale(scale_w)
-        res_h.scale(scale_h)
+        res_w = res_w.scale(scale_w)
+        res_h = res_h.scale(scale_h)
         self.resolution = (res_w, res_h)
 
     def scale_to_resolution(self, resolution: DUnit | tuple[DUnit, DUnit], align_units: bool = True):

@@ -49,13 +49,13 @@ class Pointset(BasePointset):
         self.data[self.x_axis] = self.data[self.x_axis] - ymin
         self.data[self.y_axis] = self.data[self.y_axis] - xmin
 
-    def resize(self, width: float, height: float):
-        # Remember to convert new dimensions to scale.
-        self.data[self.x_axis] = self.data[self.x_axis] * width
-        self.data[self.y_axis] = self.data[self.y_axis] * height
-        rate_w = 1 / width
-        rate_h = 1 / height
-        self.scale_resolution((rate_w, rate_h))
+    # def resize(self, width: int, height: int):
+    #     # Remember to convert new dimensions to scale.
+    #     self.data[self.x_axis] = self.data[self.x_axis] * width
+    #     self.data[self.y_axis] = self.data[self.y_axis] * height
+    #     rate_w = 1 / width
+    #     rate_h = 1 / height
+    #     self.scale_resolution((rate_w, rate_h))
 
     def rescale(self, scaling_factor: float | tuple[float, float]):
         if not isinstance(scaling_factor, tuple):
