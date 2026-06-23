@@ -35,7 +35,7 @@ class Annotation(BaseImage):
     """
 
     interpolation_mode: ClassVar[str] = 'NN'
-    labels: list[str | int] | dict[str | int, int] | None = None
+    labels: list[str | int] | dict[str | int, str | int] | None = None
     is_multichannel: bool = False
 
     def __post_init__(self) -> None:

@@ -340,7 +340,7 @@ class Visium(BaseSpatialOmics):
         self.table.resize(height_scale, width_scale, self.size)
         self.ref_mat.resize(height, width) 
 
-    def rescale(self, scaling_factor: float):
+    def rescale(self, scaling_factor: float | tuple[float, float]):
         if self.image is not None:
             self.image.rescale(scaling_factor)
         self.table.rescale(scaling_factor)
