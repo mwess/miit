@@ -105,7 +105,8 @@ class GeoJSONData(BasePointset):
             try:
                 warped_feature = GeoJSONData.make_deep_feature_copy(feature)
                 if feature['geometry'] is not None:
-                    warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(x, transformation))
+                    # warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(np.array([x[:0], x[:1]]), transformation))
+                    warped_geometry = shapely.transform(shapely.from_geojson(str(feature['geometry'])), lambda x: registerer.transform_pointset(x, transformation, **kwargs))
                     if fix_warped_geometry:
                         if not warped_geometry.is_valid:
                             warped_geometry = warped_geometry.buffer(0)
@@ -218,7 +219,7 @@ class GeoJSONData(BasePointset):
             scaling_factor = (scaling_factor, scaling_factor)
         w_scale_factor = scaling_factor[0]
         h_scale_factor = scaling_factor[1]
-        transform_function = lambda coords: coords - np.array([w_scale_factor, h_scale_factor])
+        transform_function = lambda coords: coords * np.array([w_scale_factor, h_scale_factor])
         warped_data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)
         self.data = warped_data
         rate_w = 1 / w_scale_factor
@@ -269,15 +270,16 @@ class GeoJSONData(BasePointset):
     #     self.resolution = self.resolution[::-1]
 
     def flip(self, 
-                ref_img_shape: tuple[int, int], 
-                axis: int = 0,
-                override_feature_fields_to_transform: list[str] | str | None = None):
+            ref_img_shape: tuple[int, int], 
+            axis: int = 0,
+            override_feature_fields_to_transform: list[str] | str | None = None):
         if axis == 1:
             center_x = ref_img_shape[1] // 2
-            transform_function = lambda coords: coords + 2 * (np.array([np.repeat(center_x, coords.shape[1]), coords[:,1]]) - coords)
-        elif axis == 2:
+            transform_function = lambda coords: coords + 2 * (np.stack(([np.repeat(center_x, coords.shape[0]), coords[:,1]])).squeeze() - coords)
+        elif axis == 0:
             center_y = ref_img_shape[0] // 2
-            transform_function = lambda coords: coords + 2 * (np.array(coords[:,0], [np.repeat(center_y, coords.shape[1])]) - coords)
+            transform_function = lambda coords: coords + 2 * (np.dstack((coords[:,0], np.repeat(center_y, coords.shape[0]))).squeeze() - coords)
+
         else:
             raise Exception(f"Invalid axis argument: {axis}")
         self.data = self._apply_transform(transform_function, override_feature_fields_to_transform=override_feature_fields_to_transform)

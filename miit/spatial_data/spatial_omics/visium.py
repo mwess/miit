@@ -253,7 +253,6 @@ class Visium(BaseSpatialOmics):
         if 'image' in attributes:
             image_dict = attributes['image']
             image = imaging_data_io.load(image_dict['type'], image_dict['path'])
-            # image = Image.load(attributes['image'])
         else:
             image = None
         table = Pointset.load(attributes['table'])
@@ -286,11 +285,11 @@ class Visium(BaseSpatialOmics):
         
     @staticmethod
     def build_ref_mat(scalefactor: float,
-                      scale_factors: dict,
+                      scale_factors_dict: dict,
                       spot_positions: Pointset | pd.DataFrame,
                       image_shape: tuple[int, int]
                       ) -> tuple[Annotation, dict[int, int]]:
-        spot_diameter = int(round(scale_factors['spot_diameter_fullres'] * scalefactor))
+        spot_diameter = int(round(scale_factors_dict['spot_diameter_fullres'] * scalefactor))
         spot_radius = spot_diameter//2
         
         # Add numeric indices for the ref_mat
@@ -485,7 +484,7 @@ class Visium(BaseSpatialOmics):
                 raise Exception('No image or image shape for reference matrix mapping was provided.')        
         ref_mat, spec_to_ref_map = Visium.build_ref_mat(
             scalefactor=config['scalefactor'],
-            scale_factors=scalefactors,
+            scale_factors_dict=scalefactors,
             spot_positions=tissue_positions,
             image_shape=image_shape
         )

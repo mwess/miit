@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import cv2
@@ -5,6 +6,12 @@ import numpy, numpy as np
 import SimpleITK as sitk
 
 from .base_registerer import Registerer, RegistrationResult
+
+@dataclass
+class ManualAffineRegistrationResult(RegistrationResult):
+    
+    transformation: numpy.ndarray
+    target_size: tuple[int, int]
 
 class ManualAffineRegisterer(Registerer):
     """
@@ -21,7 +28,7 @@ class ManualAffineRegisterer(Registerer):
 
     def transform_image(self, 
                         image: numpy.ndarray, 
-                        transformation: numpy.ndarray, 
+                        transformation: 'ManualAffineRegistrationResult | numpy.ndarray', 
                         interpolation_mode: int | str, 
                         **kwargs: dict) -> numpy.ndarray:
         if isinstance(interpolation_mode, str):
@@ -30,10 +37,16 @@ class ManualAffineRegisterer(Registerer):
             elif interpolation_mode == 'LINEAR':
                 int_mode = sitk.sitkLinear
         transform = sitk.AffineTransform(2)
-        transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
-        transform.SetTranslation((transformation[0,2], transformation[1,2]))
-        size = image.shape[:2]
-        ref_img = sitk.GetImageFromArray(np.zeros((size[0], size[1])), True)
+        if isinstance(transformation, 'ManualAffineRegistrationResult'):
+            t_mat = transformation.transformation
+            target_shape = transformation.target_size
+        else:
+            t_mat = transformation
+            target_shape = image.shape[:2]
+        transform.SetMatrix((t_mat[0,0], t_mat[0,1], t_mat[1,0], t_mat[1,1]))
+        transform.SetTranslation((t_mat[0,2], t_mat[1,2]))
+        # size = image.shape[:2]
+        ref_img = sitk.GetImageFromArray(np.zeros((target_shape[0], target_shape[1])), True)
         sitk_image = sitk.GetImageFromArray(image, True)
         resampler = sitk.ResampleImageFilter()
         resampler.SetReferenceImage(ref_img)
@@ -46,12 +59,16 @@ class ManualAffineRegisterer(Registerer):
 
     def transform_pointset(self, 
                            pointset: numpy.ndarray, 
-                           transformation: RegistrationResult, 
+                           transformation: ManualAffineRegistrationResult | numpy.ndarray, 
                            **kwargs: dict) -> numpy.ndarray:
         "Applies transformation to a pointset. Note, that the inverse of the transformation will be computed."
         transform = sitk.AffineTransform(2)
-        transform.SetMatrix((transformation[0,0], transformation[0,1], transformation[1,0], transformation[1,1]))
-        transform.SetTranslation((transformation[0,2], transformation[1,2]))
+        if isinstance(transformation, ManualAffineRegistrationResult):
+            t_mat = transformation.transformation
+        else:
+            t_mat = transformation        
+        transform.SetMatrix((t_mat[0,0], t_mat[0,1], t_mat[1,0], t_mat[1,1]))
+        transform.SetTranslation((t_mat[0,2], t_mat[1,2]))
         transform = transform.GetInverse()
         offset = 0.5
         warped_points = []

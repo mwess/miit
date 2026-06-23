@@ -347,7 +347,7 @@ class Section:
             no_reference_shape_exists = True
         elif self.reference_image is not None and reference_shape is None:
             no_reference_shape_exists = False
-            reference_shape = self.reference_image.shape[:2]
+            reference_shape = self.reference_image.data.shape[:2]
         else:
             no_reference_shape_exists = True
             # w, h = self.reference_image.data.shape[:2]
