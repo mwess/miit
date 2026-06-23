@@ -524,6 +524,10 @@ class Imzml(BaseSpatialOmics):
     def get_type() -> str:
         return 'Imzml'
 
+    @property
+    def size(self) -> tuple[int, int]:
+        return self.ref_mat.size
+
     def pad(self, padding: tuple[int, int, int, int]):
         self.ref_mat.pad(padding, constant_values=self.background)
         for spatial_data in self.additional_spatial_data:
@@ -536,7 +540,7 @@ class Imzml(BaseSpatialOmics):
         self.ref_mat.resize(height, width)
         for spatial_data in self.additional_spatial_data:
             if isinstance(spatial_data, BasePointset):
-                spatial_data.resize(ws, hs)
+                spatial_data.resize(ws, hs, (w, h))
             else:
                 spatial_data.resize(width, height)
 

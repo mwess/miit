@@ -45,7 +45,12 @@ class Pointset(BasePointset):
                         header=self.header,
                         resolution=self.resolution)
 
-    def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
+    def crop(self, 
+             xmin: int, 
+             xmax: int, 
+             ymin: int, 
+             ymax: int,
+             **kwargs):
         self.data[self.x_axis] = self.data[self.x_axis] - ymin
         self.data[self.y_axis] = self.data[self.y_axis] - xmin
 
@@ -57,7 +62,9 @@ class Pointset(BasePointset):
     #     rate_h = 1 / height
     #     self.scale_resolution((rate_w, rate_h))
 
-    def rescale(self, scaling_factor: float | tuple[float, float]):
+    def rescale(self, 
+                scaling_factor: float | tuple[float, float],
+                **kwargs):
         if not isinstance(scaling_factor, tuple):
             scaling_factor = (scaling_factor, scaling_factor)
         self.data[self.x_axis] = self.data[self.x_axis] * scaling_factor[0]
@@ -66,12 +73,17 @@ class Pointset(BasePointset):
         rate_h = 1 / scaling_factor[1]
         self.scale_resolution((rate_w, rate_h))
 
-    def pad(self, padding: tuple[int, int, int, int]):
+    def pad(self, 
+            padding: tuple[int, int, int, int],
+            **kwargs):
         left, right, top, bottom = padding
         self.data[self.x_axis] = self.data[self.x_axis] + left
         self.data[self.y_axis] = self.data[self.y_axis] + top
 
-    def flip(self, ref_img_shape: tuple[int, int], axis: int = 0):
+    def flip(self, 
+             ref_img_shape: tuple[int, int], 
+             axis: int = 0,
+             **kwargs):
         if axis == 0:
             center_x = ref_img_shape[1] // 2
             self.data.x = self.data.x + 2 * (center_x - self.data.x)
@@ -100,7 +112,8 @@ class Pointset(BasePointset):
         return 'Pointset'
 
     def store(self,
-              path: str):
+              path: str,
+              **kwargs):
         create_if_not_exists(path)
         fname = 'pointset.csv'
         fpath = join(path, fname)

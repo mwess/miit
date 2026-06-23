@@ -272,7 +272,8 @@ class Section:
             # First find out, if we already have this image.
             layer_idx = self.find_layer_index_by_id(ref_image._id)
             if layer_idx is not None:
-                self.__ref_img_idx__ = ref_image
+                # TODO: Check this functionality
+                self.__ref_img_idx__ = layer_idx
             else:
                 self.layers.append(ref_image)
                 self.__ref_img_idx__ = len(self.layers) - 1
@@ -286,7 +287,7 @@ class Section:
         return self.layers[0].resolution
 
     def __hash__(self) -> int:
-        return self._id
+        return int(self._id)
 
     def copy(self) -> 'Section':
         """Returns a copy of a section.
@@ -347,7 +348,7 @@ class Section:
             no_reference_shape_exists = True
         elif self.reference_image is not None and reference_shape is None:
             no_reference_shape_exists = False
-            reference_shape = self.reference_image.data.shape[:2]
+            reference_shape = self.reference_image.size
         else:
             no_reference_shape_exists = True
             # w, h = self.reference_image.data.shape[:2]

@@ -64,6 +64,11 @@ class BaseImage(abc.ABC):
     @abc.abstractmethod
     def get_type() -> str:
         pass
+    
+    @property
+    @abc.abstractmethod
+    def size(self) -> tuple[int, int]:
+        pass
 
     def scale_resolution(self, scale_factors: tuple[float, float]):
         res_w, res_h = self.resolution
@@ -207,6 +212,7 @@ class BaseSpatialOmics(abc.ABC):
     _id: uuid.UUID = field(init=False)
     ref_mat: BaseImage
     background: ClassVar[int]
+    resolution: tuple[DUnit, DUnit] = field(default_factory=lambda: (DUnit.default_dunit(), DUnit.default_dunit()))
 
     @abc.abstractmethod
     def apply_transform(self,
@@ -246,6 +252,11 @@ class BaseSpatialOmics(abc.ABC):
     @staticmethod
     @abc.abstractmethod
     def get_type() -> str:
+        pass
+    
+    @property
+    @abc.abstractmethod
+    def size(self) -> tuple[int, int]:
         pass
 
     @classmethod

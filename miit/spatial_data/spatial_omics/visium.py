@@ -181,6 +181,7 @@ def scale_tissue_positions(tissue_positions: pandas.DataFrame,
     return tissue_positions
 
 
+# TODO: Add resolution
 @MIITobject
 @dataclass(kw_only=True)
 class Visium(BaseSpatialOmics):
@@ -198,11 +199,13 @@ class Visium(BaseSpatialOmics):
     def __post_init__(self):
         self._id = uuid.uuid1()
     
+    @property
+    def size(self) -> tuple[int, int]:
+        return self.ref_mat.size
+    
     def store(self, directory: str):
         Path(directory).mkdir(parents=True, exist_ok=True)
         f_dict = {}
-            #         image_dict = attributes['image']
-            # image = imaging_data_io.load(image_dict['type'], image_dict['path'])
         if self.image is not None:
             image_path = join(directory, 'image')
             if not exists(image_path):
@@ -334,7 +337,7 @@ class Visium(BaseSpatialOmics):
             self.image.resize(height, width)
         width_scale = width / w_old
         height_scale = height / h_old
-        self.table.resize(height_scale, width_scale)
+        self.table.resize(height_scale, width_scale, self.size)
         self.ref_mat.resize(height, width) 
 
     def rescale(self, scaling_factor: float):

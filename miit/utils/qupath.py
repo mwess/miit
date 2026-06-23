@@ -143,7 +143,7 @@ def geojson_to_annotation(geojson_data: GeoJSONData | geojson.FeatureCollection 
         Annotation:
     """
     if isinstance(ref_image, BaseImage):
-        ref_image = ref_image.data
+        ref_image: numpy.ndarray = ref_image.data
     if to_multichannel_annotation:
         labels = {}
         masks = np.zeros(ref_image.shape[:2])
@@ -154,9 +154,9 @@ def geojson_to_annotation(geojson_data: GeoJSONData | geojson.FeatureCollection 
     if isinstance(geojson_data, GeoJSONData):
         geojson_data = geojson_data.data
     elif isinstance(geojson_data, geojson.Feature):
-        geojson_data = {'features': [geojson_data]}
+        geojson_data: dict = {'features': [geojson_data]}
     elif isinstance(geojson_data, list):
-        geojson_data = {'features': geojson_data}
+        geojson_data: dict = {'features': geojson_data}
     for idx, feature in enumerate(geojson_data['features']):
         if select_object_type and feature['properties']['objectType'] not in select_object_type:
             continue

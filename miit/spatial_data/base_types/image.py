@@ -24,6 +24,10 @@ from miit.utils.image_utils import (
 class Image(BaseImage):
 
     interpolation_mode: ClassVar[str] = 'LINEAR'
+    
+    @property
+    def size(self) -> tuple[int, int]:
+        return self.data.shape[:2]
 
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         self.data = crop(self.data, xmin, xmax, ymin, ymax)

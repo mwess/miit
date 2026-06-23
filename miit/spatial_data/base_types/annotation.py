@@ -54,6 +54,14 @@ class Annotation(BaseImage):
         if isinstance(self.labels, dict) and not self.is_multichannel:
             raise Exception('Singlechannel annotation cannot have dicts as labels. Pass labels as lists instead.')
 
+    @property
+    def size(self) -> tuple[int, int]:
+        if self.is_multichannel:
+            return self.data.shape[:2]
+        else:
+            return self.data.shape
+            
+
     def crop(self, xmin: int, xmax: int, ymin: int, ymax: int):
         # TODO: Add check for image bounds
         if len(self.data.shape) == 2:
