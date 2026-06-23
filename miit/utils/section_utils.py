@@ -13,7 +13,7 @@ def get_symmetric_padding_for_sections(sections: list[Section]) -> dict[Any, tup
 
 
 def get_section_max_size(section: Section) -> int:
-    return max(section.reference_image.data.shape[0], section.reference_image.data.shape[1])
+    return max(section.reference_image.size[0], section.reference_image.size[1])
 
 
 def get_max_size_from_sections(sections: list[Section]) -> int:

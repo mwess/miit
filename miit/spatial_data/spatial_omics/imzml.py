@@ -506,6 +506,7 @@ def flatten_to_row(df: pandas.DataFrame) -> pandas.DataFrame:
 
 
 # TODO: Use ref_mat labels instead of spec_to_ref_map, but everything needs to be reverted then.
+# TODO: Implement resolution
 @MIITobject
 @dataclass(kw_only=True)
 class Imzml(BaseSpatialOmics):

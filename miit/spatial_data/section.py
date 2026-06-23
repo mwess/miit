@@ -236,9 +236,12 @@ class Section:
             self.reference_image = reference_image
 
     @property
-    def reference_image(self):
+    def reference_image(self) -> BaseImage | BaseSpatialOmics | None:
         if self.__ref_img_idx__ is not None:
-            return self.layers[self.__ref_img_idx__]
+            ref_image = self.layers[self.__ref_img_idx__]
+            if not (isinstance(ref_image, BaseImage) or isinstance(ref_image, BaseSpatialOmics)):
+                raise Exception('Invalid reference image type.')
+            return ref_image
 
     @reference_image.setter
     def reference_image(self, 
