@@ -28,8 +28,8 @@ def remove_padding(image: numpy.ndarray,
 
 def get_symmetric_padding(img1: numpy.ndarray, img2: numpy.ndarray) -> tuple[tuple[int, int, int, int], tuple[int, int, int, int]]:
     max_size = max(img1.shape[0], img1.shape[1], img2.shape[0], img2.shape[1])
-    padding_img1 = get_padding_params(img1, max_size)
-    padding_img2 = get_padding_params(img2, max_size)
+    padding_img1 = get_padding_params(img1.shape[:2], max_size)
+    padding_img2 = get_padding_params(img2.shape[:2], max_size)
     return padding_img1, padding_img2
 
 
@@ -74,7 +74,7 @@ def crop(data, xmin: int, xmax: int, ymin: int, ymax: int):
     return data
     
 
-def get_padding_params(img: numpy.ndarray, shape: int) -> tuple[int, int, int, int]:
+def get_padding_params(img_shape: tuple[int, int], shape: int) -> tuple[int, int, int, int]:
     """Computes padding parameters to pad image to given shape.
 
     Args:
@@ -84,12 +84,12 @@ def get_padding_params(img: numpy.ndarray, shape: int) -> tuple[int, int, int, i
     Returns:
         tuple[int, int, int, int]: 
     """
-    pad_x = shape - img.shape[0]
+    pad_x = shape - img_shape[0]
     pad_x_l = pad_x // 2
     pad_x_u = pad_x // 2
     if pad_x % 2 != 0:
         pad_x_u += 1
-    pad_y = shape - img.shape[1]
+    pad_y = shape - img_shape[1]
     pad_y_l = pad_y // 2
     pad_y_u = pad_y // 2
     if pad_y % 2 != 0:

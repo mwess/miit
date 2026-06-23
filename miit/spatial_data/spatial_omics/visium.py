@@ -189,7 +189,7 @@ class Visium(BaseSpatialOmics):
     image: BaseImage | None = None
     table: Pointset
     scale_factors: dict
-    ref_mat: Annotation
+    # ref_mat: Annotation
     spec_to_ref_map: dict
     config: dict
     name: str = ''

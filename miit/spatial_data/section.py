@@ -347,19 +347,21 @@ class Section:
             height (int):
             reference_shape tuple[int, int]:
         """
-        if self.reference_image is None and reference_shape is None:
-            no_reference_shape_exists = True
-        elif self.reference_image is not None and reference_shape is None:
-            no_reference_shape_exists = False
+        if reference_shape is None and self.reference_image is not None:
             reference_shape = self.reference_image.size
-        else:
-            no_reference_shape_exists = True
+        # if self.reference_image is None and reference_shape is None:
+        #     no_reference_shape_exists = True
+        # elif self.reference_image is not None and reference_shape is None:
+        #     no_reference_shape_exists = False
+        #     reference_shape = self.reference_image.size
+        # else:
+            # no_reference_shape_exists = True
             # w, h = self.reference_image.data.shape[:2]
             # ws = width / w
             # hs = height / h
         for layer in self.layers:
             if isinstance(layer, BasePointset):
-                if no_reference_shape_exists:
+                if reference_shape is None:
                     raise Exception('BasePointsets cannot be transformed, since no reference image exists.')
                 layer.resize(width, height, reference_shape)
             else:
@@ -576,6 +578,8 @@ class Section:
         """
         for layer in self.layers:
             if isinstance(layer, BasePointset):
-                layer.flip(self.reference_image.data.shape[:2], axis=axis)
+                if self.reference_image is None:
+                    raise Exception('This method requires a reference image.')
+                layer.flip(self.reference_image.size, axis=axis)
             else:
                 layer.flip(axis=axis)

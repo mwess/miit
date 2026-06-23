@@ -545,7 +545,7 @@ class Imzml(BaseSpatialOmics):
             else:
                 spatial_data.resize(width, height)
 
-    def rescale(self, scaling_factor: float):
+    def rescale(self, scaling_factor: float | tuple[float, float]):
         self.ref_mat.rescale(scaling_factor)
         for spatial_data in self.additional_spatial_data:
             spatial_data.rescale(scaling_factor)

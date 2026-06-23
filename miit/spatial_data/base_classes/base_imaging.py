@@ -230,7 +230,7 @@ class BaseSpatialOmics(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def rescale(self, scaling_factor: float):
+    def rescale(self, scaling_factor: float | tuple[float, float]):
         pass
 
     @abc.abstractmethod
