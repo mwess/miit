@@ -5,6 +5,8 @@ MIIT (pronounce: `meet`) is a Python framework for integrating spatially resolve
 
 The most current version of Greedy is `v0.0.4`.
 
+ome.zarr support coming soon.
+
 ## Installation
 
 MIIT can be installed using pip:
