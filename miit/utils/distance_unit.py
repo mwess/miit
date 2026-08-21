@@ -126,6 +126,72 @@ class DUnit:
     def __le__(self, other: 'DUnit') -> bool:
         return self.to_dec().__le__(other.to_dec())
 
+    def __add__(self, other: 'DUnit') -> 'DUnit':
+        other = other.convert_to_unit(self.symbol)
+        s = self.to_dec() + other.to_dec()
+        return DUnit(s, self.symbol)
+    
+    def __sub__(self, other: 'DUnit') -> 'DUnit':
+        other = other.convert_to_unit(self.symbol)
+        s = self.to_dec() - other.to_dec()
+        return DUnit(s, self.symbol)
+    
+    def __mul__(self, other: 'DUnit | float | int') -> 'DUnit':
+        if isinstance(other, (float, int)):
+            other = DUnit(other, self.symbol)
+        else:
+            other = other.convert_to_unit(self.symbol)
+        s = self.to_dec() * other.to_dec()
+        return DUnit(s, self.symbol)
+    
+    def __rmul__(self, other: 'DUnit | float') -> 'DUnit | float':
+        if isinstance(other, DUnit):
+            return self.__mul__(other)
+        return self.to_float() * other
+    
+    def __truediv__(self, other: 'DUnit | float | int') -> float:
+        if isinstance(other, DUnit):
+            other = other.to_float()
+        return self.to_float() / other
+
+    def __floordiv__(self, other: 'DUnit | float | int') -> float:
+        if isinstance(other, DUnit):
+            other = other.to_float()
+        return self.to_float() // other
+    
+    def __rtruediv__(self, other: 'DUnit | float | int') -> float:
+        if isinstance(other, DUnit):
+            other = other.to_float()
+        return other / self.to_float()
+        
+
+    def dunit_truediv(self, other: 'DUnit | float | int') -> 'DUnit':
+        """Custom truediv operation that divides numerical values but preserves distance units.
+
+        Args:
+            other (DUnit | float | int): _description_
+
+        Returns:
+            DUnit: _description_
+        """
+        if isinstance(other, DUnit):
+            other = other.to_float()
+        return DUnit(self.to_float() / other, self.symbol)
+
+    def dunit_floordiv(self, other: 'DUnit | float | int') -> 'DUnit':
+        """Custom floordiv operation that divides numerical values but preserves distance units.
+
+        Args:
+            other (DUnit | float | int): _description_
+
+        Returns:
+            DUnit: _description_
+        """
+        if isinstance(other, DUnit):
+            other = other.to_float()
+        return DUnit(self.to_float() // other, self.symbol)
+
+
     @staticmethod
     def to_decimal(value: float | str | Decimal) -> Decimal:
         """Converts value to a decimal.

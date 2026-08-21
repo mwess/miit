@@ -249,6 +249,23 @@ class BaseSpatialOmics(abc.ABC):
     def get_spec_to_ref_map(self, reverse=False) -> dict:
         pass
 
+    def scale_to_resolution(self, resolution: DUnit | tuple[DUnit, DUnit], align_units: bool = True):
+        if isinstance(resolution, DUnit):
+            resolution = (resolution, resolution)
+        res_w, res_h = self.resolution
+        dst_w, dst_h = resolution
+        conv_rate_w = float(1 / res_w.get_conversion_factor(dst_w))
+        conv_rate_h = float(1 / res_h.get_conversion_factor(dst_h))
+        self.rescale((conv_rate_w, conv_rate_h))
+        if align_units:
+            rw, rh = self.resolution
+            self.resolution = (rw.convert_to_unit(dst_w.symbol), rh.convert_to_unit(dst_h.symbol))
+
+    def set_resolution(self, resolution: DUnit | tuple[DUnit, DUnit]):
+        if isinstance(resolution, DUnit):
+            resolution = (resolution, resolution)
+        self.resolution = resolution
+
     @staticmethod
     @abc.abstractmethod
     def get_type() -> str:

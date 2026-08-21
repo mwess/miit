@@ -37,7 +37,7 @@ class ManualAffineRegisterer(Registerer):
             elif interpolation_mode == 'LINEAR':
                 int_mode = sitk.sitkLinear
         transform = sitk.AffineTransform(2)
-        if isinstance(transformation, 'ManualAffineRegistrationResult'):
+        if isinstance(transformation, ManualAffineRegistrationResult):
             t_mat = transformation.transformation
             target_shape = transformation.target_size
         else:

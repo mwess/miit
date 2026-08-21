@@ -28,7 +28,7 @@ def _resize_image_simple_sitk(image: numpy.ndarray | sitk.Image,
     else:
         img_np = image
     new_img_np = cv2.resize(img_np.astype(np.float32), (res[1], res[0]), 0, 0, interpolation=interpolation)
-    return sitk.GetImageFromArray(new_img_np.astype(np.float32))
+    return sitk.GetImageFromArray(new_img_np.astype(np.float32), True)
 
 
 def _string_mat_to_mat(str_mat: str) -> numpy.ndarray:
@@ -59,6 +59,7 @@ class NiftyRegWrapper(Registerer):
     path_to_nifty_reg_f3d: str = ''
     path_to_nifty_reg_resample: str = ''
     path_to_nifty_reg_transform: str = ''
+    
     
     def register_images(self, 
                         moving_img: numpy.ndarray, 
@@ -96,8 +97,8 @@ class NiftyRegWrapper(Registerer):
         cmd_returns = []
         if not exists(tmp_dir):
             os.mkdir(tmp_dir)
-        fixed_full_path = join(tmp_dir, 'fixed_full.nii.gz')
-        moving_full_path = join(tmp_dir, 'moving_full.nii.gz')
+        # fixed_full_path = join(tmp_dir, 'fixed_full.nii.gz')
+        # moving_full_path = join(tmp_dir, 'moving_full.nii.gz')
         fixed_path = join(tmp_dir, 'fixed.nii.gz')
         moving_path = join(tmp_dir, 'moving.nii.gz')
         warped_image_path = join(tmp_dir, 'warped_image.nii.gz')
@@ -107,8 +108,8 @@ class NiftyRegWrapper(Registerer):
         f3d_transform_pp_path = join(tmp_dir, 'f3d_transform_pp.nii.gz')
         sitk.WriteImage(fixed_image_half_res, fixed_path)
         sitk.WriteImage(moving_image_half_res, moving_path)
-        sitk.WriteImage(fixed_img_sitk, fixed_full_path)
-        sitk.WriteImage(moving_img_sitk, moving_full_path)
+        # sitk.WriteImage(fixed_img_sitk, fixed_full_path)
+        # sitk.WriteImage(moving_img_sitk, moving_full_path)
 
         # Perform registrations
         if affine:
@@ -158,13 +159,23 @@ class NiftyRegWrapper(Registerer):
             transform.SetDisplacementField(disp_fields)            
         else:
             # Assume affine transform otherwise
-            with open(affine_transform_path) as f:
-                aff_params = f.readlines()
-                aff_params = [x.strip() for x in aff_params]
-            m = _string_mat_to_mat(aff_params)
+            reg_matrix = np.loadtxt(affine_transform_path)
+            # Change direction
+            C = np.diag((-1, -1, 1, 1))
+            reg_matrix = C @ reg_matrix @ C
+            matrix_2d = reg_matrix[0:2, 0:2].flatten().tolist()
+            translation_2d = reg_matrix[0:2, 3].tolist()          
+            
             transform = sitk.AffineTransform(2)
-            transform.SetMatrix((m[0, 0], m[0, 1], m[1, 0], m[1, 1]))
-            transform.SetTranslation((m[0, 3], m[1, 3]))            
+            transform.SetMatrix(matrix_2d)
+            transform.SetTranslation(translation_2d)
+                       
+            # Set center from fixed image.
+            fixed_img2 = sitk.ReadImage(fixed_path, True)
+            center = fixed_img2.TransformContinuousIndexToPhysicalPoint(
+                [(sz - 1) / 2.0 for sz in fixed_img2.GetSize()]
+            )        
+            transform.SetCenter(center)
         if exists(tmp_dir) and remove_tmp_dir:
             shutil.rmtree(tmp_dir)
         registration_result = NiftyRegRegistrationResult(
@@ -203,12 +214,14 @@ class NiftyRegWrapper(Registerer):
         else:
             int_mode = interpolation_mode
         ref_img = sitk.GetImageFromArray(np.zeros((transformation.target_size[0], transformation.target_size[1])), True)
-        sitk_image = sitk.GetImageFromArray(image, True)
+        # sitk_image = sitk.GetImageFromArray(image, True)
+        # sitk_image.SetDirection((-1,0,0,-1))
         resampler = sitk.ResampleImageFilter()
         resampler.SetReferenceImage(ref_img)
         resampler.SetInterpolator(int_mode)
         resampler.SetDefaultPixelValue(0)
         resampler.SetTransform(transform)
+        # sitk_image_half_res.SetDirection((-1,0,0,1))
         warped_image_sitk = resampler.Execute(sitk_image_half_res)
         warped_image = sitk.GetArrayFromImage(warped_image_sitk)
         warped_image = _resize_image_simple_sitk(warped_image, transformation.orig_target_size, interpolation=int_mode)
@@ -227,9 +240,10 @@ class NiftyRegWrapper(Registerer):
         # Check for off-by-one errors.
         transform = transformation.transform
         downscaling_factor = transformation.downscaling_factor
+        transform = transform.GetInverse()
         if downscaling_factor > 1:
             pointset = pointset/downscaling_factor
-        pointset -= 0.5
+        # pointset -= 0.5
         warped_points = []
         for i in range(pointset.shape[0]):
             point = (pointset[i,0], pointset[i,1])

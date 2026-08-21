@@ -11,6 +11,7 @@ from typing import (
     Dict
 )
 import uuid
+import warnings
 
 from lxml import etree
 import pandas, pandas as pd
@@ -41,6 +42,7 @@ from miit.utils.imzml import (
     get_line_scan_direction,
     get_pca_img
 )
+from miit.utils.distance_unit import DUnit
 
 
 def compose_dicts(dict1: dict, dict2: dict) -> dict:
@@ -311,22 +313,68 @@ def get_metabolite_intensities_targeted(msi: ImzMLParser,
     return metabolite_df
 
 
+# TODO: The logic for setting and formatting the reoslutions can probably be improved.
 def convert_msi_to_reference_matrix(msi: ImzMLParser, 
-                                    target_resolution: int = 1) -> tuple[Annotation, dict]:
-    """Computes reference matrix from msi scaled to target_resolution.
+                                    target_resolution: DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None = None, # type: ignore
+                                    source_resolution: DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None = None, # type: ignore
+                                    max_dimension_x_key: str | None = 'max dimension x',
+                                    max_dimension_y_key: str | None = 'max dimension y',
+                                    invert_x_axis: bool = False,
+                                    invert_y_axis: bool = False) -> tuple[Annotation, dict]:
+    """_summary_
 
     Args:
-        msi (pyimzml.ImzMLParser.ImzMLParser): Source imzml.
-        target_resolution (int, optional): Target resolution to which. Defaults to 1.
-
+        msi (ImzMLParser): _description_
+        target_resolution (DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None, optional): Target resolution of reference matrix. If None, is equal to source_resolution.
+        source_resolution (DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None, optional): If none, defaults to whatever is written in imzmldict. If nothing is found, then defaults to a pixel size of 1px.
+        max_dimension_x_key (str | None, optional): Key to extract the maximum dimension in imzmldict. Defaults to 'max dimension x'.
+        max_dimension_y_key (str | None, optional): Key to extract the maximum dimension in imzmldict. Defaults to 'max dimension y'.
+        invert_x_axis (bool, optional): _description_. Defaults to False.
+        invert_y_axis (bool, optional): _description_. Defaults to False.
 
     Returns:
-        numpy.ndarray | dict: Reference matrix, mapping of msi pixels to reference matrix.
+        tuple[Annotation, dict]: _description_
     """
-    scale_x = msi.imzmldict['pixel size x']/target_resolution
-    scale_y = msi.imzmldict['pixel size y']/target_resolution
-    max_x = int(msi.imzmldict['max dimension x']/target_resolution)
-    max_y = int(msi.imzmldict['max dimension y']/target_resolution)
+    if source_resolution is None:
+        try:
+            source_resolution = (msi.imzmldict['pixel size x'], msi.imzmldict['pixel size y'])
+        except Exception:
+            warnings.warn('Source resolution not given and found in msi data. Defaulting to 1.')
+            source_resolution = (1, 1)
+    if not isinstance(source_resolution, tuple):
+        source_resolution = (source_resolution, source_resolution) # type: ignore
+    source_res_x, source_res_y = source_resolution # type: ignore
+    if isinstance(source_res_x, float):
+        source_res_x = DUnit(source_res_x, 'px')
+    if isinstance(source_res_y, float):
+        source_res_y = DUnit(source_res_y, 'px')
+    source_resolution: tuple[DUnit, DUnit] = (source_res_x, source_res_y) # type: ignore
+    if target_resolution is not None:
+        if not isinstance(target_resolution, tuple):
+            target_resolution = (target_resolution, target_resolution) # type: ignore
+        target_res_x, target_res_y = target_resolution # type: ignore
+        if isinstance(target_res_x, float):
+            target_res_x = DUnit(target_res_x, 'px')
+        if isinstance(target_res_y, float):
+            target_res_y = DUnit(target_res_y, 'px')
+        target_resolution: tuple[DUnit, DUnit] = (target_res_x, target_res_y) # type: ignore
+    else:
+        target_resolution = source_resolution
+    scale_x = source_resolution[0]/target_resolution[0]
+    scale_y = source_resolution[1]/target_resolution[1]
+    
+    if max_dimension_x_key is None or not max_dimension_x_key in msi.imzmldict:
+        max_x_count = max([x for (x, _, _) in msi.coordinates])
+        max_x = int((max_x_count * source_resolution[0])/target_resolution[0])
+    else:
+        max_x = int(msi.imzmldict[max_dimension_x_key]/target_resolution[0])
+    
+    if max_dimension_y_key is None or not max_dimension_y_key in msi.imzmldict:
+        max_y_count = max([y for (_, y, _) in msi.coordinates])
+        max_y = int((max_y_count * source_resolution[1])/target_resolution[1])
+    else:
+        max_y = int(msi.imzmldict[max_dimension_y_key]/target_resolution[1])
+        
     ref_mat = np.zeros((max_y, max_x), dtype=int)
     spec_to_ref_map = {}
     ref_map_to_spec = {}
@@ -338,7 +386,11 @@ def convert_msi_to_reference_matrix(msi: ImzMLParser,
         ref_mat[y_s:y_e,x_s:x_e] = idx + 1
         spec_to_ref_map[idx] = idx + 1
         ref_map_to_spec[idx + 1] = idx
-    ann = Annotation(data=ref_mat, labels=ref_map_to_spec, is_multichannel=True)
+    if invert_x_axis:
+        ref_mat = ref_mat[:, ::-1]
+    if invert_y_axis:
+        ref_mat = ref_mat[::-1, :]
+    ann = Annotation(data=ref_mat, labels=ref_map_to_spec, is_multichannel=True, resolution=target_resolution)
     return ann, spec_to_ref_map
 
 
@@ -670,14 +722,25 @@ class Imzml(BaseSpatialOmics):
     def init_msi_data(cls,
                       imzml_path: str,
                       config: dict | None = None,
-                      target_resolution: int = 1,
+                      target_resolution:  DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None  = None,
+                      source_resolution:  DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None  = None,
+                      max_dimension_x_key: str | None = 'max dimension x',
+                      max_dimension_y_key: str | None = 'max dimension y',
+                      invert_x_axis: bool = False,
+                      invert_y_axis: bool = False,
                       name: str = '') -> 'Imzml':
         """Inits an Imzml object. 
 
         Args:
             imzml_path (str): Path to imzml path.
             config (dict | None, optional): Contains additional user defined data. Defaults to None.
-            target_resolution (int | None, optional): Resolution to which to rescale the msi data. Defaults to 1.
+            target_resolution (DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None ): Resolution to which to rescale the msi data. Defaults to None.
+            source_resolution ( DUnit | tuple[DUnit, DUnit] | float | tuple[float, float] | int | tuple[int, int] | None ): Sets the resolution of msi-pixels. If none, will extract information from the imzml file.
+                                                              If set, will overwrite information from imzml file.
+            max_dimension_x_key (str | None): Key used to look up the maximum dimension in the x-axis in the `imzmldict` property. If not given or not an available key, its computed based on other properties.
+            max_dimension_y_key (str | None): Key used to look up the maximum dimension in the y-axis in the `imzmldict` property. If not given or not an available key, its computed based on other properties.
+            invert_x_axis (bool): Inverts reference matrix along the x axis (columns are switched).
+            invert_y_axis (bool): Inverts reference matrix along the y axis (rows are switched).
             name (str, optional): Name of the imzml object. Defaults to ''.
 
         Returns:
@@ -688,7 +751,13 @@ class Imzml(BaseSpatialOmics):
         if 'imzml' not in config:
             config['imzml'] = imzml_path
         msi = ImzMLParser(imzml_path)
-        ref_mat, spec_to_ref_map = convert_msi_to_reference_matrix(msi, target_resolution)
+        ref_mat, spec_to_ref_map = convert_msi_to_reference_matrix(msi, 
+                                                                   target_resolution, 
+                                                                   source_resolution,
+                                                                   max_dimension_x_key,
+                                                                   max_dimension_y_key,
+                                                                   invert_x_axis,
+                                                                   invert_y_axis)
         return cls(
             ref_mat=ref_mat,
             config=config,

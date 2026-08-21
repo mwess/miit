@@ -127,7 +127,7 @@ def groupwise_registration(sections: list['Section'],
             raise Exception('Section misses a reference image.')
         image = section.reference_image.data
         # mask_annotation = section.segmentation_mask
-        mask_annotation = section.get_annotation_by_name('tissue_mask')
+        mask_annotation = section.get_layer_by_name('tissue_mask')
         mask = mask_annotation.data if mask_annotation is not None else None
         images_with_mask_list.append((image, mask))
     # Now do groupwise registration.
@@ -141,6 +141,7 @@ def groupwise_registration(sections: list['Section'],
     return warped_sections, transforms
 
 
+# TODO: data should be able to use lists.
 def register_to_ref_image(target_image: numpy.ndarray | BaseImage, 
                           source_image: numpy.ndarray | BaseImage, 
                           data: BaseImage | BasePointset | BaseSpatialOmics,
@@ -289,6 +290,20 @@ class Section:
             raise Exception('Section has no resolution since not layers are available.')
         return self.layers[0].resolution
 
+    # TODO: Implement setter correctly.
+    def set_resolution(self, resolution: DUnit | tuple[DUnit, DUnit]):
+        """Overwrites current resolution without any other changes to the data. Should only be used to convert from real world distance units (.e.g. um) to pixel (px) and vice versa.
+
+        Args:
+            resolution (DUnit | tuple[DUnit, DUnit]): _description_
+        """
+        for layer in self.layers:
+            layer.set_resolution(resolution)
+    
+    def scale_to_resolution(self, resolution: DUnit | tuple[DUnit, DUnit], align_units: bool = True):
+        for layer in self.layers:
+            layer.scale_to_resolution(resolution, align_units)
+    
     def __hash__(self) -> int:
         return int(self._id)
 
@@ -436,7 +451,7 @@ class Section:
         with open(join(directory, 'attributes.json'), 'w') as f:
             json.dump(f_dict, f)
 
-    def find_layer_index_by_name(self, name: str) -> int | None:
+    def find_layer_index_by_name(self, name: str, match_prefix: bool = True) -> int | None:
         """Find the index of the layer based on the name.
 
         Args:
@@ -448,11 +463,15 @@ class Section:
         for idx, layer in enumerate(self.layers):
             if not hasattr(layer, 'name'):
                 continue
-            if layer.name == name:
-                return idx
+            if match_prefix:
+                if layer.name is not None and layer.name.startswith(name):
+                    return idx
+            else:
+                if layer.name == name:
+                    return idx
         return None
 
-    def get_annotation_by_name(self, name: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
+    def get_layer_by_name(self, name: str, match_prefix: bool = True) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Finds an annotation by matching Annotation.name with name.
         Returns None, if annotation could not be found.
 
@@ -462,12 +481,12 @@ class Section:
         Returns:
             BaseImage | None:
         """
-        layer_idx = self.find_layer_index_by_name(name)
+        layer_idx = self.find_layer_index_by_name(name, match_prefix)
         if layer_idx is None:
             return None
         return self.layers[layer_idx]
-    
-    def find_layer_index_by_id(self, id_: str | UUID) -> int | None:
+        
+    def find_layer_index_by_id(self, id_: str | UUID, match_prefix: bool = True) -> int | None:
         """Find the index of the layer based on the name.
 
         Args:
@@ -479,21 +498,26 @@ class Section:
         if isinstance(id_, UUID):
             id_ = str(id_)
         for idx, layer in enumerate(self.layers):
-            if str(layer._id) == id_:
-                return idx
+            if match_prefix:
+                if str(layer._id).startswith(id_):
+                    return idx
+            else:
+                if str(layer._id) == id_:
+                    return idx
         return None
 
-    def get_annotation_by_id(self, id_: str) -> BaseImage | BasePointset | BaseSpatialOmics | None:
+    def get_layer_by_id(self, id_: str, match_prefix: bool = True) -> BaseImage | BasePointset | BaseSpatialOmics | None:
         """Gets annotation by matching Annotation._id with id_.
         Returns None, if annotation can not be found.
 
         Args:
             id_ (str): 
+            match_prefix (bool): If True, matches the beginning of the id string.
 
         Returns:
             BaseImage | None: 
         """
-        layer_idx = self.find_layer_index_by_id(id_)
+        layer_idx = self.find_layer_index_by_id(id_, match_prefix)
         if layer_idx is None:
             return None
         return self.layers[layer_idx]
@@ -545,10 +569,11 @@ class Section:
         obj._id = uuid.UUID(attributes['id'])
         return obj
 
+    # Can be extended to any type of spatial omics data.
     def add_molecular_imaging_data(self,
                                    mi: BaseSpatialOmics,
-                                   do_register_to_ref_image=True,
-                                   reference_image: numpy.ndarray = None,
+                                   do_register_to_ref_image: bool =True,
+                                   reference_image: numpy.ndarray | None = None,
                                    registerer: Registerer | None = None):
         """
         Adds molecular imaging data to section.
